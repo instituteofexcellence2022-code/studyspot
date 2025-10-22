@@ -5,56 +5,43 @@ let client;
 let redisAvailable = false;
 
 const createClient = () => {
-  // Check if Upstash Redis credentials are provided
-  if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
-    logger.warn('Redis credentials not configured. Caching will be disabled.');
+  // Check if Redis URL is provided
+  if (!process.env.REDIS_URL) {
+    logger.warn('REDIS_URL not configured. Caching will be disabled.');
     return null;
   }
 
   const config = {
-    url: process.env.REDIS_URL || 'redis://localhost:6379',
-    retry_strategy: (options) => {
-      if (options.error && options.error.code === 'ECONNREFUSED') {
-        logger.warn('Redis server connection refused - running without cache');
-        return undefined; // Don't retry
-      }
-      if (options.total_retry_time > 1000 * 60 * 60) {
-        logger.warn('Redis retry time exhausted - running without cache');
-        return undefined; // Don't retry
-      }
-      if (options.attempt > 3) {
-        logger.warn('Redis max retry attempts reached - running without cache');
-        return undefined; // Stop after 3 attempts
-      }
-      // Reconnect after
-      return Math.min(options.attempt * 100, 3000);
+    url: process.env.REDIS_URL,
+    socket: {
+      reconnectStrategy: false // Don't retry if connection fails
     }
   };
 
   try {
-    client = redis.createClient(config);
+    const newClient = redis.createClient(config);
 
-    client.on('connect', () => {
+    newClient.on('connect', () => {
       logger.info('Redis client connected');
       redisAvailable = true;
     });
 
-    client.on('ready', () => {
+    newClient.on('ready', () => {
       logger.info('Redis client ready');
       redisAvailable = true;
     });
 
-    client.on('error', (err) => {
+    newClient.on('error', (err) => {
       logger.warn('Redis client error (continuing without cache):', err.message);
       redisAvailable = false;
     });
 
-    client.on('end', () => {
+    newClient.on('end', () => {
       logger.info('Redis client disconnected');
       redisAvailable = false;
     });
 
-    return client;
+    return newClient;
   } catch (error) {
     logger.warn('Failed to create Redis client - running without cache:', error.message);
     return null;
@@ -63,15 +50,19 @@ const createClient = () => {
 
 const connectRedis = async () => {
   try {
+    // Try to create client if it doesn't exist
     if (!client) {
       client = createClient();
     }
 
+    // If still no client (REDIS_URL not configured), skip entirely
     if (!client) {
       logger.warn('Redis not configured - running without cache');
+      redisAvailable = false;
       return null;
     }
 
+    // Try to connect
     await client.connect();
     logger.info('Redis connected successfully');
     redisAvailable = true;
@@ -79,14 +70,13 @@ const connectRedis = async () => {
   } catch (error) {
     logger.warn('Redis connection failed - running without cache:', error.message);
     redisAvailable = false;
-    return null; // Don't throw, just return null
+    // Don't throw error, just continue without Redis
+    return null;
   }
 };
 
 const getClient = () => {
-  if (!client) {
-    client = createClient();
-  }
+  // Don't auto-create client, return existing or null
   return client;
 };
 
@@ -128,16 +118,26 @@ const getCache = async (key) => {
 };
 
 const deleteCache = async (key) => {
+  if (!client || !redisAvailable) {
+    logger.debug('Redis not available - skipping cache delete');
+    return null;
+  }
+  
   try {
     await client.del(key);
     logger.debug(`Cache deleted: ${key}`);
   } catch (error) {
-    logger.error('Cache delete error:', error);
-    throw error;
+    logger.warn('Cache delete error (continuing without cache):', error.message);
+    return null;
   }
 };
 
 const deleteCachePattern = async (pattern) => {
+  if (!client || !redisAvailable) {
+    logger.debug('Redis not available - skipping cache pattern delete');
+    return null;
+  }
+  
   try {
     const keys = await client.keys(pattern);
     if (keys.length > 0) {
@@ -145,8 +145,8 @@ const deleteCachePattern = async (pattern) => {
       logger.debug(`Cache pattern deleted: ${pattern} (${keys.length} keys)`);
     }
   } catch (error) {
-    logger.error('Cache pattern delete error:', error);
-    throw error;
+    logger.warn('Cache pattern delete error (continuing without cache):', error.message);
+    return null;
   }
 };
 
@@ -168,6 +168,10 @@ const deleteSession = async (sessionId) => {
 
 // Rate limiting
 const checkRateLimit = async (key, limit, windowInSeconds) => {
+  if (!client || !redisAvailable) {
+    return true; // Allow all requests if Redis is not available
+  }
+  
   try {
     const current = await client.incr(key);
     if (current === 1) {
@@ -182,6 +186,13 @@ const checkRateLimit = async (key, limit, windowInSeconds) => {
 
 // Health check function
 const checkHealth = async () => {
+  if (!client || !redisAvailable) {
+    return {
+      status: 'disabled',
+      message: 'Redis not configured'
+    };
+  }
+  
   try {
     const result = await client.ping();
     return {
