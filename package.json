@@ -1,0 +1,53 @@
+{
+  "name": "studyspot-platform",
+  "version": "1.0.0",
+  "description": "🎓 STUDYSPOT - Multi-tenant SaaS platform connecting students with study spaces",
+  "main": "index.js",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:api\" \"npm run dev:web\"",
+    "dev:api": "cd api && npm run dev",
+    "dev:web": "cd web && npm run dev",
+    "build": "npm run build:api && npm run build:web",
+    "build:api": "cd api && npm run build",
+    "build:web": "cd web && npm run build",
+    "test": "npm run test:api && npm run test:web",
+    "test:api": "cd api && npm test",
+    "test:web": "cd web && npm test",
+    "lint": "npm run lint:api && npm run lint:web",
+    "lint:api": "cd api && npm run lint",
+    "lint:web": "cd web && npm run lint",
+    "migrate": "cd api && npm run migrate",
+    "seed": "cd api && npm run seed",
+    "docker:build": "docker-compose build",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f"
+  },
+  "keywords": [
+    "studyspot",
+    "library",
+    "booking",
+    "saas",
+    "multi-tenant",
+    "education",
+    "study-spaces"
+  ],
+  "author": "StudySpot Team",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/studyspot/platform.git"
+  },
+  "bugs": {
+    "url": "https://github.com/studyspot/platform/issues"
+  },
+  "homepage": "https://studyspot.com"
+}
+

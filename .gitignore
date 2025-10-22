@@ -1,0 +1,27 @@
+# Environment Variables (NEVER COMMIT)
+.env
+.env.local
+.env.production
+.env.development
+api/.env
+api/.env.local
+api/.env.production
+web/.env
+web/.env.local
+mobile/.env
+mobile/.env.local
+
+# Sensitive Documentation
+RENDER_ENV_VARIABLES.txt
+DEPLOY_TO_RENDER.md
+FREE_SERVICES_CREDENTIALS.md
+DEPLOYMENT_GUIDE.md
+
+# Secrets
+*secret*
+*password*
+*.pem
+*.key
+!package-lock.json
+node_modules
+
