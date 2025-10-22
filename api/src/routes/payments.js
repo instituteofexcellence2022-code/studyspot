@@ -10,11 +10,17 @@ const analyticsService = require('../services/analyticsService');
 
 const router = express.Router();
 
-// Initialize Razorpay instance
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID,
-  key_secret: process.env.RAZORPAY_KEY_SECRET
-});
+// Initialize Razorpay instance (only if credentials are provided)
+let razorpay = null;
+if (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
+  razorpay = new Razorpay({
+    key_id: process.env.RAZORPAY_KEY_ID,
+    key_secret: process.env.RAZORPAY_KEY_SECRET
+  });
+  logger.info('Razorpay payment gateway initialized');
+} else {
+  logger.warn('Razorpay credentials not configured. Payment features will be limited.');
+}
 
 // Apply authentication and tenant context to all routes
 router.use(verifyToken);
@@ -86,6 +92,10 @@ router.post('/create-intent', [
   };
 
   try {
+    if (!razorpay) {
+      throw new Error('Razorpay is not configured. Please contact administrator.');
+    }
+    
     const razorpayOrder = await razorpay.orders.create(orderOptions);
     const razorpayOrderId = razorpayOrder.id;
 
