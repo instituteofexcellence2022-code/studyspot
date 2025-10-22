@@ -2,47 +2,63 @@ const redis = require('redis');
 const { logger } = require('../utils/logger');
 
 let client;
+let redisAvailable = false;
 
 const createClient = () => {
+  // Check if Upstash Redis credentials are provided
+  if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
+    logger.warn('Redis credentials not configured. Caching will be disabled.');
+    return null;
+  }
+
   const config = {
     url: process.env.REDIS_URL || 'redis://localhost:6379',
     retry_strategy: (options) => {
       if (options.error && options.error.code === 'ECONNREFUSED') {
-        logger.error('Redis server connection refused');
-        return new Error('Redis server connection refused');
+        logger.warn('Redis server connection refused - running without cache');
+        return undefined; // Don't retry
       }
       if (options.total_retry_time > 1000 * 60 * 60) {
-        logger.error('Redis retry time exhausted');
-        return new Error('Retry time exhausted');
+        logger.warn('Redis retry time exhausted - running without cache');
+        return undefined; // Don't retry
       }
-      if (options.attempt > 10) {
-        logger.error('Redis max retry attempts reached');
-        return undefined;
+      if (options.attempt > 3) {
+        logger.warn('Redis max retry attempts reached - running without cache');
+        return undefined; // Stop after 3 attempts
       }
       // Reconnect after
       return Math.min(options.attempt * 100, 3000);
     }
   };
 
-  client = redis.createClient(config);
+  try {
+    client = redis.createClient(config);
 
-  client.on('connect', () => {
-    logger.info('Redis client connected');
-  });
+    client.on('connect', () => {
+      logger.info('Redis client connected');
+      redisAvailable = true;
+    });
 
-  client.on('ready', () => {
-    logger.info('Redis client ready');
-  });
+    client.on('ready', () => {
+      logger.info('Redis client ready');
+      redisAvailable = true;
+    });
 
-  client.on('error', (err) => {
-    logger.error('Redis client error:', err);
-  });
+    client.on('error', (err) => {
+      logger.warn('Redis client error (continuing without cache):', err.message);
+      redisAvailable = false;
+    });
 
-  client.on('end', () => {
-    logger.info('Redis client disconnected');
-  });
+    client.on('end', () => {
+      logger.info('Redis client disconnected');
+      redisAvailable = false;
+    });
 
-  return client;
+    return client;
+  } catch (error) {
+    logger.warn('Failed to create Redis client - running without cache:', error.message);
+    return null;
+  }
 };
 
 const connectRedis = async () => {
@@ -51,12 +67,19 @@ const connectRedis = async () => {
       client = createClient();
     }
 
+    if (!client) {
+      logger.warn('Redis not configured - running without cache');
+      return null;
+    }
+
     await client.connect();
     logger.info('Redis connected successfully');
+    redisAvailable = true;
     return client;
   } catch (error) {
-    logger.error('Redis connection failed:', error);
-    throw error;
+    logger.warn('Redis connection failed - running without cache:', error.message);
+    redisAvailable = false;
+    return null; // Don't throw, just return null
   }
 };
 
@@ -69,17 +92,27 @@ const getClient = () => {
 
 // Cache helper functions
 const setCache = async (key, value, expireInSeconds = 3600) => {
+  if (!client || !redisAvailable) {
+    logger.debug('Redis not available - skipping cache set');
+    return null;
+  }
+  
   try {
     const serializedValue = JSON.stringify(value);
     await client.setEx(key, expireInSeconds, serializedValue);
     logger.debug(`Cache set: ${key}`);
   } catch (error) {
-    logger.error('Cache set error:', error);
-    throw error;
+    logger.warn('Cache set error (continuing without cache):', error.message);
+    return null; // Don't throw
   }
 };
 
 const getCache = async (key) => {
+  if (!client || !redisAvailable) {
+    logger.debug('Redis not available - cache miss');
+    return null;
+  }
+  
   try {
     const value = await client.get(key);
     if (value) {
@@ -89,8 +122,8 @@ const getCache = async (key) => {
     logger.debug(`Cache miss: ${key}`);
     return null;
   } catch (error) {
-    logger.error('Cache get error:', error);
-    throw error;
+    logger.warn('Cache get error (continuing without cache):', error.message);
+    return null; // Don't throw
   }
 };
 
