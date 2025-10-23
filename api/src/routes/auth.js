@@ -64,7 +64,7 @@ router.post('/register', [
     INSERT INTO users (email, password, first_name, last_name, phone, role, tenant_id, status)
     VALUES ($1, $2, $3, $4, $5, $6, $7, 'active')
     RETURNING id, email, first_name, last_name, phone, role, tenant_id, status, created_at
-  `, [email, hashedPassword, firstName, lastName, phone, role, tenantId || 'default-tenant']);
+  `, [email, hashedPassword, firstName, lastName, phone, role, tenantId || '00000000-0000-0000-0000-000000000000']);
 
   const user = newUser.rows[0];
 
