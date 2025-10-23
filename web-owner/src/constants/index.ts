@@ -116,6 +116,8 @@ export const ROUTES = {
   LIBRARY_DETAILS: '/libraries/:id',
   LIBRARY_CREATE: '/libraries/create',
   LIBRARY_EDIT: '/libraries/:id/edit',
+  SEATS: '/seats',
+  SEATS_BY_LIBRARY: '/seats/library/:libraryId',
   BOOKINGS: '/bookings',
   BOOKING_DETAILS: '/bookings/:id',
   USERS: '/users',

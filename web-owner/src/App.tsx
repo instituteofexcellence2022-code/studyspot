@@ -51,6 +51,7 @@ const LibrariesPage = lazy(() => import('./pages/library/LibrariesPage'));
 const LibraryDetailsPage = lazy(() => import('./pages/library/LibraryDetailsPage'));
 const LibraryCreatePage = lazy(() => import('./pages/library/LibraryCreatePage'));
 const LibraryEditPage = lazy(() => import('./pages/library/LibraryEditPage'));
+const SeatsPage = lazy(() => import('./pages/library/SeatsPage'));
 
 // Booking Management
 const BookingsPage = lazy(() => import('./pages/booking/BookingsPage'));
@@ -251,6 +252,7 @@ const AppContent: React.FC = () => {
               <Route path={ROUTES.LIBRARY_CREATE} element={<LibraryCreatePage />} />
               <Route path={ROUTES.LIBRARY_DETAILS} element={<LibraryDetailsPage />} />
               <Route path={ROUTES.LIBRARY_EDIT} element={<LibraryEditPage />} />
+              <Route path={ROUTES.SEATS} element={<SeatsPage />} />
 
               {/* ============================================ */}
               {/* BOOKING MANAGEMENT */}

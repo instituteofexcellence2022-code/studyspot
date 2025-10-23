@@ -55,6 +55,12 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
       roles: ['library_staff', 'library_admin', 'super_admin'],
     },
     {
+      label: 'Seats',
+      path: ROUTES.SEATS,
+      icon: <BookingIcon />,
+      roles: ['library_staff', 'library_admin', 'super_admin'],
+    },
+    {
       label: 'Bookings',
       path: ROUTES.BOOKINGS,
       icon: <BookingIcon />,
