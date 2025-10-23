@@ -1472,3 +1472,4 @@ curl -X GET "elasticsearch:9200/studyspot-logs-*/_search" -H 'Content-Type: appl
 
 
 
+
