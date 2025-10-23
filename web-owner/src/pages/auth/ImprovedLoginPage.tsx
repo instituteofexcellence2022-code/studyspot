@@ -28,7 +28,7 @@ import {
 import { useForm, Controller } from 'react-hook-form';
 
 import { useAppDispatch, useAppSelector } from '../../hooks/redux';
-import { login } from '../../store/slices/authSlice';
+import { login, register } from '../../store/slices/authSlice';
 import { showSnackbar } from '../../store/slices/uiSlice';
 import { ROUTES } from '../../constants';
 
@@ -81,14 +81,57 @@ const ImprovedLoginPage: React.FC = () => {
     }
   };
 
-  const handleDemoLogin = () => {
-    setValue('email', DEMO_CREDENTIALS.email);
-    setValue('password', DEMO_CREDENTIALS.password);
-    
-    dispatch(showSnackbar({
-      message: '🎯 Demo credentials loaded! Click "Sign In" to continue.',
-      severity: 'info',
-    }));
+  const handleDemoLogin = async () => {
+    try {
+      dispatch(showSnackbar({
+        message: '🔄 Setting up demo account...',
+        severity: 'info',
+      }));
+
+      // Try to register the demo account first (in case it doesn't exist)
+      try {
+        await dispatch(register({
+          email: DEMO_CREDENTIALS.email,
+          password: DEMO_CREDENTIALS.password,
+          firstName: DEMO_CREDENTIALS.firstName,
+          lastName: DEMO_CREDENTIALS.lastName,
+          phone: DEMO_CREDENTIALS.phone,
+          role: DEMO_CREDENTIALS.role,
+        })).unwrap();
+        
+        dispatch(showSnackbar({
+          message: '✅ Demo account created!',
+          severity: 'success',
+        }));
+      } catch (regError: any) {
+        // If user already exists, that's fine - we'll just login
+        if (!regError.includes('already exists')) {
+          throw regError;
+        }
+      }
+
+      // Now login with demo credentials
+      await dispatch(login({
+        email: DEMO_CREDENTIALS.email,
+        password: DEMO_CREDENTIALS.password,
+      })).unwrap();
+
+      dispatch(showSnackbar({
+        message: '🎉 Welcome to Demo Account!',
+        severity: 'success',
+      }));
+      
+      navigate(ROUTES.DASHBOARD);
+    } catch (error: any) {
+      dispatch(showSnackbar({
+        message: `❌ Demo login failed: ${error}`,
+        severity: 'error',
+      }));
+      
+      // Still fill the form for manual retry
+      setValue('email', DEMO_CREDENTIALS.email);
+      setValue('password', DEMO_CREDENTIALS.password);
+    }
   };
 
   const handleSocialLogin = (provider: 'google' | 'github') => {
