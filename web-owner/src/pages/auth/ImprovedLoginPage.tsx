@@ -40,7 +40,10 @@ interface LoginFormData {
 const DEMO_CREDENTIALS = {
   email: 'owner@demo.com',
   password: 'Demo123456',
-  name: 'Demo Library Owner',
+  firstName: 'Demo',
+  lastName: 'Owner',
+  phone: '+1234567890',
+  role: 'library_owner',
 };
 
 const ImprovedLoginPage: React.FC = () => {

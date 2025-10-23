@@ -33,7 +33,7 @@ router.post('/register', [
   body('firstName').trim().isLength({ min: 1 }).withMessage('First name is required'),
   body('lastName').trim().isLength({ min: 1 }).withMessage('Last name is required'),
   body('phone').optional().isMobilePhone(),
-  body('role').isIn(['student', 'library_staff', 'super_admin']).withMessage('Invalid role'),
+  body('role').isIn(['student', 'library_staff', 'library_owner', 'branch_manager', 'front_desk_staff', 'facility_manager', 'finance_manager', 'analytics_manager', 'super_admin', 'platform_support']).withMessage('Invalid role'),
   body('tenantId').optional().isUUID()
 ], asyncHandler(async (req, res) => {
   // Check validation errors
