@@ -74,8 +74,31 @@ const ImprovedLoginPage: React.FC = () => {
       }));
       navigate(ROUTES.DASHBOARD);
     } catch (error: any) {
+      console.error('Login error:', error);
+      
+      // Extract meaningful error message
+      let errorMessage = '❌ Login failed. Please check your credentials.';
+      
+      if (typeof error === 'string') {
+        errorMessage = `❌ ${error}`;
+      } else if (error?.message) {
+        errorMessage = `❌ ${error.message}`;
+      } else if (error?.response?.data?.message) {
+        errorMessage = `❌ ${error.response.data.message}`;
+      } else if (error?.response?.status === 401) {
+        errorMessage = '❌ Invalid email or password';
+      } else if (error?.response?.status === 404) {
+        errorMessage = '❌ User not found';
+      } else if (error?.response?.status === 403) {
+        errorMessage = '❌ Account is suspended or inactive';
+      } else if (error?.code === 'ERR_NETWORK') {
+        errorMessage = '❌ Network error - Cannot connect to server';
+      } else if (error?.code === 'ECONNREFUSED') {
+        errorMessage = '❌ Server is not running';
+      }
+      
       dispatch(showSnackbar({
-        message: error || '❌ Login failed. Please check your credentials.',
+        message: errorMessage,
         severity: 'error',
       }));
     }
@@ -104,10 +127,19 @@ const ImprovedLoginPage: React.FC = () => {
           severity: 'success',
         }));
       } catch (regError: any) {
+        console.log('Registration error:', regError);
         // If user already exists, that's fine - we'll just login
-        if (!regError.includes('already exists')) {
-          throw regError;
+        const errorMessage = typeof regError === 'string' ? regError : 
+                            regError?.message || 
+                            regError?.response?.data?.message || 
+                            String(regError);
+        
+        if (!errorMessage.toLowerCase().includes('already exists') && 
+            !errorMessage.toLowerCase().includes('user exists')) {
+          console.error('Registration failed:', errorMessage);
+          throw new Error(`Registration failed: ${errorMessage}`);
         }
+        console.log('User already exists, proceeding to login...');
       }
 
       // Now login with demo credentials
@@ -123,8 +155,27 @@ const ImprovedLoginPage: React.FC = () => {
       
       navigate(ROUTES.DASHBOARD);
     } catch (error: any) {
+      console.error('Demo login error:', error);
+      
+      // Extract meaningful error message
+      let errorMessage = 'Unknown error';
+      
+      if (typeof error === 'string') {
+        errorMessage = error;
+      } else if (error?.message) {
+        errorMessage = error.message;
+      } else if (error?.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error?.response?.statusText) {
+        errorMessage = `${error.response.status}: ${error.response.statusText}`;
+      } else if (error?.code === 'ERR_NETWORK') {
+        errorMessage = 'Network error - Cannot connect to server';
+      } else if (error?.code === 'ECONNREFUSED') {
+        errorMessage = 'Connection refused - Server is not running';
+      }
+      
       dispatch(showSnackbar({
-        message: `❌ Demo login failed: ${error}`,
+        message: `❌ Demo login failed: ${errorMessage}`,
         severity: 'error',
       }));
       
