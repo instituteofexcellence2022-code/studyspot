@@ -51,7 +51,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       case USER_ROLES.STUDENT:
         return <Navigate to={ROUTES.DASHBOARD} replace />;
       case USER_ROLES.LIBRARY_STAFF:
-      case USER_ROLES.LIBRARY_ADMIN:
+      case USER_ROLES.LIBRARY_OWNER:
         return <Navigate to={ROUTES.DASHBOARD} replace />;
       case USER_ROLES.SUPER_ADMIN:
         return <Navigate to={ROUTES.ADMIN} replace />;
@@ -67,7 +67,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   // Check if user has access to user management routes
   if (location.pathname.startsWith('/users') && 
-      user?.role && ![USER_ROLES.LIBRARY_ADMIN, USER_ROLES.SUPER_ADMIN].includes(user.role as any)) {
+      user?.role && ![USER_ROLES.LIBRARY_OWNER, USER_ROLES.SUPER_ADMIN].includes(user.role as any)) {
     return <Navigate to={ROUTES.DASHBOARD} replace />;
   }
 

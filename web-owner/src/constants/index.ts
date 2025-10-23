@@ -156,9 +156,8 @@ export const USER_ROLES = {
   SUPER_ADMIN: 'super_admin',
   PLATFORM_SUPPORT: 'platform_support',
   
-  // Library-level roles (6 granular roles)
+  // Library-level roles (8 granular roles)
   LIBRARY_OWNER: 'library_owner',          // Full access to library
-  LIBRARY_ADMIN: 'library_admin',          // Admin role (alias for owner)
   LIBRARY_STAFF: 'library_staff',          // General staff role
   BRANCH_MANAGER: 'branch_manager',        // Branch-level management
   FRONT_DESK_STAFF: 'front_desk_staff',    // Daily operations
@@ -220,7 +219,7 @@ export const ROLE_PERMISSIONS = {
     PERMISSIONS.READ_OWN_PROFILE,
     PERMISSIONS.WRITE_OWN_PROFILE,
   ],
-  [USER_ROLES.LIBRARY_ADMIN]: [
+  [USER_ROLES.LIBRARY_OWNER]: [
     PERMISSIONS.READ_LIBRARY_DATA,
     PERMISSIONS.WRITE_LIBRARY_DATA,
     PERMISSIONS.READ_BOOKINGS,

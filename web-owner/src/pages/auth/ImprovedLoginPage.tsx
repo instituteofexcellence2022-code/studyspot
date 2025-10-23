@@ -43,7 +43,7 @@ const DEMO_CREDENTIALS = {
   firstName: 'Demo',
   lastName: 'Owner',
   phone: '+1234567890',
-  role: 'library_owner',
+  role: 'library_owner' as const,
 };
 
 const ImprovedLoginPage: React.FC = () => {

@@ -43,7 +43,7 @@ const DEMO_CREDENTIALS = {
   firstName: 'Platform',
   lastName: 'Admin',
   phone: '+1234567890',
-  role: 'super_admin',
+  role: 'super_admin' as const,
 };
 
 const ImprovedLoginPage: React.FC = () => {

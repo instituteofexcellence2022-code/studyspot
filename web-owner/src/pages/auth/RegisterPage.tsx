@@ -233,7 +233,7 @@ const RegisterPage: React.FC = () => {
                   >
                     <MenuItem value={USER_ROLES.STUDENT}>Student</MenuItem>
                     <MenuItem value={USER_ROLES.LIBRARY_STAFF}>Library Staff</MenuItem>
-                    <MenuItem value={USER_ROLES.LIBRARY_ADMIN}>Library Admin</MenuItem>
+                    <MenuItem value={USER_ROLES.LIBRARY_OWNER}>Library Owner</MenuItem>
                   </Select>
                 </FormControl>
               )}
