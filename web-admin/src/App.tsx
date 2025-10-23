@@ -30,6 +30,7 @@ import AuthLayout from './layouts/AuthLayout';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import LoadingSpinner from './components/common/LoadingSpinner';
 import ErrorBoundary from './components/common/ErrorBoundary';
+import GlobalSnackbar from './components/common/GlobalSnackbar';
 
 // ============================================
 // LAZY LOADED PAGES - Code Splitting
@@ -207,6 +208,7 @@ const AppContent: React.FC = () => {
         pauseOnHover
         theme={theme === 'dark' ? 'dark' : 'light'}
       />
+      <GlobalSnackbar />
       <Router>
         <Suspense fallback={
           <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
