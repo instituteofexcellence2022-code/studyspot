@@ -71,15 +71,29 @@ class ApiService {
       API_CONFIG.ENDPOINTS.AUTH.LOGIN,
       credentials
     );
-    return response.data.data;
+    const data = response.data.data;
+    // Normalize backend response to match frontend expectations
+    return {
+      user: data.user,
+      token: data.tokens.accessToken,
+      refreshToken: data.tokens.refreshToken,
+      expiresIn: data.tokens.expiresIn
+    };
   }
 
-  async register(userData: RegisterRequest): Promise<User> {
+  async register(userData: RegisterRequest): Promise<any> {
     const response = await this.api.post(
       API_CONFIG.ENDPOINTS.AUTH.REGISTER,
       userData
     );
-    return response.data.data;
+    const data = response.data.data;
+    // Normalize backend response to match frontend expectations
+    return {
+      user: data.user,
+      token: data.tokens.accessToken,
+      refreshToken: data.tokens.refreshToken,
+      expiresIn: data.tokens.expiresIn
+    };
   }
 
   async refreshToken(refreshToken: string): Promise<ApiResponse<{ token: string }>> {
@@ -104,7 +118,8 @@ class ApiService {
     const response = await this.api.get(
       API_CONFIG.ENDPOINTS.AUTH.PROFILE
     );
-    return response.data.data;
+    // Backend returns { user: {...} }, extract the user
+    return response.data.data.user;
   }
 
   // Generic CRUD Methods

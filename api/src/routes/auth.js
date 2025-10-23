@@ -3,7 +3,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { body, validationResult } = require('express-validator');
 const { query } = require('../config/database');
-const { setSession, deleteSession } = require('../config/redis');
+const { setSession, getSession, deleteSession } = require('../config/redis');
 const { AppError, asyncHandler } = require('../middleware/errorHandler');
 const { logger } = require('../utils/logger');
 
