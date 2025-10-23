@@ -5,7 +5,6 @@ import {
   Card,
   CardContent,
   Typography,
-  Grid,
   Chip,
   Dialog,
   DialogTitle,
@@ -23,6 +22,7 @@ import {
   AttachMoney as MoneyIcon,
   AccessTime as TimeIcon,
 } from '@mui/icons-material';
+import { GridLegacy as Grid } from '@mui/material';
 
 // Mock fee plans data
 const MOCK_PLANS = [

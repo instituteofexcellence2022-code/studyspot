@@ -5,7 +5,6 @@ import {
   Card,
   CardContent,
   Typography,
-  Grid,
   Table,
   TableBody,
   TableCell,
@@ -28,6 +27,7 @@ import {
   Add as AddIcon,
   AccessTime as TimeIcon,
 } from '@mui/icons-material';
+import { GridLegacy as Grid } from '@mui/material';
 
 // Mock attendance data
 const MOCK_ATTENDANCE = [

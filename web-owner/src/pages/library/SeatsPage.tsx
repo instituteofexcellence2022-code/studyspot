@@ -5,7 +5,6 @@ import {
   Card,
   CardContent,
   Typography,
-  Grid,
   Chip,
   Dialog,
   DialogTitle,
@@ -21,6 +20,7 @@ import {
   Add as AddIcon,
   EventSeat as SeatIcon,
 } from '@mui/icons-material';
+import { GridLegacy as Grid } from '@mui/material';
 
 // Mock seat data for 20% version
 const MOCK_SEATS = [

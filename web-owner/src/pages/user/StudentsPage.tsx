@@ -20,9 +20,9 @@ import {
   DialogActions,
   TextField,
   MenuItem,
-  Grid,
   IconButton,
 } from '@mui/material';
+import { GridLegacy as Grid } from '@mui/material';
 import {
   Add as AddIcon,
   Person as PersonIcon,

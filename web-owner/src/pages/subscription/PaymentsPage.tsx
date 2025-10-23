@@ -5,7 +5,6 @@ import {
   Card,
   CardContent,
   Typography,
-  Grid,
   Table,
   TableBody,
   TableCell,
@@ -28,6 +27,7 @@ import {
   AccountBalance as BankIcon,
   Money as CashIcon,
 } from '@mui/icons-material';
+import { GridLegacy as Grid } from '@mui/material';
 
 // Mock payments data
 const MOCK_PAYMENTS = [
