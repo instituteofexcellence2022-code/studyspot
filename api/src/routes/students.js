@@ -1,406 +1,472 @@
-/**
- * Enhanced Student Routes
- * Advanced student management with search, import/export, KYC, and groups
- */
-
 const express = require('express');
 const router = express.Router();
-const multer = require('multer');
-const csv = require('csv-parser');
-const { Readable } = require('stream');
-const { verifyToken: authenticate } = require('../middleware/auth');
-const { requirePermission, restrictToOwnLibrary } = require('../middleware/rbac');
-const studentService = require('../services/studentService');
+const { body, query, param, validationResult } = require('express-validator');
+const { verifyToken } = require('../middleware/auth');
+const { db } = require('../config/database');
 const { logger } = require('../utils/logger');
 
-// Multer configuration for file uploads
-const upload = multer({ storage: multer.memoryStorage() });
+// ========================================
+// VALIDATION MIDDLEWARE
+// ========================================
 
-/**
- * GET /api/students
- * Get students with advanced filtering and search
- */
-router.get('/',
-  authenticate,
-  requirePermission('students:view'),
-  restrictToOwnLibrary,
-  async (req, res) => {
-    try {
-      const filters = {
-        search: req.query.search,
-        status: req.query.status,
-        kyc_verified: req.query.kyc_verified === 'true' ? true : req.query.kyc_verified === 'false' ? false : undefined,
-        group_id: req.query.group_id,
-        created_after: req.query.created_after,
-        created_before: req.query.created_before,
-        ...req.libraryFilter, // From restrictToOwnLibrary middleware
-      };
+const validateStudent = [
+  body('firstName').trim().isLength({ min: 2 }).withMessage('First name must be at least 2 characters'),
+  body('lastName').trim().isLength({ min: 2 }).withMessage('Last name must be at least 2 characters'),
+  body('email').isEmail().normalizeEmail().withMessage('Valid email is required'),
+  body('phone').optional().matches(/^\+?[1-9]\d{1,14}$/).withMessage('Valid phone number required'),
+  body('status').optional().isIn(['active', 'inactive', 'suspended', 'graduated', 'withdrawn']).withMessage('Invalid status'),
+  body('feeStatus').optional().isIn(['paid', 'pending', 'overdue', 'exempt', 'partial']).withMessage('Invalid fee status'),
+];
 
-      const pagination = {
-        page: parseInt(req.query.page) || 1,
-        limit: parseInt(req.query.limit) || 20,
-        sort_by: req.query.sort_by || 'created_at',
-        sort_order: req.query.sort_order || 'DESC',
-      };
-
-      const result = await studentService.getStudents(filters, pagination);
-      res.json(result);
-    } catch (error) {
-      logger.error('Error fetching students:', error);
-      res.status(500).json({
-        success: false,
-        errors: [{
-          code: 'STUDENTS_FETCH_ERROR',
-          message: 'Failed to fetch students'
-        }]
-      });
+// ========================================
+// GET /api/students - List all students
+// ========================================
+router.get('/', verifyToken, [
+  query('page').optional().isInt({ min: 1 }).toInt(),
+  query('limit').optional().isInt({ min: 1, max: 100 }).toInt(),
+  query('search').optional().trim(),
+  query('status').optional().trim(),
+  query('feeStatus').optional().trim(),
+  query('plan').optional().trim(),
+  query('sortBy').optional().isIn(['firstName', 'lastName', 'email', 'enrollmentDate', 'feeStatus', 'studentId']),
+  query('sortOrder').optional().isIn(['asc', 'desc']),
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, errors: errors.array() });
     }
-  }
-);
 
-/**
- * GET /api/students/:id
- * Get student by ID with full details
- */
-router.get('/:id',
-  authenticate,
-  requirePermission('students:view'),
-  async (req, res) => {
-    try {
-      const result = await studentService.getStudentById(req.params.id);
-      
-      if (!result.success) {
-        return res.status(404).json(result);
-      }
+    const {
+      page = 1,
+      limit = 10,
+      search = '',
+      status = '',
+      feeStatus = '',
+      plan = '',
+      sortBy = 'created_at',
+      sortOrder = 'desc'
+    } = req.query;
 
-      res.json(result);
-    } catch (error) {
-      logger.error('Error fetching student:', error);
-      res.status(500).json({
-        success: false,
-        errors: [{
-          code: 'STUDENT_FETCH_ERROR',
-          message: 'Failed to fetch student details'
-        }]
-      });
+    const offset = (page - 1) * limit;
+    const tenantId = req.user.tenantId || '00000000-0000-0000-0000-000000000000';
+
+    // Build WHERE clause
+    let whereConditions = ['tenant_id = $1', 'deleted_at IS NULL'];
+    let queryParams = [tenantId];
+    let paramIndex = 2;
+
+    // Search across multiple fields
+    if (search) {
+      whereConditions.push(`(
+        first_name ILIKE $${paramIndex} OR 
+        last_name ILIKE $${paramIndex} OR 
+        email ILIKE $${paramIndex} OR 
+        phone ILIKE $${paramIndex} OR
+        student_id ILIKE $${paramIndex}
+      )`);
+      queryParams.push(`%${search}%`);
+      paramIndex++;
     }
-  }
-);
 
-/**
- * POST /api/students
- * Create new student
- */
-router.post('/',
-  authenticate,
-  requirePermission('students:create'),
-  async (req, res) => {
-    try {
-      const { name, email, phone, password, library_id, kyc_documents, group_ids } = req.body;
+    // Filter by status
+    if (status) {
+      const statuses = status.split(',');
+      whereConditions.push(`status = ANY($${paramIndex})`);
+      queryParams.push(statuses);
+      paramIndex++;
+    }
 
-      // Validation
-      if (!name || !email || !password) {
-        return res.status(400).json({
-          success: false,
-          errors: [{
-            code: 'VALIDATION_ERROR',
-            message: 'Name, email, and password are required'
-          }]
-        });
-      }
+    // Filter by fee status
+    if (feeStatus) {
+      const feeStatuses = feeStatus.split(',');
+      whereConditions.push(`fee_status = ANY($${paramIndex})`);
+      queryParams.push(feeStatuses);
+      paramIndex++;
+    }
 
-      // Use user's library if not super admin
-      const finalLibraryId = req.user.role === 'super_admin' ? library_id : req.user.library_id;
+    // Filter by plan
+    if (plan) {
+      const plans = plan.split(',');
+      whereConditions.push(`current_plan = ANY($${paramIndex})`);
+      queryParams.push(plans);
+      paramIndex++;
+    }
 
-      const result = await studentService.createStudent({
-        name,
+    const whereClause = whereConditions.join(' AND ');
+
+    // Get total count
+    const countQuery = `SELECT COUNT(*) FROM students WHERE ${whereClause}`;
+    const countResult = await db.query(countQuery, queryParams);
+    const total = parseInt(countResult.rows[0].count);
+
+    // Get students with pagination
+    const studentsQuery = `
+      SELECT 
+        id,
+        first_name,
+        last_name,
         email,
         phone,
-        password, // Should be hashed here
-        library_id: finalLibraryId,
-        kyc_documents,
-        group_ids,
-      });
+        student_id,
+        status,
+        current_plan,
+        fee_status,
+        enrollment_date,
+        last_payment_date,
+        next_payment_date,
+        created_at,
+        updated_at
+      FROM students
+      WHERE ${whereClause}
+      ORDER BY ${sortBy} ${sortOrder.toUpperCase()}
+      LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+    `;
 
-      res.status(201).json(result);
-    } catch (error) {
-      logger.error('Error creating student:', error);
-      
-      if (error.code === '23505') { // Unique violation
-        return res.status(409).json({
-          success: false,
-          errors: [{
-            code: 'DUPLICATE_STUDENT',
-            message: 'Student with this email already exists'
-          }]
-        });
+    queryParams.push(limit, offset);
+    const studentsResult = await db.query(studentsQuery, queryParams);
+
+    // Transform to camelCase
+    const students = studentsResult.rows.map(row => ({
+      id: row.id,
+      firstName: row.first_name,
+      lastName: row.last_name,
+      email: row.email,
+      phone: row.phone,
+      studentId: row.student_id,
+      status: row.status,
+      currentPlan: row.current_plan,
+      feeStatus: row.fee_status,
+      enrollmentDate: row.enrollment_date,
+      lastPaymentDate: row.last_payment_date,
+      nextPaymentDate: row.next_payment_date,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    }));
+
+    res.json({
+      success: true,
+      data: {
+        students,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total,
+          pages: Math.ceil(total / limit),
+        }
       }
+    });
 
-      res.status(500).json({
-        success: false,
-        errors: [{
-          code: 'STUDENT_CREATE_ERROR',
-          message: 'Failed to create student'
-        }]
-      });
-    }
+    logger.info(`Listed ${students.length} students for tenant ${tenantId}`);
+  } catch (error) {
+    logger.error('Error listing students:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch students', message: error.message });
   }
-);
+});
 
-/**
- * POST /api/students/bulk-import
- * Bulk import students from CSV file
- */
-router.post('/bulk-import',
-  authenticate,
-  requirePermission('students:import'),
-  upload.single('file'),
-  async (req, res) => {
-    try {
-      if (!req.file) {
-        return res.status(400).json({
-          success: false,
-          errors: [{
-            code: 'NO_FILE',
-            message: 'Please upload a CSV file'
-          }]
-        });
+// ========================================
+// POST /api/students - Create new student
+// ========================================
+router.post('/', verifyToken, validateStudent, async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, errors: errors.array() });
+    }
+
+    const {
+      firstName,
+      lastName,
+      email,
+      phone,
+      dateOfBirth,
+      gender,
+      address,
+      currentPlan,
+      feeStatus = 'pending',
+      status = 'active',
+    } = req.body;
+
+    const tenantId = req.user.tenantId || '00000000-0000-0000-0000-000000000000';
+    const userId = req.user.id;
+
+    // Generate student ID
+    const studentIdQuery = 'SELECT COUNT(*) FROM students WHERE tenant_id = $1';
+    const countResult = await db.query(studentIdQuery, [tenantId]);
+    const count = parseInt(countResult.rows[0].count) + 1;
+    const studentId = `STU${String(count).padStart(4, '0')}`;
+
+    const insertQuery = `
+      INSERT INTO students (
+        tenant_id,
+        first_name,
+        last_name,
+        email,
+        phone,
+        date_of_birth,
+        gender,
+        address_line1,
+        city,
+        state,
+        postal_code,
+        country,
+        student_id,
+        status,
+        current_plan,
+        fee_status,
+        created_by,
+        updated_by
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+      RETURNING *
+    `;
+
+    const values = [
+      tenantId,
+      firstName,
+      lastName,
+      email,
+      phone || null,
+      dateOfBirth || null,
+      gender || null,
+      address?.line1 || null,
+      address?.city || null,
+      address?.state || null,
+      address?.postalCode || null,
+      address?.country || 'India',
+      studentId,
+      status,
+      currentPlan || null,
+      feeStatus,
+      userId,
+      userId
+    ];
+
+    const result = await db.query(insertQuery, values);
+    const student = result.rows[0];
+
+    res.status(201).json({
+      success: true,
+      message: 'Student created successfully',
+      data: {
+        student: {
+          id: student.id,
+          firstName: student.first_name,
+          lastName: student.last_name,
+          email: student.email,
+          phone: student.phone,
+          studentId: student.student_id,
+          status: student.status,
+          currentPlan: student.current_plan,
+          feeStatus: student.fee_status,
+          enrollmentDate: student.enrollment_date,
+          createdAt: student.created_at,
+        }
       }
+    });
 
-      const studentsData = [];
-      const stream = Readable.from(req.file.buffer.toString());
-
-      stream
-        .pipe(csv())
-        .on('data', (row) => {
-          studentsData.push({
-            name: row.name || row.Name,
-            email: row.email || row.Email,
-            phone: row.phone || row.Phone,
-            password: row.password || 'Student@123', // Default password
-          });
-        })
-        .on('end', async () => {
-          try {
-            const library_id = req.user.library_id;
-            const result = await studentService.bulkImportStudents(studentsData, library_id);
-            res.json(result);
-          } catch (error) {
-            logger.error('Error bulk importing students:', error);
-            res.status(500).json({
-              success: false,
-              errors: [{
-                code: 'BULK_IMPORT_ERROR',
-                message: 'Failed to import students'
-              }]
-            });
-          }
-        })
-        .on('error', (error) => {
-          logger.error('Error parsing CSV:', error);
-          res.status(400).json({
-            success: false,
-            errors: [{
-              code: 'CSV_PARSE_ERROR',
-              message: 'Failed to parse CSV file'
-            }]
-          });
-        });
-    } catch (error) {
-      logger.error('Error in bulk import:', error);
-      res.status(500).json({
-        success: false,
-        errors: [{
-          code: 'BULK_IMPORT_ERROR',
-          message: 'Failed to process import'
-        }]
-      });
+    logger.info(`Student created: ${studentId} by user ${userId}`);
+  } catch (error) {
+    if (error.code === '23505') { // Unique violation
+      return res.status(409).json({ success: false, error: 'Email already exists' });
     }
+    logger.error('Error creating student:', error);
+    res.status(500).json({ success: false, error: 'Failed to create student', message: error.message });
   }
-);
+});
 
-/**
- * GET /api/students/export
- * Export students to CSV
- */
-router.get('/export',
-  authenticate,
-  requirePermission('students:export'),
-  restrictToOwnLibrary,
-  async (req, res) => {
-    try {
-      const filters = {
-        status: req.query.status,
-        kyc_verified: req.query.kyc_verified === 'true' ? true : req.query.kyc_verified === 'false' ? false : undefined,
-        ...req.libraryFilter,
-      };
+// ========================================
+// GET /api/students/:id - Get single student
+// ========================================
+router.get('/:id', verifyToken, param('id').isUUID(), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const tenantId = req.user.tenantId || '00000000-0000-0000-0000-000000000000';
 
-      const result = await studentService.exportStudents(filters);
+    const query = 'SELECT * FROM students WHERE id = $1 AND tenant_id = $2 AND deleted_at IS NULL';
+    const result = await db.query(query, [id, tenantId]);
 
-      if (!result.success) {
-        return res.status(500).json(result);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Student not found' });
+    }
+
+    const student = result.rows[0];
+    res.json({
+      success: true,
+      data: {
+        student: {
+          id: student.id,
+          firstName: student.first_name,
+          lastName: student.last_name,
+          email: student.email,
+          phone: student.phone,
+          studentId: student.student_id,
+          status: student.status,
+          currentPlan: student.current_plan,
+          feeStatus: student.fee_status,
+          enrollmentDate: student.enrollment_date,
+          dateOfBirth: student.date_of_birth,
+          gender: student.gender,
+          address: {
+            line1: student.address_line1,
+            line2: student.address_line2,
+            city: student.city,
+            state: student.state,
+            postalCode: student.postal_code,
+            country: student.country,
+          },
+          createdAt: student.created_at,
+          updatedAt: student.updated_at,
+        }
       }
-
-      // Convert to CSV format
-      const csvHeaders = Object.keys(result.data[0] || {}).join(',');
-      const csvRows = result.data.map(row => 
-        Object.values(row).map(val => `"${val}"`).join(',')
-      );
-      const csvContent = [csvHeaders, ...csvRows].join('\n');
-
-      res.setHeader('Content-Type', 'text/csv');
-      res.setHeader('Content-Disposition', `attachment; filename=students_${Date.now()}.csv`);
-      res.send(csvContent);
-    } catch (error) {
-      logger.error('Error exporting students:', error);
-      res.status(500).json({
-        success: false,
-        errors: [{
-          code: 'EXPORT_ERROR',
-          message: 'Failed to export students'
-        }]
-      });
-    }
+    });
+  } catch (error) {
+    logger.error('Error fetching student:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch student', message: error.message });
   }
-);
+});
 
-/**
- * PUT /api/students/:id/verify-kyc
- * Verify student KYC
- */
-router.put('/:id/verify-kyc',
-  authenticate,
-  requirePermission('students:verify_kyc'),
-  async (req, res) => {
-    try {
-      const { verified, documents, notes } = req.body;
+// ========================================
+// PUT /api/students/:id - Update student
+// ========================================
+router.put('/:id', verifyToken, [param('id').isUUID(), ...validateStudent], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, errors: errors.array() });
+    }
 
-      const result = await studentService.verifyKYC(req.params.id, {
-        verified,
-        documents,
-        verified_by: req.user.id,
-        notes,
-      });
+    const { id } = req.params;
+    const { firstName, lastName, email, phone, status, currentPlan, feeStatus } = req.body;
+    const tenantId = req.user.tenantId || '00000000-0000-0000-0000-000000000000';
+    const userId = req.user.id;
 
-      if (!result.success) {
-        return res.status(404).json(result);
+    const updateQuery = `
+      UPDATE students SET
+        first_name = $1,
+        last_name = $2,
+        email = $3,
+        phone = $4,
+        status = $5,
+        current_plan = $6,
+        fee_status = $7,
+        updated_by = $8,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $9 AND tenant_id = $10 AND deleted_at IS NULL
+      RETURNING *
+    `;
+
+    const values = [firstName, lastName, email, phone, status, currentPlan, feeStatus, userId, id, tenantId];
+    const result = await db.query(updateQuery, values);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Student not found' });
+    }
+
+    const student = result.rows[0];
+    res.json({
+      success: true,
+      message: 'Student updated successfully',
+      data: {
+        student: {
+          id: student.id,
+          firstName: student.first_name,
+          lastName: student.last_name,
+          email: student.email,
+          phone: student.phone,
+          studentId: student.student_id,
+          status: student.status,
+          currentPlan: student.current_plan,
+          feeStatus: student.fee_status,
+          updatedAt: student.updated_at,
+        }
       }
+    });
 
-      res.json(result);
-    } catch (error) {
-      logger.error('Error verifying KYC:', error);
-      res.status(500).json({
-        success: false,
-        errors: [{
-          code: 'KYC_VERIFY_ERROR',
-          message: 'Failed to verify KYC'
-        }]
-      });
-    }
+    logger.info(`Student updated: ${id} by user ${userId}`);
+  } catch (error) {
+    logger.error('Error updating student:', error);
+    res.status(500).json({ success: false, error: 'Failed to update student', message: error.message });
   }
-);
+});
 
-/**
- * GET /api/students/groups
- * Get student groups
- */
-router.get('/groups',
-  authenticate,
-  requirePermission('students:manage_groups'),
-  async (req, res) => {
-    try {
-      const library_id = req.user.library_id;
-      const result = await studentService.getStudentGroups(library_id);
-      res.json(result);
-    } catch (error) {
-      logger.error('Error fetching student groups:', error);
-      res.status(500).json({
-        success: false,
-        errors: [{
-          code: 'GROUPS_FETCH_ERROR',
-          message: 'Failed to fetch student groups'
-        }]
-      });
+// ========================================
+// DELETE /api/students/:id - Delete student (soft delete)
+// ========================================
+router.delete('/:id', verifyToken, param('id').isUUID(), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const tenantId = req.user.tenantId || '00000000-0000-0000-0000-000000000000';
+    const userId = req.user.id;
+
+    const deleteQuery = `
+      UPDATE students SET
+        deleted_at = CURRENT_TIMESTAMP,
+        updated_by = $1
+      WHERE id = $2 AND tenant_id = $3 AND deleted_at IS NULL
+      RETURNING id
+    `;
+
+    const result = await db.query(deleteQuery, [userId, id, tenantId]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Student not found' });
     }
+
+    res.json({
+      success: true,
+      message: 'Student deleted successfully'
+    });
+
+    logger.info(`Student deleted: ${id} by user ${userId}`);
+  } catch (error) {
+    logger.error('Error deleting student:', error);
+    res.status(500).json({ success: false, error: 'Failed to delete student', message: error.message });
   }
-);
+});
 
-/**
- * POST /api/students/groups
- * Create student group
- */
-router.post('/groups',
-  authenticate,
-  requirePermission('students:manage_groups'),
-  async (req, res) => {
-    try {
-      const { name, description } = req.body;
+// ========================================
+// GET /api/students/export/csv - Export to CSV
+// ========================================
+router.get('/export/csv', verifyToken, async (req, res) => {
+  try {
+    const tenantId = req.user.tenantId || '00000000-0000-0000-0000-000000000000';
 
-      if (!name) {
-        return res.status(400).json({
-          success: false,
-          errors: [{
-            code: 'VALIDATION_ERROR',
-            message: 'Group name is required'
-          }]
-        });
-      }
+    const query = `
+      SELECT 
+        student_id, first_name, last_name, email, phone, 
+        status, current_plan, fee_status, enrollment_date
+      FROM students
+      WHERE tenant_id = $1 AND deleted_at IS NULL
+      ORDER BY created_at DESC
+    `;
 
-      const result = await studentService.createStudentGroup({
-        name,
-        description,
-        library_id: req.user.library_id,
-      });
+    const result = await db.query(query, [tenantId]);
 
-      res.status(201).json(result);
-    } catch (error) {
-      logger.error('Error creating student group:', error);
-      res.status(500).json({
-        success: false,
-        errors: [{
-          code: 'GROUP_CREATE_ERROR',
-          message: 'Failed to create student group'
-        }]
-      });
-    }
+    // Generate CSV
+    const headers = ['Student ID', 'First Name', 'Last Name', 'Email', 'Phone', 'Status', 'Plan', 'Fee Status', 'Enrollment Date'];
+    const rows = result.rows.map(row => [
+      row.student_id,
+      row.first_name,
+      row.last_name,
+      row.email,
+      row.phone || '',
+      row.status,
+      row.current_plan || '',
+      row.fee_status,
+      row.enrollment_date
+    ]);
+
+    const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename=students_${Date.now()}.csv`);
+    res.send(csv);
+
+    logger.info(`Students exported to CSV for tenant ${tenantId}`);
+  } catch (error) {
+    logger.error('Error exporting students:', error);
+    res.status(500).json({ success: false, error: 'Failed to export students', message: error.message });
   }
-);
-
-/**
- * POST /api/students/groups/:id/members
- * Add students to group
- */
-router.post('/groups/:id/members',
-  authenticate,
-  requirePermission('students:manage_groups'),
-  async (req, res) => {
-    try {
-      const { student_ids } = req.body;
-
-      if (!Array.isArray(student_ids) || student_ids.length === 0) {
-        return res.status(400).json({
-          success: false,
-          errors: [{
-            code: 'VALIDATION_ERROR',
-            message: 'Student IDs array is required'
-          }]
-        });
-      }
-
-      const result = await studentService.addStudentsToGroup(req.params.id, student_ids);
-      res.json(result);
-    } catch (error) {
-      logger.error('Error adding students to group:', error);
-      res.status(500).json({
-        success: false,
-        errors: [{
-          code: 'GROUP_ADD_ERROR',
-          message: 'Failed to add students to group'
-        }]
-      });
-    }
-  }
-);
+});
 
 module.exports = router;
-
