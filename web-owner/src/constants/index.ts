@@ -106,6 +106,8 @@ export const ROUTES = {
   HOME: '/',
   LOGIN: '/login',
   REGISTER: '/register',
+  FORGOT_PASSWORD: '/forgot-password',
+  EMAIL_VERIFICATION: '/verify-email',
   DASHBOARD: '/dashboard',
   LIBRARIES: '/libraries',
   LIBRARY_DETAILS: '/libraries/:id',
