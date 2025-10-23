@@ -8,7 +8,6 @@ import {
   FormControlLabel,
   Button,
   Divider,
-  Grid,
   Select,
   MenuItem,
   FormControl,
@@ -28,6 +27,7 @@ import {
   IconButton,
   Tooltip,
 } from '@mui/material';
+import { GridLegacy as Grid } from '@mui/material';
 import {
   Notifications,
   Security,

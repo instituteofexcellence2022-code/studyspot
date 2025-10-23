@@ -8,7 +8,6 @@ import {
   Avatar,
   Button,
   TextField,
-  Grid,
   Divider,
   Chip,
   IconButton,
@@ -27,6 +26,7 @@ import {
   Paper,
   alpha,
 } from '@mui/material';
+import { GridLegacy as Grid } from '@mui/material';
 import {
   Edit as EditIcon,
   Save as SaveIcon,
@@ -116,8 +116,11 @@ const ProfilePage: React.FC = () => {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Update Redux store
-      dispatch(updateUser(formData));
+      // Update Redux store (cast role to proper type)
+      dispatch(updateUser({
+        ...formData,
+        role: formData.role as any,
+      }));
       
       setSnackbar({ open: true, message: '✅ Profile updated successfully!', severity: 'success' });
       setEditMode(false);
