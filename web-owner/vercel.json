@@ -31,7 +31,7 @@
     }
   ],
   "env": {
-    "REACT_APP_API_URL": "@studyspot_api_url",
+    "REACT_APP_API_URL": "https://studyspot-api.onrender.com",
     "REACT_APP_PORTAL_TYPE": "owner",
     "REACT_APP_PORTAL_NAME": "Library Owner Portal",
     "REACT_APP_VERSION": "1.0.0",
@@ -39,7 +39,7 @@
   },
   "build": {
     "env": {
-      "REACT_APP_API_URL": "@studyspot_api_url",
+      "REACT_APP_API_URL": "https://studyspot-api.onrender.com",
       "REACT_APP_PORTAL_TYPE": "owner",
       "REACT_APP_PORTAL_NAME": "Library Owner Portal",
       "REACT_APP_VERSION": "1.0.0",
