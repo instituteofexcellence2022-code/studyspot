@@ -52,13 +52,18 @@ const LibraryDetailsPage = lazy(() => import('./pages/library/LibraryDetailsPage
 const LibraryCreatePage = lazy(() => import('./pages/library/LibraryCreatePage'));
 const LibraryEditPage = lazy(() => import('./pages/library/LibraryEditPage'));
 const SeatsPage = lazy(() => import('./pages/library/SeatsPage'));
+const FeePlansPage = lazy(() => import('./pages/subscription/FeePlansPage'));
+const PaymentsPage = lazy(() => import('./pages/subscription/PaymentsPage'));
 
 // Booking Management
 const BookingsPage = lazy(() => import('./pages/booking/BookingsPage'));
 const BookingDetailsPage = lazy(() => import('./pages/booking/BookingDetailsPage'));
+const AttendancePage = lazy(() => import('./pages/booking/AttendancePage'));
 
 // Student Management
 const UsersPage = lazy(() => import('./pages/user/UsersPage'));
+const StudentsPage = lazy(() => import('./pages/user/StudentsPage'));
+const StaffPage = lazy(() => import('./pages/user/StaffPage'));
 const UserDetailsPage = lazy(() => import('./pages/user/UserDetailsPage'));
 const UserCreatePage = lazy(() => import('./pages/user/UserCreatePage'));
 const UserEditPage = lazy(() => import('./pages/user/UserEditPage'));
@@ -253,6 +258,11 @@ const AppContent: React.FC = () => {
               <Route path={ROUTES.LIBRARY_DETAILS} element={<LibraryDetailsPage />} />
               <Route path={ROUTES.LIBRARY_EDIT} element={<LibraryEditPage />} />
               <Route path={ROUTES.SEATS} element={<SeatsPage />} />
+              <Route path={ROUTES.FEE_PLANS} element={<FeePlansPage />} />
+              <Route path={ROUTES.STUDENTS} element={<StudentsPage />} />
+              <Route path={ROUTES.ATTENDANCE} element={<AttendancePage />} />
+              <Route path={ROUTES.PAYMENTS} element={<PaymentsPage />} />
+              <Route path={ROUTES.STAFF} element={<StaffPage />} />
 
               {/* ============================================ */}
               {/* BOOKING MANAGEMENT */}

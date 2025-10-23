@@ -61,6 +61,36 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
       roles: ['library_staff', 'library_admin', 'super_admin'],
     },
     {
+      label: 'Fee Plans',
+      path: ROUTES.FEE_PLANS,
+      icon: <BookingIcon />,
+      roles: ['library_staff', 'library_admin', 'super_admin'],
+    },
+    {
+      label: 'Students',
+      path: ROUTES.STUDENTS,
+      icon: <UserIcon />,
+      roles: ['library_staff', 'library_admin', 'super_admin'],
+    },
+    {
+      label: 'Attendance',
+      path: ROUTES.ATTENDANCE,
+      icon: <BookingIcon />,
+      roles: ['library_staff', 'library_admin', 'super_admin'],
+    },
+    {
+      label: 'Payments',
+      path: ROUTES.PAYMENTS,
+      icon: <BookingIcon />,
+      roles: ['library_staff', 'library_admin', 'super_admin'],
+    },
+    {
+      label: 'Staff',
+      path: ROUTES.STAFF,
+      icon: <UserIcon />,
+      roles: ['library_staff', 'library_admin', 'super_admin'],
+    },
+    {
       label: 'Bookings',
       path: ROUTES.BOOKINGS,
       icon: <BookingIcon />,
