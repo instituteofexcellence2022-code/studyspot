@@ -52,7 +52,7 @@ const LibraryDetailsPage = lazy(() => import('./pages/library/LibraryDetailsPage
 const LibraryCreatePage = lazy(() => import('./pages/library/LibraryCreatePage'));
 const LibraryEditPage = lazy(() => import('./pages/library/LibraryEditPage'));
 const SeatsPage = lazy(() => import('./pages/library/SeatsPage'));
-const FeePlansPage = lazy(() => import('./pages/subscription/FeePlansPage'));
+const FeePlansPage = lazy(() => import('./pages/subscription/FeePlansPageAdvanced'));
 const PaymentsPage = lazy(() => import('./pages/subscription/PaymentsPage'));
 
 // Booking Management

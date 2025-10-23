@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, MenuItem,
-  Stepper, Step, StepLabel, Grid, Typography, Box, Avatar, Chip, FormControl,
+  Stepper, Step, StepLabel, Typography, Box, Avatar, Chip, FormControl,
   InputLabel, Select, OutlinedInput, Checkbox, ListItemText, Alert, Divider,
   FormControlLabel, Switch,
 } from '@mui/material';
+import { GridLegacy as Grid } from '@mui/material';
 import {
   PhotoCamera, ArrowBack, ArrowForward, Save,
 } from '@mui/icons-material';

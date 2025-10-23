@@ -16,6 +16,7 @@ import {
   Email, Phone, LocationOn, School, CreditCard, Badge as BadgeIcon,
   Assignment, CheckCircle, Warning, Close, MoreVert,
   CloudUpload, PersonAdd, Description, CalendarToday, History,
+  Delete, Print,
 } from '@mui/icons-material';
 import studentsService, { Student as APIStudent, StudentsFilters } from '../../services/studentsService';
 import StudentFormDialog from '../../components/students/StudentFormDialog';
