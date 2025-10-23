@@ -29,6 +29,7 @@ export interface Student {
 
 export interface StudentsListResponse {
   students: Student[];
+  totalCount: number;  // Total number of students (for easier access)
   pagination: {
     page: number;
     limit: number;
@@ -77,7 +78,12 @@ class StudentsService {
    */
   async getStudents(filters: StudentsFilters = {}): Promise<StudentsListResponse> {
     const response = await apiClient.get(this.baseURL, { params: filters }) as any;
-    return response.data.data;
+    const data = response.data.data;
+    // Add totalCount for easier access
+    return {
+      ...data,
+      totalCount: data.pagination?.total || data.totalCount || 0
+    };
   }
 
   /**
