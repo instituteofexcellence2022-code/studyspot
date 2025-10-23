@@ -36,7 +36,7 @@ import ErrorBoundary from './components/common/ErrorBoundary';
 // ============================================
 
 // Authentication Pages
-const LoginPage = lazy(() => import('./pages/auth/LoginPage'));
+const LoginPage = lazy(() => import('./pages/auth/ImprovedLoginPage'));
 
 // Platform Dashboard
 const DashboardPage = lazy(() => import('./pages/dashboard/DashboardPage'));
