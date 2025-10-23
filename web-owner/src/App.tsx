@@ -62,7 +62,7 @@ const AttendancePage = lazy(() => import('./pages/booking/AttendancePage'));
 
 // Student Management
 const UsersPage = lazy(() => import('./pages/user/UsersPage'));
-const StudentsPage = lazy(() => import('./pages/user/StudentsPage'));
+const StudentsPage = lazy(() => import('./pages/user/StudentsPageAdvanced'));
 const StaffPage = lazy(() => import('./pages/user/StaffPage'));
 const UserDetailsPage = lazy(() => import('./pages/user/UserDetailsPage'));
 const UserCreatePage = lazy(() => import('./pages/user/UserCreatePage'));
