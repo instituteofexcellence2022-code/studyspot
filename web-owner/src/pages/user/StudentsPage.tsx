@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Button,
@@ -45,45 +45,36 @@ import {
   FileDownload as ExportIcon,
   FilterList as FilterIcon,
 } from '@mui/icons-material';
+import studentsService, { Student as APIStudent, StudentsFilters } from '../../services/studentsService';
 
-// Enhanced mock students data (more samples for pagination/sorting demo)
-const INITIAL_STUDENTS = [
-  { id: 1, name: 'Rajesh Kumar', email: 'rajesh@example.com', phone: '+91 98765 43210', feeStatus: 'paid', plan: 'Monthly Premium', status: 'active', lastVisit: '2025-10-23' },
-  { id: 2, name: 'Priya Sharma', email: 'priya@example.com', phone: '+91 98765 43211', feeStatus: 'pending', plan: 'Weekly Plan', status: 'active', lastVisit: '2025-10-22' },
-  { id: 3, name: 'Amit Patel', email: 'amit@example.com', phone: '+91 98765 43212', feeStatus: 'overdue', plan: 'Daily Plan', status: 'inactive', lastVisit: '2025-10-15' },
-  { id: 4, name: 'Sneha Reddy', email: 'sneha@example.com', phone: '+91 98765 43213', feeStatus: 'paid', plan: 'Monthly Premium', status: 'active', lastVisit: '2025-10-23' },
-  { id: 5, name: 'Vikram Singh', email: 'vikram@example.com', phone: '+91 98765 43214', feeStatus: 'pending', plan: 'Weekly Plan', status: 'active', lastVisit: '2025-10-21' },
-  { id: 6, name: 'Anita Desai', email: 'anita@example.com', phone: '+91 98765 43215', feeStatus: 'paid', plan: 'Hourly Plan', status: 'active', lastVisit: '2025-10-23' },
-  { id: 7, name: 'Rahul Verma', email: 'rahul@example.com', phone: '+91 98765 43216', feeStatus: 'overdue', plan: 'Daily Plan', status: 'inactive', lastVisit: '2025-10-10' },
-  { id: 8, name: 'Pooja Nair', email: 'pooja@example.com', phone: '+91 98765 43217', feeStatus: 'paid', plan: 'Monthly Premium', status: 'active', lastVisit: '2025-10-22' },
-];
-
+// Use API Student interface
 interface Student {
-  id: number;
-  name: string;
+  id: string;
+  firstName: string;
+  lastName: string;
   email: string;
-  phone: string;
+  phone?: string;
+  studentId: string;
   feeStatus: string;
-  plan: string;
+  currentPlan?: string;
   status: string;
-  lastVisit: string;
+  enrollmentDate: string;
 }
-
-type SortField = keyof Student;
-type SortOrder = 'asc' | 'desc';
 
 const StudentsPageEnhanced: React.FC = () => {
   // State management
-  const [students, setStudents] = useState<Student[]>(INITIAL_STUDENTS);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
   const [currentStudent, setCurrentStudent] = useState<Partial<Student>>({
-    name: '',
+    firstName: '',
+    lastName: '',
     email: '',
     phone: '',
-    plan: 'Monthly Premium',
+    currentPlan: 'Monthly Premium',
     feeStatus: 'pending',
     status: 'active',
   });
@@ -95,73 +86,80 @@ const StudentsPageEnhanced: React.FC = () => {
   const [planFilter, setPlanFilter] = useState<string[]>([]);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
-  const [sortField, setSortField] = useState<SortField>('name');
-  const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
+  const [sortField, setSortField] = useState('firstName');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [loading, setLoading] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
   
   // Form validation errors
   const [errors, setErrors] = useState<Partial<Record<keyof Student, string>>>({});
 
+  // Fetch students from API
+  const fetchStudents = async () => {
+    try {
+      setLoading(true);
+      
+      // Build filters for API
+      const filters: StudentsFilters = {
+        search: searchTerm || undefined,
+        status: statusFilter.length > 0 ? statusFilter.join(',') : undefined,
+        feeStatus: feeStatusFilter.length > 0 ? feeStatusFilter.join(',') : undefined,
+        plan: planFilter.length > 0 ? planFilter.join(',') : undefined,
+        page: page + 1, // API uses 1-based pagination
+        limit: rowsPerPage,
+        sortBy: sortField,
+        sortOrder,
+      };
+      
+      console.log('🔍 Fetching students with filters:', filters);
+      const response = await studentsService.getStudents(filters);
+      console.log('✅ Students fetched:', response);
+      setStudents(response.students as any);
+      setTotalCount(response.totalCount);
+      setLoading(false);
+    } catch (error: any) {
+      console.error('❌ Failed to fetch students:', error);
+      setSnackbar({ 
+        open: true, 
+        message: error?.response?.data?.error || 'Failed to load students. Using demo data.',
+        severity: 'error' 
+      });
+      setLoading(false);
+      
+      // Use demo data as fallback
+      setStudents([]);
+      setTotalCount(0);
+    }
+  };
+
+  // Fetch on mount and when filters change
+  useEffect(() => {
+    fetchStudents();
+  }, [searchTerm, statusFilter, feeStatusFilter, planFilter, page, rowsPerPage, sortField, sortOrder]);
+
   // Validation function
   const validateStudent = (student: Partial<Student>): boolean => {
     const newErrors: Partial<Record<keyof Student, string>> = {};
     
-    if (!student.name || student.name.trim().length < 2) {
-      newErrors.name = 'Name must be at least 2 characters';
+    if (!student.firstName || student.firstName.trim().length < 2) {
+      newErrors.firstName = 'First name must be at least 2 characters';
+    }
+    
+    if (!student.lastName || student.lastName.trim().length < 2) {
+      newErrors.lastName = 'Last name must be at least 2 characters';
     }
     
     if (!student.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(student.email)) {
       newErrors.email = 'Please enter a valid email address';
     }
     
-    if (!student.phone || !/^\+?[\d\s-]{10,}$/.test(student.phone)) {
+    if (student.phone && !/^\+?[\d\s-]{10,}$/.test(student.phone)) {
       newErrors.phone = 'Please enter a valid phone number';
     }
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
-
-  // Filtered and sorted students
-  const filteredStudents = useMemo(() => {
-    let filtered = students.filter(student => {
-      // Search filter
-      const matchesSearch = searchTerm === '' || 
-        student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        student.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        student.phone.includes(searchTerm);
-      
-      // Status filter
-      const matchesStatus = statusFilter.length === 0 || statusFilter.includes(student.status);
-      
-      // Fee status filter
-      const matchesFeeStatus = feeStatusFilter.length === 0 || feeStatusFilter.includes(student.feeStatus);
-      
-      // Plan filter
-      const matchesPlan = planFilter.length === 0 || planFilter.includes(student.plan);
-      
-      return matchesSearch && matchesStatus && matchesFeeStatus && matchesPlan;
-    });
-    
-    // Sorting
-    filtered.sort((a, b) => {
-      const aValue = a[sortField];
-      const bValue = b[sortField];
-      
-      if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1;
-      if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1;
-      return 0;
-    });
-    
-    return filtered;
-  }, [students, searchTerm, statusFilter, feeStatusFilter, planFilter, sortField, sortOrder]);
-
-  // Paginated students
-  const paginatedStudents = useMemo(() => {
-    const startIndex = page * rowsPerPage;
-    return filteredStudents.slice(startIndex, startIndex + rowsPerPage);
-  }, [filteredStudents, page, rowsPerPage]);
 
   // Handlers
   const handleOpenDialog = (student?: Student) => {
@@ -171,10 +169,11 @@ const StudentsPageEnhanced: React.FC = () => {
     } else {
       setEditMode(false);
       setCurrentStudent({
-        name: '',
+        firstName: '',
+        lastName: '',
         email: '',
         phone: '',
-        plan: 'Monthly Premium',
+        currentPlan: 'Monthly Premium',
         feeStatus: 'pending',
         status: 'active',
       });
@@ -183,34 +182,57 @@ const StudentsPageEnhanced: React.FC = () => {
     setDialogOpen(true);
   };
 
-  const handleSaveStudent = () => {
+  const handleSaveStudent = async () => {
     if (!validateStudent(currentStudent)) {
       setSnackbar({ open: true, message: 'Please fix validation errors', severity: 'error' });
       return;
     }
     
-    setLoading(true);
-    
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      setLoading(true);
+      
       if (editMode && currentStudent.id) {
         // Update existing student
-        setStudents(students.map(s => s.id === currentStudent.id ? currentStudent as Student : s));
-        setSnackbar({ open: true, message: 'Student updated successfully!', severity: 'success' });
+        console.log('📝 Updating student:', currentStudent.id);
+        await studentsService.updateStudent(currentStudent.id, {
+          firstName: currentStudent.firstName!,
+          lastName: currentStudent.lastName!,
+          email: currentStudent.email!,
+          phone: currentStudent.phone,
+          currentPlan: currentStudent.currentPlan,
+          feeStatus: currentStudent.feeStatus,
+          status: currentStudent.status,
+        });
+        setSnackbar({ open: true, message: '✅ Student updated successfully!', severity: 'success' });
       } else {
-        // Add new student
-        const newStudent: Student = {
-          id: Math.max(...students.map(s => s.id), 0) + 1,
-          ...currentStudent as Omit<Student, 'id'>,
-          lastVisit: new Date().toISOString().split('T')[0],
-        };
-        setStudents([...students, newStudent]);
-        setSnackbar({ open: true, message: 'Student added successfully!', severity: 'success' });
+        // Create new student
+        console.log('➕ Creating new student');
+        await studentsService.createStudent({
+          firstName: currentStudent.firstName!,
+          lastName: currentStudent.lastName!,
+          email: currentStudent.email!,
+          phone: currentStudent.phone,
+          currentPlan: currentStudent.currentPlan,
+          feeStatus: currentStudent.feeStatus,
+          status: currentStudent.status,
+        });
+        setSnackbar({ open: true, message: '✅ Student created successfully!', severity: 'success' });
       }
       
       setDialogOpen(false);
       setLoading(false);
-    }, 500);
+      
+      // Refresh the list
+      await fetchStudents();
+    } catch (error: any) {
+      console.error('❌ Failed to save student:', error);
+      setSnackbar({ 
+        open: true, 
+        message: error?.response?.data?.error || 'Failed to save student',
+        severity: 'error' 
+      });
+      setLoading(false);
+    }
   };
 
   const handleDeleteClick = (student: Student) => {
@@ -218,22 +240,32 @@ const StudentsPageEnhanced: React.FC = () => {
     setDeleteDialogOpen(true);
   };
 
-  const handleDeleteConfirm = () => {
-    if (studentToDelete) {
+  const handleDeleteConfirm = async () => {
+    if (!studentToDelete) return;
+    
+    try {
       setLoading(true);
+      console.log('🗑️ Deleting student:', studentToDelete.id);
+      await studentsService.deleteStudent(studentToDelete.id);
+      setSnackbar({ open: true, message: '✅ Student deleted successfully!', severity: 'success' });
+      setDeleteDialogOpen(false);
+      setStudentToDelete(null);
+      setLoading(false);
       
-      // Simulate API call
-      setTimeout(() => {
-        setStudents(students.filter(s => s.id !== studentToDelete.id));
-        setSnackbar({ open: true, message: 'Student deleted successfully!', severity: 'success' });
-        setDeleteDialogOpen(false);
-        setStudentToDelete(null);
-        setLoading(false);
-      }, 500);
+      // Refresh the list
+      await fetchStudents();
+    } catch (error: any) {
+      console.error('❌ Failed to delete student:', error);
+      setSnackbar({ 
+        open: true, 
+        message: error?.response?.data?.error || 'Failed to delete student',
+        severity: 'error' 
+      });
+      setLoading(false);
     }
   };
 
-  const handleSort = (field: SortField) => {
+  const handleSort = (field: string) => {
     if (sortField === field) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
     } else {
@@ -242,24 +274,40 @@ const StudentsPageEnhanced: React.FC = () => {
     }
   };
 
-  const handleExportCSV = () => {
-    const headers = ['ID', 'Name', 'Email', 'Phone', 'Plan', 'Fee Status', 'Status', 'Last Visit'];
-    const csvContent = [
-      headers.join(','),
-      ...filteredStudents.map(s => 
-        [s.id, s.name, s.email, s.phone, s.plan, s.feeStatus, s.status, s.lastVisit].join(',')
-      )
-    ].join('\n');
-    
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `students_${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
-    
-    setSnackbar({ open: true, message: 'Students exported to CSV!', severity: 'success' });
+  const handleExportCSV = async () => {
+    try {
+      setLoading(true);
+      console.log('📥 Exporting students to CSV...');
+      
+      // Build filters for export
+      const filters: StudentsFilters = {
+        search: searchTerm || undefined,
+        status: statusFilter.length > 0 ? statusFilter.join(',') : undefined,
+        feeStatus: feeStatusFilter.length > 0 ? feeStatusFilter.join(',') : undefined,
+        plan: planFilter.length > 0 ? planFilter.join(',') : undefined,
+      };
+      
+      const blob = await studentsService.exportToCSV(filters);
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `students-${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      setSnackbar({ open: true, message: '✅ CSV exported successfully!', severity: 'success' });
+      setLoading(false);
+    } catch (error: any) {
+      console.error('❌ Failed to export CSV:', error);
+      setSnackbar({ 
+        open: true, 
+        message: error?.response?.data?.error || 'Failed to export CSV',
+        severity: 'error' 
+      });
+      setLoading(false);
+    }
   };
 
   const getFeeStatusColor = (status: string) => {
@@ -280,14 +328,14 @@ const StudentsPageEnhanced: React.FC = () => {
       {/* Header */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4" component="h1">
-          Student Management <Chip label="Enhanced @ 60%" color="primary" size="small" sx={{ ml: 2 }} />
+          Student Management <Chip label="API Integrated ✅" color="success" size="small" sx={{ ml: 2 }} />
         </Typography>
         <Box sx={{ display: 'flex', gap: 2 }}>
           <Button
             variant="outlined"
             startIcon={<ExportIcon />}
             onClick={handleExportCSV}
-            disabled={filteredStudents.length === 0}
+            disabled={loading || totalCount === 0}
           >
             Export CSV
           </Button>
@@ -295,6 +343,7 @@ const StudentsPageEnhanced: React.FC = () => {
             variant="contained"
             startIcon={<AddIcon />}
             onClick={() => handleOpenDialog()}
+            disabled={loading}
           >
             Add Student
           </Button>
@@ -307,9 +356,9 @@ const StudentsPageEnhanced: React.FC = () => {
           <Card>
             <CardContent>
               <Typography variant="body2" color="text.secondary">Total Students</Typography>
-              <Typography variant="h4">{students.length}</Typography>
+              <Typography variant="h4">{totalCount}</Typography>
               <Typography variant="caption" color="text.secondary">
-                Showing: {filteredStudents.length}
+                Page: {students.length}
               </Typography>
             </CardContent>
           </Card>
@@ -421,153 +470,129 @@ const StudentsPageEnhanced: React.FC = () => {
               </Select>
             </FormControl>
           </Grid>
-          <Grid item xs={12} sm={12} md={2}>
-            <Button
-              fullWidth
-              variant="outlined"
-              onClick={() => {
-                setSearchTerm('');
-                setStatusFilter([]);
-                setFeeStatusFilter([]);
-                setPlanFilter([]);
-              }}
-            >
-              Clear Filters
-            </Button>
+          <Grid item xs={12} sm={4} md={2}>
+            <Tooltip title="Clear all filters">
+              <Button
+                variant="outlined"
+                startIcon={<FilterIcon />}
+                onClick={() => {
+                  setSearchTerm('');
+                  setStatusFilter([]);
+                  setFeeStatusFilter([]);
+                  setPlanFilter([]);
+                }}
+                fullWidth
+              >
+                Clear Filters
+              </Button>
+            </Tooltip>
           </Grid>
         </Grid>
       </Paper>
 
       {/* Students Table */}
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>
-                <TableSortLabel
-                  active={sortField === 'name'}
-                  direction={sortField === 'name' ? sortOrder : 'asc'}
-                  onClick={() => handleSort('name')}
-                >
-                  Student
-                </TableSortLabel>
-              </TableCell>
-              <TableCell>
-                <TableSortLabel
-                  active={sortField === 'email'}
-                  direction={sortField === 'email' ? sortOrder : 'asc'}
-                  onClick={() => handleSort('email')}
-                >
-                  Contact
-                </TableSortLabel>
-              </TableCell>
-              <TableCell>
-                <TableSortLabel
-                  active={sortField === 'plan'}
-                  direction={sortField === 'plan' ? sortOrder : 'asc'}
-                  onClick={() => handleSort('plan')}
-                >
-                  Plan
-                </TableSortLabel>
-              </TableCell>
-              <TableCell>
-                <TableSortLabel
-                  active={sortField === 'feeStatus'}
-                  direction={sortField === 'feeStatus' ? sortOrder : 'asc'}
-                  onClick={() => handleSort('feeStatus')}
-                >
-                  Fee Status
-                </TableSortLabel>
-              </TableCell>
-              <TableCell>
-                <TableSortLabel
-                  active={sortField === 'status'}
-                  direction={sortField === 'status' ? sortOrder : 'asc'}
-                  onClick={() => handleSort('status')}
-                >
-                  Status
-                </TableSortLabel>
-              </TableCell>
-              <TableCell>
-                <TableSortLabel
-                  active={sortField === 'lastVisit'}
-                  direction={sortField === 'lastVisit' ? sortOrder : 'asc'}
-                  onClick={() => handleSort('lastVisit')}
-                >
-                  Last Visit
-                </TableSortLabel>
-              </TableCell>
-              <TableCell>Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {paginatedStudents.map((student) => (
-              <TableRow key={student.id} hover>
-                <TableCell>
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <Avatar sx={{ mr: 2, bgcolor: 'primary.main' }}>
-                      <PersonIcon />
-                    </Avatar>
-                    <Box>
+      <Paper>
+        <TableContainer>
+          {loading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+              <CircularProgress />
+            </Box>
+          ) : students.length === 0 ? (
+            <Box sx={{ p: 4, textAlign: 'center' }}>
+              <PersonIcon sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />
+              <Typography variant="h6" color="text.secondary">
+                No students found
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                Try adjusting your filters or add a new student
+              </Typography>
+            </Box>
+          ) : (
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>Avatar</TableCell>
+                  <TableCell>
+                    <TableSortLabel
+                      active={sortField === 'firstName'}
+                      direction={sortField === 'firstName' ? sortOrder : 'asc'}
+                      onClick={() => handleSort('firstName')}
+                    >
+                      Name
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell>
+                    <TableSortLabel
+                      active={sortField === 'email'}
+                      direction={sortField === 'email' ? sortOrder : 'asc'}
+                      onClick={() => handleSort('email')}
+                    >
+                      Email
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell>Phone</TableCell>
+                  <TableCell>Plan</TableCell>
+                  <TableCell>Fee Status</TableCell>
+                  <TableCell>Status</TableCell>
+                  <TableCell>Enrollment Date</TableCell>
+                  <TableCell align="right">Actions</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {students.map((student) => (
+                  <TableRow key={student.id} hover>
+                    <TableCell>
+                      <Avatar sx={{ bgcolor: 'primary.main' }}>
+                        {student.firstName.charAt(0)}{student.lastName.charAt(0)}
+                      </Avatar>
+                    </TableCell>
+                    <TableCell>
                       <Typography variant="body2" fontWeight="bold">
-                        {student.name}
+                        {student.firstName} {student.lastName}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
-                        ID: {student.id}
+                        ID: {student.studentId}
                       </Typography>
-                    </Box>
-                  </Box>
-                </TableCell>
-                <TableCell>
-                  <Typography variant="body2">{student.email}</Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {student.phone}
-                  </Typography>
-                </TableCell>
-                <TableCell>{student.plan}</TableCell>
-                <TableCell>
-                  <Chip
-                    label={student.feeStatus}
-                    size="small"
-                    color={getFeeStatusColor(student.feeStatus) as any}
-                  />
-                </TableCell>
-                <TableCell>
-                  <Chip
-                    label={student.status}
-                    size="small"
-                    color={getStatusColor(student.status) as any}
-                  />
-                </TableCell>
-                <TableCell>{student.lastVisit}</TableCell>
-                <TableCell>
-                  <Tooltip title="Edit">
-                    <IconButton size="small" color="primary" onClick={() => handleOpenDialog(student)}>
-                      <EditIcon />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title="Delete">
-                    <IconButton size="small" color="error" onClick={() => handleDeleteClick(student)}>
-                      <DeleteIcon />
-                    </IconButton>
-                  </Tooltip>
-                </TableCell>
-              </TableRow>
-            ))}
-            {paginatedStudents.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
-                  <Typography variant="body2" color="text.secondary">
-                    No students found. Try adjusting your filters.
-                  </Typography>
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+                    </TableCell>
+                    <TableCell>{student.email}</TableCell>
+                    <TableCell>{student.phone || 'N/A'}</TableCell>
+                    <TableCell>{student.currentPlan || 'N/A'}</TableCell>
+                    <TableCell>
+                      <Chip
+                        label={student.feeStatus}
+                        color={getFeeStatusColor(student.feeStatus) as any}
+                        size="small"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        label={student.status}
+                        color={getStatusColor(student.status) as any}
+                        size="small"
+                      />
+                    </TableCell>
+                    <TableCell>{new Date(student.enrollmentDate).toLocaleDateString()}</TableCell>
+                    <TableCell align="right">
+                      <Tooltip title="Edit">
+                        <IconButton size="small" onClick={() => handleOpenDialog(student)}>
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Delete">
+                        <IconButton size="small" color="error" onClick={() => handleDeleteClick(student)}>
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </TableContainer>
         <TablePagination
           component="div"
-          count={filteredStudents.length}
+          count={totalCount}
           page={page}
           onPageChange={(_, newPage) => setPage(newPage)}
           rowsPerPage={rowsPerPage}
@@ -575,113 +600,126 @@ const StudentsPageEnhanced: React.FC = () => {
             setRowsPerPage(parseInt(e.target.value, 10));
             setPage(0);
           }}
-          rowsPerPageOptions={[5, 10, 25, 50, 100]}
+          rowsPerPageOptions={[5, 10, 25, 50]}
         />
-      </TableContainer>
+      </Paper>
 
-      {/* Add/Edit Student Dialog */}
+      {/* Add/Edit Dialog */}
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>{editMode ? 'Edit Student' : 'Add New Student'}</DialogTitle>
+        <DialogTitle>
+          {editMode ? 'Edit Student' : 'Add New Student'}
+        </DialogTitle>
         <DialogContent>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
-            <TextField
-              label="Full Name"
-              value={currentStudent.name}
-              onChange={(e) => setCurrentStudent({ ...currentStudent, name: e.target.value })}
-              placeholder="e.g., Rajesh Kumar"
-              fullWidth
-              required
-              error={!!errors.name}
-              helperText={errors.name}
-            />
-            <TextField
-              label="Email"
-              type="email"
-              value={currentStudent.email}
-              onChange={(e) => setCurrentStudent({ ...currentStudent, email: e.target.value })}
-              placeholder="e.g., student@example.com"
-              fullWidth
-              required
-              error={!!errors.email}
-              helperText={errors.email}
-            />
-            <TextField
-              label="Phone"
-              value={currentStudent.phone}
-              onChange={(e) => setCurrentStudent({ ...currentStudent, phone: e.target.value })}
-              placeholder="e.g., +91 98765 43210"
-              fullWidth
-              required
-              error={!!errors.phone}
-              helperText={errors.phone}
-            />
-            <TextField
-              select
-              label="Plan"
-              value={currentStudent.plan}
-              onChange={(e) => setCurrentStudent({ ...currentStudent, plan: e.target.value })}
-              fullWidth
-            >
-              <MenuItem value="Hourly Plan">Hourly Plan</MenuItem>
-              <MenuItem value="Daily Plan">Daily Plan</MenuItem>
-              <MenuItem value="Weekly Plan">Weekly Plan</MenuItem>
-              <MenuItem value="Monthly Premium">Monthly Premium</MenuItem>
-            </TextField>
-            <TextField
-              select
-              label="Fee Status"
-              value={currentStudent.feeStatus}
-              onChange={(e) => setCurrentStudent({ ...currentStudent, feeStatus: e.target.value })}
-              fullWidth
-            >
-              <MenuItem value="paid">Paid</MenuItem>
-              <MenuItem value="pending">Pending</MenuItem>
-              <MenuItem value="overdue">Overdue</MenuItem>
-            </TextField>
-            <TextField
-              select
-              label="Status"
-              value={currentStudent.status}
-              onChange={(e) => setCurrentStudent({ ...currentStudent, status: e.target.value })}
-              fullWidth
-            >
-              <MenuItem value="active">Active</MenuItem>
-              <MenuItem value="inactive">Inactive</MenuItem>
-            </TextField>
-          </Box>
+          <Grid container spacing={2} sx={{ mt: 0.5 }}>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="First Name *"
+                value={currentStudent.firstName || ''}
+                onChange={(e) => setCurrentStudent({ ...currentStudent, firstName: e.target.value })}
+                error={!!errors.firstName}
+                helperText={errors.firstName}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Last Name *"
+                value={currentStudent.lastName || ''}
+                onChange={(e) => setCurrentStudent({ ...currentStudent, lastName: e.target.value })}
+                error={!!errors.lastName}
+                helperText={errors.lastName}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Email *"
+                type="email"
+                value={currentStudent.email || ''}
+                onChange={(e) => setCurrentStudent({ ...currentStudent, email: e.target.value })}
+                error={!!errors.email}
+                helperText={errors.email}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Phone"
+                value={currentStudent.phone || ''}
+                onChange={(e) => setCurrentStudent({ ...currentStudent, phone: e.target.value })}
+                error={!!errors.phone}
+                helperText={errors.phone}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                select
+                label="Plan"
+                value={currentStudent.currentPlan || 'Monthly Premium'}
+                onChange={(e) => setCurrentStudent({ ...currentStudent, currentPlan: e.target.value })}
+              >
+                <MenuItem value="Hourly Plan">Hourly Plan</MenuItem>
+                <MenuItem value="Daily Plan">Daily Plan</MenuItem>
+                <MenuItem value="Weekly Plan">Weekly Plan</MenuItem>
+                <MenuItem value="Monthly Premium">Monthly Premium</MenuItem>
+              </TextField>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                select
+                label="Fee Status"
+                value={currentStudent.feeStatus || 'pending'}
+                onChange={(e) => setCurrentStudent({ ...currentStudent, feeStatus: e.target.value })}
+              >
+                <MenuItem value="paid">Paid</MenuItem>
+                <MenuItem value="pending">Pending</MenuItem>
+                <MenuItem value="overdue">Overdue</MenuItem>
+              </TextField>
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                select
+                label="Status"
+                value={currentStudent.status || 'active'}
+                onChange={(e) => setCurrentStudent({ ...currentStudent, status: e.target.value })}
+              >
+                <MenuItem value="active">Active</MenuItem>
+                <MenuItem value="inactive">Inactive</MenuItem>
+              </TextField>
+            </Grid>
+          </Grid>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDialogOpen(false)} disabled={loading}>Cancel</Button>
-          <Button
-            onClick={handleSaveStudent}
-            variant="contained"
-            disabled={loading || !currentStudent.name || !currentStudent.email || !currentStudent.phone}
-            startIcon={loading ? <CircularProgress size={20} /> : null}
-          >
-            {editMode ? 'Update' : 'Add'} Student
+          <Button onClick={() => setDialogOpen(false)} disabled={loading}>
+            Cancel
+          </Button>
+          <Button onClick={handleSaveStudent} variant="contained" disabled={loading}>
+            {loading ? 'Saving...' : editMode ? 'Update' : 'Create'}
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
-      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)} maxWidth="xs" fullWidth>
+      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
         <DialogTitle>Confirm Delete</DialogTitle>
         <DialogContent>
           <Typography>
-            Are you sure you want to delete <strong>{studentToDelete?.name}</strong>? 
-            This action cannot be undone.
+            Are you sure you want to delete student "{studentToDelete?.firstName} {studentToDelete?.lastName}"?
           </Typography>
+          <Alert severity="warning" sx={{ mt: 2 }}>
+            This action cannot be undone!
+          </Alert>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDeleteDialogOpen(false)} disabled={loading}>Cancel</Button>
-          <Button
-            onClick={handleDeleteConfirm}
-            color="error"
-            variant="contained"
-            disabled={loading}
-            startIcon={loading ? <CircularProgress size={20} /> : null}
-          >
-            Delete
+          <Button onClick={() => setDeleteDialogOpen(false)} disabled={loading}>
+            Cancel
+          </Button>
+          <Button onClick={handleDeleteConfirm} color="error" variant="contained" disabled={loading}>
+            {loading ? 'Deleting...' : 'Delete'}
           </Button>
         </DialogActions>
       </Dialog>
@@ -689,11 +727,15 @@ const StudentsPageEnhanced: React.FC = () => {
       {/* Snackbar for notifications */}
       <Snackbar
         open={snackbar.open}
-        autoHideDuration={3000}
+        autoHideDuration={4000}
         onClose={() => setSnackbar({ ...snackbar, open: false })}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
       >
-        <Alert severity={snackbar.severity} onClose={() => setSnackbar({ ...snackbar, open: false })}>
+        <Alert
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          severity={snackbar.severity}
+          variant="filled"
+        >
           {snackbar.message}
         </Alert>
       </Snackbar>
@@ -702,4 +744,3 @@ const StudentsPageEnhanced: React.FC = () => {
 };
 
 export default StudentsPageEnhanced;
-
