@@ -167,6 +167,7 @@ export interface LoginResponse {
   user: User;
   token: string;
   refreshToken: string;
+  expiresIn?: string;
 }
 
 export interface RegisterRequest {
