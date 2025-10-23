@@ -37,7 +37,7 @@ import GlobalSnackbar from './components/common/GlobalSnackbar';
 // ============================================
 
 // Authentication Pages
-const LoginPage = lazy(() => import('./pages/auth/ImprovedLoginPage'));
+const LoginPage = lazy(() => import('./pages/auth/CleanLoginPage'));
 
 // Platform Dashboard
 const DashboardPage = lazy(() => import('./pages/dashboard/DashboardPage'));

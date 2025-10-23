@@ -1,16 +1,19 @@
+import ENV from '../config/environment';
+
 // Portal Mode Configuration
-export const PORTAL_MODE = process.env.REACT_APP_PORTAL_MODE || 'library'; // 'library' | 'admin'
+export const PORTAL_MODE = ENV.PORTAL_TYPE;
 
 export const PORTAL_CONFIG = {
-  isLibraryPortal: PORTAL_MODE === 'library',
+  isLibraryPortal: PORTAL_MODE === 'owner',
   isAdminPortal: PORTAL_MODE === 'admin',
-  portalName: PORTAL_MODE === 'library' ? 'Library Portal' : 'Admin Portal',
+  portalName: ENV.PORTAL_NAME,
+  version: ENV.VERSION,
 };
 
 // API Configuration
 export const API_CONFIG = {
-  BASE_URL: process.env.REACT_APP_API_URL || 'http://localhost:3001',
-  TIMEOUT: 30000,
+  BASE_URL: ENV.API_URL,
+  TIMEOUT: ENV.API_TIMEOUT,
   ENDPOINTS: {
     AUTH: {
       LOGIN: '/api/auth/login',

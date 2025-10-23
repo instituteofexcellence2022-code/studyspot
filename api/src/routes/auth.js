@@ -10,7 +10,7 @@ const { logger } = require('../utils/logger');
 const router = express.Router();
 
 // Import auth middleware
-const { auth } = require('../middleware/auth');
+const { verifyToken: auth } = require('../middleware/auth');
 
 // Generate JWT token
 const generateToken = (payload) => {

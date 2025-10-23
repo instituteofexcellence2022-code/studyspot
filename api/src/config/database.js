@@ -51,13 +51,51 @@ const getPool = () => {
 
 const query = async (text, params) => {
   const start = Date.now();
+  const requestId = global.currentRequestId || 'system';
+  
   try {
     const result = await pool.query(text, params);
     const duration = Date.now() - start;
-    logger.debug('Executed query', { text, duration, rows: result.rowCount });
+    
+    // Log query performance
+    logger.debug('Database Query', { 
+      requestId,
+      query: text.substring(0, 100), // First 100 chars
+      duration: `${duration}ms`,
+      rows: result.rowCount 
+    });
+    
+    // ⚠️ Alert on slow queries (> 1000ms)
+    if (duration > 1000) {
+      logger.warn('SLOW QUERY DETECTED', {
+        requestId,
+        query: text,
+        params: JSON.stringify(params),
+        duration: `${duration}ms`,
+        rows: result.rowCount
+      });
+    }
+    
+    // ⚠️ Alert on large result sets (> 1000 rows)
+    if (result.rowCount > 1000) {
+      logger.warn('LARGE RESULT SET', {
+        requestId,
+        query: text.substring(0, 100),
+        rows: result.rowCount,
+        duration: `${duration}ms`,
+        warning: 'Consider adding pagination or filtering'
+      });
+    }
+    
     return result;
   } catch (error) {
-    logger.error('Database query error:', { text, error: error.message });
+    logger.error('Database query error', { 
+      requestId,
+      query: text, 
+      params: JSON.stringify(params),
+      error: error.message,
+      stack: error.stack
+    });
     throw error;
   }
 };
@@ -99,6 +137,7 @@ module.exports = {
   closePool,
   checkHealth
 };
+
 
 
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import {
   Box,
@@ -6,7 +6,6 @@ import {
   Button,
   Typography,
   Link,
-  Alert,
   InputAdornment,
   IconButton,
   FormControl,
@@ -26,7 +25,7 @@ import {
 import { useForm, Controller } from 'react-hook-form';
 
 import { useAppDispatch, useAppSelector } from '../../hooks/redux';
-import { register } from '../../store/slices/authSlice';
+import { register, clearError } from '../../store/slices/authSlice';
 import { showSnackbar } from '../../store/slices/uiSlice';
 import { ROUTES, USER_ROLES } from '../../constants';
 import { RegisterRequest } from '../../types';
@@ -38,10 +37,15 @@ interface RegisterFormData extends RegisterRequest {
 const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
-  const { isLoading, error } = useAppSelector((state) => state.auth);
+  const { isLoading } = useAppSelector((state) => state.auth);
   
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  // Clear any previous errors when component mounts
+  useEffect(() => {
+    dispatch(clearError());
+  }, [dispatch]);
 
   const {
     control,
@@ -56,7 +60,7 @@ const RegisterPage: React.FC = () => {
       firstName: '',
       lastName: '',
       phone: '',
-      role: USER_ROLES.STUDENT,
+      role: USER_ROLES.LIBRARY_STAFF,
     },
   });
 
@@ -65,15 +69,36 @@ const RegisterPage: React.FC = () => {
   const onSubmit = async (data: RegisterFormData) => {
     try {
       const { confirmPassword, ...registerData } = data;
+      console.log('🔄 Attempting registration:', { ...registerData, password: '***' });
+      
       const result = await dispatch(register(registerData)).unwrap();
+      
+      console.log('✅ Registration successful:', result);
       dispatch(showSnackbar({
-        message: 'Registration successful! Please log in.',
+        message: '✅ Registration successful! Please log in.',
         severity: 'success',
       }));
       navigate(ROUTES.LOGIN);
     } catch (error: any) {
+      console.error('❌ Registration failed:', error);
+      
+      // Extract error message from various possible structures
+      let errorMessage = 'Registration failed. Please try again.';
+      
+      if (typeof error === 'string') {
+        errorMessage = error;
+      } else if (error?.message) {
+        errorMessage = error.message;
+      } else if (error?.error) {
+        errorMessage = error.error;
+      } else if (error?.data?.message) {
+        errorMessage = error.data.message;
+      }
+      
+      console.log('📢 Showing error:', errorMessage);
+      
       dispatch(showSnackbar({
-        message: error || 'Registration failed. Please try again.',
+        message: `❌ ${errorMessage}`,
         severity: 'error',
       }));
     }
@@ -96,11 +121,7 @@ const RegisterPage: React.FC = () => {
         Sign up to get started with 🎓 STUDYSPOT
       </Typography>
 
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      )}
+      {/* Error messages are now shown via GlobalSnackbar instead */}
 
       <Box component="form" onSubmit={handleSubmit(onSubmit)} sx={{ mt: 1 }}>
         <Grid container spacing={2}>
@@ -223,21 +244,26 @@ const RegisterPage: React.FC = () => {
               control={control}
               render={({ field }) => (
                 <FormControl fullWidth>
-                  <InputLabel id="role-label">Role</InputLabel>
+                  <InputLabel id="role-label">Your Role</InputLabel>
                   <Select
                     {...field}
                     labelId="role-label"
                     id="role"
-                    label="Role"
+                    label="Your Role"
                     error={!!errors.role}
                   >
-                    <MenuItem value={USER_ROLES.STUDENT}>Student</MenuItem>
-                    <MenuItem value={USER_ROLES.LIBRARY_STAFF}>Library Staff</MenuItem>
-                    <MenuItem value={USER_ROLES.LIBRARY_OWNER}>Library Owner</MenuItem>
+                    <MenuItem value={USER_ROLES.LIBRARY_STAFF}>Library Staff (Front Desk, Operations)</MenuItem>
+                    <MenuItem value={USER_ROLES.LIBRARY_OWNER}>Library Owner (Full Access)</MenuItem>
+                    <MenuItem value={USER_ROLES.BRANCH_MANAGER}>Branch Manager</MenuItem>
+                    <MenuItem value={USER_ROLES.FINANCE_MANAGER}>Finance Manager</MenuItem>
+                    <MenuItem value={USER_ROLES.FACILITY_MANAGER}>Facility Manager</MenuItem>
                   </Select>
                 </FormControl>
               )}
             />
+            <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+              📝 Students should download the mobile app. This portal is for library staff and management only.
+            </Typography>
           </Grid>
           <Grid item xs={12}>
             <Controller
@@ -341,6 +367,25 @@ const RegisterPage: React.FC = () => {
           <Link component={RouterLink} to={ROUTES.LOGIN} variant="body2">
             Already have an account? Sign In
           </Link>
+        </Box>
+
+        {/* Diagnostic Info */}
+        <Box sx={{ mt: 2, p: 2, bgcolor: 'info.main', color: 'white', borderRadius: 1, fontSize: '0.75rem' }}>
+          <Typography variant="caption" sx={{ display: 'block', fontWeight: 'bold', mb: 1 }}>
+            🔍 DIAGNOSTIC INFO:
+          </Typography>
+          <Typography variant="caption" sx={{ display: 'block', fontFamily: 'monospace' }}>
+            API URL: {process.env.REACT_APP_API_URL || 'http://localhost:3001'}
+          </Typography>
+          <Typography variant="caption" sx={{ display: 'block', fontFamily: 'monospace' }}>
+            ENV VAR: {process.env.REACT_APP_API_URL || 'NOT SET'}
+          </Typography>
+          <Typography variant="caption" sx={{ display: 'block', fontFamily: 'monospace' }}>
+            NODE_ENV: {process.env.NODE_ENV}
+          </Typography>
+          <Typography variant="caption" sx={{ display: 'block', fontFamily: 'monospace', mt: 1, color: 'yellow' }}>
+            ⚠️ If API URL is NOT http://localhost:3001, restart the server!
+          </Typography>
         </Box>
       </Box>
     </Box>

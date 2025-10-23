@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import {
   Box,
@@ -6,7 +6,6 @@ import {
   Button,
   Typography,
   Link,
-  Alert,
   InputAdornment,
   IconButton,
   FormControl,
@@ -26,7 +25,7 @@ import {
 import { useForm, Controller } from 'react-hook-form';
 
 import { useAppDispatch, useAppSelector } from '../../hooks/redux';
-import { register } from '../../store/slices/authSlice';
+import { register, clearError } from '../../store/slices/authSlice';
 import { showSnackbar } from '../../store/slices/uiSlice';
 import { ROUTES, USER_ROLES } from '../../constants';
 import { RegisterRequest } from '../../types';
@@ -38,10 +37,15 @@ interface RegisterFormData extends RegisterRequest {
 const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
-  const { isLoading, error } = useAppSelector((state) => state.auth);
+  const { isLoading } = useAppSelector((state) => state.auth);
   
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  // Clear any previous errors when component mounts
+  useEffect(() => {
+    dispatch(clearError());
+  }, [dispatch]);
 
   const {
     control,
@@ -56,7 +60,7 @@ const RegisterPage: React.FC = () => {
       firstName: '',
       lastName: '',
       phone: '',
-      role: USER_ROLES.STUDENT,
+      role: USER_ROLES.PLATFORM_SUPPORT,
     },
   });
 
@@ -65,15 +69,36 @@ const RegisterPage: React.FC = () => {
   const onSubmit = async (data: RegisterFormData) => {
     try {
       const { confirmPassword, ...registerData } = data;
+      console.log('🔄 Attempting registration:', { ...registerData, password: '***' });
+      
       const result = await dispatch(register(registerData)).unwrap();
+      
+      console.log('✅ Registration successful:', result);
       dispatch(showSnackbar({
-        message: 'Registration successful! Please log in.',
+        message: '✅ Registration successful! Please log in.',
         severity: 'success',
       }));
       navigate(ROUTES.LOGIN);
     } catch (error: any) {
+      console.error('❌ Registration failed:', error);
+      
+      // Extract error message from various possible structures
+      let errorMessage = 'Registration failed. Please try again.';
+      
+      if (typeof error === 'string') {
+        errorMessage = error;
+      } else if (error?.message) {
+        errorMessage = error.message;
+      } else if (error?.error) {
+        errorMessage = error.error;
+      } else if (error?.data?.message) {
+        errorMessage = error.data.message;
+      }
+      
+      console.log('📢 Showing error:', errorMessage);
+      
       dispatch(showSnackbar({
-        message: error || 'Registration failed. Please try again.',
+        message: `❌ ${errorMessage}`,
         severity: 'error',
       }));
     }
@@ -96,11 +121,7 @@ const RegisterPage: React.FC = () => {
         Sign up to get started with 🎓 STUDYSPOT
       </Typography>
 
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      )}
+      {/* Error messages are now shown via GlobalSnackbar instead */}
 
       <Box component="form" onSubmit={handleSubmit(onSubmit)} sx={{ mt: 1 }}>
         <Grid container spacing={2}>
@@ -223,21 +244,23 @@ const RegisterPage: React.FC = () => {
               control={control}
               render={({ field }) => (
                 <FormControl fullWidth>
-                  <InputLabel id="role-label">Role</InputLabel>
+                  <InputLabel id="role-label">Platform Role</InputLabel>
                   <Select
                     {...field}
                     labelId="role-label"
                     id="role"
-                    label="Role"
+                    label="Platform Role"
                     error={!!errors.role}
                   >
-                    <MenuItem value={USER_ROLES.STUDENT}>Student</MenuItem>
-                    <MenuItem value={USER_ROLES.LIBRARY_STAFF}>Library Staff</MenuItem>
-                    <MenuItem value={USER_ROLES.LIBRARY_ADMIN}>Library Admin</MenuItem>
+                    <MenuItem value={USER_ROLES.PLATFORM_SUPPORT}>Platform Support (Customer Support, Operations)</MenuItem>
+                    <MenuItem value={USER_ROLES.SUPER_ADMIN}>Super Admin (Full Platform Access)</MenuItem>
                   </Select>
                 </FormControl>
               )}
             />
+            <Typography variant="caption" color="error.main" sx={{ mt: 1, display: 'block' }}>
+              ⚠️ This is the Platform Admin Portal. Only platform administrators should register here.
+            </Typography>
           </Grid>
           <Grid item xs={12}>
             <Controller

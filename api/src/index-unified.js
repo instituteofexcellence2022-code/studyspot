@@ -10,6 +10,10 @@ const { errorHandler, notFound } = require('./middleware/errorHandler');
 const { logger } = require('./utils/logger');
 const { connectDatabase, checkHealth: checkDatabaseHealth } = require('./config/database');
 const { connectRedis } = require('./config/redis');
+const { securityHeaders } = require('./middleware/securityHeaders');
+const { requestId } = require('./middleware/requestId');
+const { httpsRedirect } = require('./middleware/httpsRedirect');
+const { router: metricsRouter, metricsMiddleware } = require('./routes/metrics');
 
 // ========================================
 // UNIFIED STUDYSPOT API SERVER
@@ -18,7 +22,7 @@ const { connectRedis } = require('./config/redis');
 // ========================================
 
 // Import ALL routes (from original Phases 1-4)
-const authRoutes = require('./routes/auth-mock'); // Mock auth (no database required)
+const authRoutes = require('./routes/auth'); // Real auth with database
 const userRoutes = require('./routes/users');
 const libraryRoutes = require('./routes/libraries');
 const bookingRoutes = require('./routes/bookings');
@@ -52,6 +56,12 @@ const PORT = process.env.PORT || 3001;
 // SECURITY MIDDLEWARE
 // ========================================
 
+// ✅ HTTPS Redirect (Production only)
+app.use(httpsRedirect);
+
+// ✅ Request ID Tracing
+app.use(requestId);
+
 // ✅ Issue #1 Fixed: Removed 'unsafe-inline' from CSP
 app.use(helmet({
   contentSecurityPolicy: {
@@ -70,6 +80,9 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false,
   crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
+
+// ✅ Additional Security Headers
+app.use(securityHeaders);
 
 // ========================================
 // CORS CONFIGURATION
@@ -115,6 +128,12 @@ app.use('/api/webhooks', express.json({ limit: '1mb' }));  // Stripe webhooks
 app.use('/api/upload', express.json({ limit: '10mb' }));   // File uploads
 
 app.use(compression());
+
+// ========================================
+// METRICS MIDDLEWARE
+// ========================================
+
+app.use(metricsMiddleware);
 
 // ========================================
 // LOGGING MIDDLEWARE
@@ -200,6 +219,9 @@ app.use('/api/dashboard', dashboardRoutes);  // Enhanced dashboard with real-tim
 app.use('/api/students', studentRoutes);      // Enhanced student management
 app.use('/api/invoices', invoiceRoutes);      // GST-compliant invoicing & financial management
 app.use('/api/audit', auditRoutes);           // Audit trail & security monitoring
+
+// Monitoring & Metrics (New)
+app.use('/api/metrics', metricsRouter);       // Application metrics and monitoring
 
 // ========================================
 // API DOCUMENTATION (SWAGGER)

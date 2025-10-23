@@ -1,122 +1,85 @@
 @echo off
-echo ============================================
-echo    STUDYSPOT - Issue Diagnosis and Fix
-echo ============================================
+cls
+echo.
+echo ========================================
+echo 🔍 PROFESSIONAL DIAGNOSTIC REPORT
+echo ========================================
 echo.
 
-echo [1/5] Checking Node.js installation...
-node --version >nul 2>&1
-if %errorlevel% neq 0 (
-    echo ❌ Node.js not found! Please install Node.js from https://nodejs.org/
-    pause
-    exit /b 1
+echo 📍 Step 1: Checking API Server...
+netstat -ano | findstr :3001 | findstr LISTENING
+if %ERRORLEVEL% EQU 0 (
+    echo ✅ API Server is running on port 3001
+) else (
+    echo ❌ API Server is NOT running
+    echo.
+    echo Starting API Server...
+    start "API Server" cmd /k "cd api && npm start"
+    timeout /t 10
 )
-echo ✅ Node.js installed
-
 echo.
-echo [2/5] Checking project structure...
-if not exist "api\src\index-demo-simple.js" (
-    echo ❌ API files missing
-    pause
-    exit /b 1
-)
-if not exist "web\src\App.tsx" (
-    echo ❌ Web files missing
-    pause
-    exit /b 1
-)
-echo ✅ Project structure OK
 
+echo 📍 Step 2: Checking Owner Portal...
+netstat -ano | findstr :3000 | findstr LISTENING
+if %ERRORLEVEL% EQU 0 (
+    echo ✅ Owner Portal is running on port 3000
+) else (
+    echo ❌ Owner Portal is NOT running  
+    echo.
+    echo Starting Owner Portal...
+    start "Owner Portal" cmd /k "cd web-owner && npm start"
+    timeout /t 15
+)
 echo.
-echo [3/5] Checking dependencies...
-cd api
-if not exist "node_modules" (
-    echo ⚠️  API dependencies missing, installing...
-    call npm install
-)
-cd ..\web
-if not exist "node_modules" (
-    echo ⚠️  Web dependencies missing, installing...
-    call npm install
-)
-cd ..
-echo ✅ Dependencies OK
 
-echo.
-echo [4/5] Checking for port conflicts...
-netstat -ano | findstr ":3001" >nul 2>&1
-if %errorlevel% equ 0 (
-    echo ⚠️  Port 3001 is in use, will terminate processes
-    for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":3001"') do taskkill /F /PID %%a >nul 2>&1
-)
-netstat -ano | findstr ":3000" >nul 2>&1
-if %errorlevel% equ 0 (
-    echo ⚠️  Port 3000 is in use, will terminate processes
-    for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":3000"') do taskkill /F /PID %%a >nul 2>&1
-)
-echo ✅ Ports cleared
-
-echo.
-echo [5/5] Creating/checking environment files...
-cd api
-if not exist ".env" (
+echo 📍 Step 3: Verifying .env file...
+if exist web-owner\.env (
+    echo ✅ .env file exists
+    echo.
+    echo Content:
+    type web-owner\.env
+) else (
+    echo ❌ .env file missing!
+    echo.
     echo Creating .env file...
     (
+        echo REACT_APP_API_URL=http://localhost:3001
+        echo REACT_APP_PORTAL_TYPE=owner
+        echo REACT_APP_PORTAL_NAME=Library Owner Portal
+        echo REACT_APP_VERSION=1.0.0
         echo NODE_ENV=development
-        echo PORT=3001
-        echo CORS_ORIGIN=http://localhost:3000
-        echo JWT_SECRET=dev_jwt_secret_key_change_in_production_123456789
-        echo JWT_EXPIRES_IN=7d
-        echo.
-        echo # Database - Using SQLite for demo
-        echo DATABASE_URL=sqlite:./data/studyspot.db
-        echo.
-        echo # Optional services
-        echo STRIPE_SECRET_KEY=
-        echo STRIPE_WEBHOOK_SECRET=
-        echo SENDGRID_API_KEY=
-        echo TWILIO_ACCOUNT_SID=
-        echo TWILIO_AUTH_TOKEN=
-    ) > .env
-    echo ✅ Created api/.env
-) else (
-    echo ✅ api/.env exists
+    ) > web-owner\.env
+    echo ✅ .env file created!
+    echo.
+    echo ⚠️  RESTART Owner Portal to load .env!
 )
-cd ..\web
-if not exist ".env" (
-    echo Creating .env file...
-    echo REACT_APP_API_URL=http://localhost:3001 > .env
-    echo ✅ Created web/.env
-) else (
-    echo ✅ web/.env exists
-)
-cd ..
+echo.
 
+echo 📍 Step 4: Testing API Health...
+curl -s http://localhost:3001/health
 echo.
-echo ============================================
-echo    All Issues Fixed! Starting Platform...
-echo ============================================
 echo.
-echo Starting API Server (Port 3001)...
-start "StudySpot API" cmd /k "cd api && node src\index-demo-simple.js"
 
-timeout /t 3 >nul
-
-echo Starting Web App (Port 3000)...
-start "StudySpot Web" cmd /k "cd web && npm start"
-
+echo ========================================
+echo 📋 NEXT STEPS:
+echo ========================================
 echo.
-echo ============================================
-echo    Platform Starting!
-echo ============================================
+echo 1. If .env was just created, RESTART Owner Portal:
+echo    - Stop the current server (Ctrl+C in its window)
+echo    - Run: cd web-owner
+echo    - Run: npm start
 echo.
-echo 🚀 API Server: http://localhost:3001
-echo 🌐 Web App: http://localhost:3000 (will open automatically)
+echo 2. Open browser: http://localhost:3000/login
 echo.
-echo The web browser will open in about 10-15 seconds...
+echo 3. Look at the BLUE BOX at bottom of page
+echo    It should show: API URL: http://localhost:3001
 echo.
-echo To stop: Close the terminal windows or press Ctrl+C in each window
+echo 4. If it shows a different URL, the .env wasn't loaded
+echo.
+echo 5. Press Ctrl+Shift+R in browser to hard refresh
+echo.
+echo 6. Click "Try Demo Account" button
+echo.
+echo 7. Copy and paste the BLUE BOX content here
 echo.
 pause
-
-
