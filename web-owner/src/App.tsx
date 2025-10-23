@@ -53,7 +53,9 @@ const LibraryCreatePage = lazy(() => import('./pages/library/LibraryCreatePage')
 const LibraryEditPage = lazy(() => import('./pages/library/LibraryEditPage'));
 const SeatsPage = lazy(() => import('./pages/library/SeatsPage'));
 const FeePlansPage = lazy(() => import('./pages/subscription/FeePlansPageAdvanced'));
-const PaymentsPage = lazy(() => import('./pages/subscription/PaymentsPage'));
+const PaymentsPage = lazy(() => import('./pages/payment/PaymentsPageComprehensive'));
+const PaymentAnalyticsPage = lazy(() => import('./pages/analytics/PaymentAnalyticsPage'));
+const SubscriptionCreditsPage = lazy(() => import('./pages/subscription/SubscriptionCreditsPage'));
 
 // Booking Management
 const BookingsPage = lazy(() => import('./pages/booking/BookingsPage'));
@@ -188,8 +190,9 @@ const darkTheme = createTheme({
 // ============================================
 
 const AppContent: React.FC = () => {
-  const theme = useAppSelector((state) => state.ui?.theme || 'light');
-  const currentTheme = theme === 'dark' ? darkTheme : lightTheme;
+  // Get theme mode from Redux store (persisted)
+  const themeMode = useAppSelector((state) => state.theme?.mode || 'light');
+  const currentTheme = themeMode === 'dark' ? darkTheme : lightTheme;
 
   return (
     <ThemeProvider theme={currentTheme}>
@@ -204,7 +207,7 @@ const AppContent: React.FC = () => {
         pauseOnFocusLoss
         draggable
         pauseOnHover
-        theme={theme === 'dark' ? 'dark' : 'light'}
+        theme={themeMode === 'dark' ? 'dark' : 'light'}
       />
       <GlobalSnackbar />
       <Router>
@@ -263,6 +266,8 @@ const AppContent: React.FC = () => {
               <Route path={ROUTES.STUDENTS} element={<StudentsPage />} />
               <Route path={ROUTES.ATTENDANCE} element={<AttendancePage />} />
               <Route path={ROUTES.PAYMENTS} element={<PaymentsPage />} />
+              <Route path={ROUTES.PAYMENT_ANALYTICS} element={<PaymentAnalyticsPage />} />
+              <Route path={ROUTES.SUBSCRIPTION_CREDITS} element={<SubscriptionCreditsPage />} />
               <Route path={ROUTES.STAFF} element={<StaffPage />} />
 
               {/* ============================================ */}

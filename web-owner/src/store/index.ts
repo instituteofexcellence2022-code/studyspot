@@ -12,12 +12,13 @@ import subscriptionSlice from './slices/subscriptionSlice';
 import tenantSlice from './slices/tenantSlice';
 import rbacSlice from './slices/rbacSlice';
 import creditSlice from './slices/creditSlice';
+import themeReducer from './themeSlice';
 
 // Persist configuration
 const persistConfig = {
   key: 'root',
   storage,
-  whitelist: ['auth', 'ui'], // Only persist auth and UI state
+  whitelist: ['auth', 'ui', 'theme'], // Only persist auth, UI, and theme state
 };
 
 // Root reducer
@@ -31,6 +32,7 @@ const rootReducer = combineReducers({
   tenant: tenantSlice,
   rbac: rbacSlice,
   credit: creditSlice,
+  theme: themeReducer,
 });
 
 // Persisted reducer

@@ -28,6 +28,8 @@ import {
   AttachMoney as PaymentIcon,
   CalendarToday as AttendanceIcon,
   Group as StaffIcon,
+  Assessment as AnalyticsIcon,
+  CreditCard,
   MonetizationOn as FeePlanIcon,
   Bookmarks as BookingIcon,
   SupervisorAccount as UserIcon,
@@ -41,11 +43,14 @@ import {
   TrendingUp,
   Assignment,
   MenuBook,
+  Brightness4 as DarkModeIcon,
+  Brightness7 as LightModeIcon,
 } from '@mui/icons-material';
 
 import { ROUTES } from '../../constants';
 import { useAppSelector, useAppDispatch } from '../../hooks/redux';
 import { logout } from '../../store/slices/authSlice';
+import { toggleTheme } from '../../store/themeSlice';
 
 interface SidebarProps {
   open: boolean;
@@ -158,6 +163,23 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
       description: 'Transactions & billing',
       section: 'operations',
       badge: { text: '₹12K', color: 'success' }
+    },
+    {
+      label: 'Payment Analytics',
+      path: ROUTES.PAYMENT_ANALYTICS,
+      icon: <AnalyticsIcon />,
+      roles: ['library_owner', 'branch_manager', 'finance_manager', 'super_admin'],
+      description: 'Revenue insights & forecasts',
+      section: 'operations',
+      badge: { text: '₹12K', color: 'success' }
+    },
+    {
+      label: 'Subscription & Credits',
+      path: ROUTES.SUBSCRIPTION_CREDITS,
+      icon: <CreditCard />,
+      roles: ['library_owner', 'super_admin'],
+      description: 'Manage plans & communication credits',
+      section: 'settings',
     },
     {
       label: 'Bookings',
@@ -497,6 +519,40 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
                 <ListItemText 
                   primary="Settings" 
                   primaryTypographyProps={{ fontSize: '0.9rem' }}
+                />
+              </ListItemButton>
+            </Tooltip>
+          </ListItem>
+          <ListItem disablePadding sx={{ mb: 0.5 }}>
+            <Tooltip title={`Switch to ${theme.palette.mode === 'dark' ? 'Light' : 'Dark'} Mode`} placement="right">
+              <ListItemButton 
+                onClick={() => dispatch(toggleTheme())}
+                sx={{ 
+                  borderRadius: 1,
+                  '&:hover': {
+                    backgroundColor: alpha(theme.palette.primary.main, 0.08),
+                  },
+                }}
+              >
+                <ListItemIcon sx={{ minWidth: 40 }}>
+                  {theme.palette.mode === 'dark' ? (
+                    <LightModeIcon fontSize="small" />
+                  ) : (
+                    <DarkModeIcon fontSize="small" />
+                  )}
+                </ListItemIcon>
+                <ListItemText 
+                  primary={theme.palette.mode === 'dark' ? 'Light Mode' : 'Dark Mode'} 
+                  primaryTypographyProps={{ fontSize: '0.9rem' }}
+                />
+                <Chip 
+                  label={theme.palette.mode === 'dark' ? '🌙' : '☀️'} 
+                  size="small"
+                  sx={{ 
+                    height: 20, 
+                    fontSize: '0.7rem',
+                    bgcolor: alpha(theme.palette.primary.main, 0.1),
+                  }}
                 />
               </ListItemButton>
             </Tooltip>

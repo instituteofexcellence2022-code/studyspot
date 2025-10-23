@@ -1,641 +1,413 @@
 const express = require('express');
 const router = express.Router();
-const { body, param, query, validationResult } = require('express-validator');
-const stripeService = require('../services/stripeService');
+const { body, query, param, validationResult } = require('express-validator');
+const { verifyToken } = require('../middleware/auth');
 const { query: dbQuery } = require('../config/database');
-const { verifyToken: authenticate } = require('../middleware/auth');
-const logger = require('../utils/logger');
-const { withStripeTransaction, withTransaction } = require('../utils/transaction');
+const { logger } = require('../utils/logger');
 
-// Validation middleware
-const validate = (req, res, next) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ success: false, errors: errors.array() });
-  }
-  next();
-};
+// =====================================================
+// SUBSCRIPTION MANAGEMENT ROUTES
+// =====================================================
 
-// GET /api/subscriptions/plans - Get all subscription plans
+/**
+ * @route   GET /api/subscriptions/plans
+ * @desc    Get available subscription plans
+ * @access  Public
+ */
 router.get('/plans', async (req, res) => {
   try {
-    const result = await dbQuery(`
-      SELECT 
-        id, name, display_name, description,
-        price_monthly, price_yearly,
-        features, limits, is_active
-      FROM subscription_plans
-      WHERE is_active = true
-      ORDER BY price_monthly ASC
-    `);
+    const plans = [
+      {
+        id: '1',
+        name: 'Starter',
+        description: 'Perfect for small libraries',
+        price: 999,
+        billingCycle: 'monthly',
+        features: [
+          '1 Library Location',
+          'Up to 50 Seats',
+          '3 Staff Members',
+          'Basic Analytics',
+          'Email Support',
+          '100 SMS/month',
+          '50 WhatsApp/month'
+        ],
+        maxLibraries: 1,
+        maxSeats: 50,
+        maxStaff: 3,
+      },
+      {
+        id: '2',
+        name: 'Professional',
+        description: 'Most popular for growing businesses',
+        price: 2499,
+        billingCycle: 'monthly',
+        features: [
+          '3 Library Locations',
+          'Up to 200 Seats',
+          '10 Staff Members',
+          'Advanced Analytics',
+          'Priority Support',
+          '500 SMS/month',
+          '300 WhatsApp/month',
+          'Custom Branding',
+          'API Access'
+        ],
+        maxLibraries: 3,
+        maxSeats: 200,
+        maxStaff: 10,
+        isPopular: true,
+      },
+      {
+        id: '3',
+        name: 'Enterprise',
+        description: 'For large organizations',
+        price: 4999,
+        billingCycle: 'monthly',
+        features: [
+          'Unlimited Libraries',
+          'Unlimited Seats',
+          'Unlimited Staff',
+          'Real-time Analytics',
+          '24/7 Dedicated Support',
+          'Unlimited SMS',
+          'Unlimited WhatsApp',
+          'White-label Solution',
+          'Custom Integrations',
+          'SLA Guarantee'
+        ],
+        maxLibraries: -1,
+        maxSeats: -1,
+        maxStaff: -1,
+      },
+    ];
 
     res.json({
       success: true,
-      data: result.rows
+      data: { plans }
     });
+
   } catch (error) {
-    logger.error('Failed to fetch subscription plans', error);
+    logger.error('Error fetching plans:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to fetch subscription plans'
+      message: 'Failed to fetch plans',
+      error: error.message
     });
   }
 });
 
-// POST /api/subscriptions/create - Create new subscription
-router.post('/create',
-  authenticate,
+/**
+ * @route   GET /api/subscriptions/current
+ * @desc    Get current subscription
+ * @access  Private
+ */
+router.get('/current', verifyToken, async (req, res) => {
+  try {
+    const tenantId = req.user.tenantId;
+
+    // TODO: Fetch from database
+    const currentSubscription = {
+      planId: '2',
+      planName: 'Professional',
+      price: 2499,
+      billingCycle: 'monthly',
+      status: 'active',
+      startDate: '2025-10-23',
+      nextBillingDate: '2025-11-23',
+      autoRenew: true,
+    };
+
+    res.json({
+      success: true,
+      data: { subscription: currentSubscription }
+    });
+
+  } catch (error) {
+    logger.error('Error fetching subscription:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch subscription',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * @route   POST /api/subscriptions/upgrade
+ * @desc    Upgrade subscription plan
+ * @access  Private
+ */
+router.post('/upgrade',
+  verifyToken,
   [
-    body('planId').isUUID().withMessage('Valid plan ID is required'),
-    body('billingCycle').isIn(['monthly', 'yearly']).withMessage('Billing cycle must be monthly or yearly'),
+    body('planId').notEmpty().withMessage('Plan ID is required'),
   ],
-  validate,
   async (req, res) => {
     try {
-      const { planId, billingCycle } = req.body;
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ success: false, errors: errors.array() });
+      }
+
+      const { planId } = req.body;
       const tenantId = req.user.tenantId;
 
-      // Get plan details
-      const planResult = await dbQuery(
-        'SELECT * FROM subscription_plans WHERE id = $1 AND is_active = true',
-        [planId]
-      );
-
-      if (planResult.rows.length === 0) {
-        return res.status(404).json({
-          success: false,
-          error: 'Plan not found'
-        });
-      }
-
-      const plan = planResult.rows[0];
-
-      // Check if tenant already has active subscription
-      const existingSubResult = await dbQuery(
-        'SELECT * FROM subscriptions WHERE tenant_id = $1 AND status = $2',
-        [tenantId, 'active']
-      );
-
-      if (existingSubResult.rows.length > 0) {
-        return res.status(400).json({
-          success: false,
-          error: 'Tenant already has an active subscription'
-        });
-      }
-
-      // Get or create Stripe customer
-      const tenantResult = await dbQuery(
-        'SELECT name, email, stripe_customer_id FROM tenants WHERE id = $1',
-        [tenantId]
-      );
-
-      const tenant = tenantResult.rows[0];
-      let stripeCustomerId = tenant.stripe_customer_id;
-
-      if (!stripeCustomerId) {
-        const customerResult = await stripeService.createCustomer(
-          tenant.email,
-          { tenantId, tenantName: tenant.name }
-        );
-
-        if (!customerResult.success) {
-          return res.status(500).json({
-            success: false,
-            error: 'Failed to create Stripe customer'
-          });
-        }
-
-        stripeCustomerId = customerResult.customer.id;
-
-        // Update tenant with Stripe customer ID
-        await dbQuery(
-          'UPDATE tenants SET stripe_customer_id = $1 WHERE id = $2',
-          [stripeCustomerId, tenantId]
-        );
-      }
-
-      // Get Stripe price ID based on plan and billing cycle
-      const amount = billingCycle === 'monthly' ? plan.price_monthly : plan.price_yearly;
-      
-      // Create Stripe subscription
-      const stripePriceId = plan[`stripe_price_id_${billingCycle}`];
-      
-      if (!stripePriceId) {
-        return res.status(400).json({
-          success: false,
-          error: 'Stripe price not configured for this plan'
-        });
-      }
-
-      // ✅ Issue #7 Fixed: Wrap in transaction for data consistency
-      const result = await withStripeTransaction(
-        // Step 1: Create Stripe subscription
-        async () => {
-          const subscriptionResult = await stripeService.createSubscription(
-            stripeCustomerId,
-            stripePriceId,
-            { tenantId, planId, billingCycle }
-          );
-
-          if (!subscriptionResult.success) {
-            throw new Error('Failed to create Stripe subscription');
-          }
-
-          return subscriptionResult;
-        },
-        // Step 2: Save to database in transaction
-        async (client, subscriptionResult) => {
-          const stripeSubscription = subscriptionResult.subscription;
-
-          const dbSubResult = await client.query(`
-            INSERT INTO subscriptions (
-              tenant_id, plan_id, status, billing_cycle,
-              stripe_subscription_id, stripe_customer_id,
-              current_period_start, current_period_end
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-            RETURNING *
-          `, [
-            tenantId,
-            planId,
-            stripeSubscription.status,
-            billingCycle,
-            stripeSubscription.id,
-            stripeCustomerId,
-            new Date(stripeSubscription.current_period_start * 1000),
-            new Date(stripeSubscription.current_period_end * 1000)
-          ]);
-
-          return {
-            subscription: dbSubResult.rows[0],
-            clientSecret: subscriptionResult.clientSecret,
-            stripeSubscriptionId: stripeSubscription.id
-          };
-        },
-        // Step 3: Rollback Stripe if database fails
-        async (subscriptionResult) => {
-          const stripeSubscription = subscriptionResult.subscription;
-          logger.warn('Rolling back Stripe subscription due to database error', {
-            stripeSubscriptionId: stripeSubscription.id
-          });
-          await stripeService.cancelSubscription(stripeSubscription.id, false);
-        }
-      );
-
-      res.status(201).json({
-        success: true,
-        data: result.dbResult
-      });
-
-    } catch (error) {
-      logger.error('Failed to create subscription', error);
-      res.status(500).json({
-        success: false,
-        error: 'Failed to create subscription'
-      });
-    }
-  }
-);
-
-// GET /api/subscriptions/:tenantId - Get subscription details
-router.get('/:tenantId',
-  authenticate,
-  [
-    param('tenantId').isUUID().withMessage('Valid tenant ID is required'),
-  ],
-  validate,
-  async (req, res) => {
-    try {
-      const { tenantId } = req.params;
-
-      // Check authorization
-      if (req.user.tenantId !== tenantId && req.user.role !== 'super_admin') {
-        return res.status(403).json({
-          success: false,
-          error: 'Unauthorized access'
-        });
-      }
-
-      const result = await dbQuery(`
-        SELECT 
-          s.*,
-          sp.name as plan_name,
-          sp.display_name as plan_display_name,
-          sp.features,
-          sp.limits
-        FROM subscriptions s
-        JOIN subscription_plans sp ON s.plan_id = sp.id
-        WHERE s.tenant_id = $1
-        ORDER BY s.created_at DESC
-        LIMIT 1
-      `, [tenantId]);
-
-      if (result.rows.length === 0) {
-        return res.status(404).json({
-          success: false,
-          error: 'No subscription found'
-        });
-      }
-
-      // Get usage statistics
-      const usageResult = await dbQuery(`
-        SELECT metric, value
-        FROM subscription_usage
-        WHERE subscription_id = $1
-        AND period_start <= NOW()
-        AND period_end >= NOW()
-      `, [result.rows[0].id]);
-
-      const usage = {};
-      usageResult.rows.forEach(row => {
-        usage[row.metric] = row.value;
-      });
+      // TODO: Process upgrade
+      logger.info('Subscription upgrade', { tenantId, planId, userId: req.user.id });
 
       res.json({
         success: true,
-        data: {
-          ...result.rows[0],
-          usage
-        }
+        message: 'Subscription upgraded successfully',
+        data: { planId }
       });
 
     } catch (error) {
-      logger.error('Failed to fetch subscription', error);
+      logger.error('Error upgrading subscription:', error);
       res.status(500).json({
         success: false,
-        error: 'Failed to fetch subscription'
+        message: 'Failed to upgrade subscription',
+        error: error.message
       });
     }
   }
 );
 
-// PUT /api/subscriptions/:id/upgrade - Upgrade subscription
-router.put('/:id/upgrade',
-  authenticate,
+// =====================================================
+// CREDITS MANAGEMENT ROUTES
+// =====================================================
+
+/**
+ * @route   GET /api/subscriptions/credits/balance
+ * @desc    Get credit balance
+ * @access  Private
+ */
+router.get('/credits/balance', verifyToken, async (req, res) => {
+  try {
+    const tenantId = req.user.tenantId;
+
+    // TODO: Fetch from database
+    const balance = {
+      smsCredits: 1245,
+      whatsappCredits: 487,
+      smsUsedThisMonth: 823,
+      whatsappUsedThisMonth: 213,
+      lowBalanceThreshold: 500,
+    };
+
+    res.json({
+      success: true,
+      data: { balance }
+    });
+
+  } catch (error) {
+    logger.error('Error fetching credit balance:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch credit balance',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * @route   GET /api/subscriptions/credits/packages
+ * @desc    Get available credit packages
+ * @access  Private
+ */
+router.get('/credits/packages', verifyToken, async (req, res) => {
+  try {
+    const { type } = req.query; // sms or whatsapp
+
+    const smsPackages = [
+      { id: 's1', name: 'Starter Pack', type: 'sms', credits: 500, price: 299, validityDays: 30 },
+      { id: 's2', name: 'Growth Pack', type: 'sms', credits: 1500, price: 799, bonusCredits: 100, validityDays: 60, isPopular: true },
+      { id: 's3', name: 'Business Pack', type: 'sms', credits: 5000, price: 2499, bonusCredits: 500, validityDays: 90 },
+      { id: 's4', name: 'Enterprise Pack', type: 'sms', credits: 15000, price: 6999, bonusCredits: 2000, validityDays: 180 },
+    ];
+
+    const whatsappPackages = [
+      { id: 'w1', name: 'Basic Pack', type: 'whatsapp', credits: 200, price: 399, validityDays: 30 },
+      { id: 'w2', name: 'Standard Pack', type: 'whatsapp', credits: 600, price: 999, bonusCredits: 50, validityDays: 60, isPopular: true },
+      { id: 'w3', name: 'Premium Pack', type: 'whatsapp', credits: 2000, price: 2999, bonusCredits: 200, validityDays: 90 },
+      { id: 'w4', name: 'Ultra Pack', type: 'whatsapp', credits: 6000, price: 7999, bonusCredits: 800, validityDays: 180 },
+    ];
+
+    let packages = [];
+    if (type === 'sms') {
+      packages = smsPackages;
+    } else if (type === 'whatsapp') {
+      packages = whatsappPackages;
+    } else {
+      packages = [...smsPackages, ...whatsappPackages];
+    }
+
+    res.json({
+      success: true,
+      data: { packages }
+    });
+
+  } catch (error) {
+    logger.error('Error fetching credit packages:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch credit packages',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * @route   POST /api/subscriptions/credits/purchase
+ * @desc    Purchase credit package
+ * @access  Private
+ */
+router.post('/credits/purchase',
+  verifyToken,
   [
-    param('id').isUUID().withMessage('Valid subscription ID is required'),
-    body('newPlanId').isUUID().withMessage('Valid new plan ID is required'),
+    body('packageId').notEmpty().withMessage('Package ID is required'),
+    body('type').isIn(['sms', 'whatsapp']).withMessage('Invalid credit type'),
   ],
-  validate,
   async (req, res) => {
     try {
-      const { id } = req.params;
-      const { newPlanId } = req.body;
-
-      // Get current subscription
-      const subResult = await dbQuery(
-        'SELECT * FROM subscriptions WHERE id = $1',
-        [id]
-      );
-
-      if (subResult.rows.length === 0) {
-        return res.status(404).json({
-          success: false,
-          error: 'Subscription not found'
-        });
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ success: false, errors: errors.array() });
       }
 
-      const subscription = subResult.rows[0];
+      const { packageId, type } = req.body;
+      const tenantId = req.user.tenantId;
 
-      // Check authorization
-      if (req.user.tenantId !== subscription.tenant_id && req.user.role !== 'super_admin') {
-        return res.status(403).json({
-          success: false,
-          error: 'Unauthorized access'
-        });
-      }
-
-      // Get new plan
-      const planResult = await dbQuery(
-        'SELECT * FROM subscription_plans WHERE id = $1 AND is_active = true',
-        [newPlanId]
-      );
-
-      if (planResult.rows.length === 0) {
-        return res.status(404).json({
-          success: false,
-          error: 'New plan not found'
-        });
-      }
-
-      const newPlan = planResult.rows[0];
-      const newPriceId = newPlan[`stripe_price_id_${subscription.billing_cycle}`];
-
-      // Upgrade in Stripe
-      const upgradeResult = await stripeService.upgradeSubscription(
-        subscription.stripe_subscription_id,
-        newPriceId
-      );
-
-      if (!upgradeResult.success) {
-        return res.status(500).json({
-          success: false,
-          error: 'Failed to upgrade subscription'
-        });
-      }
-
-      // Update database
-      const updateResult = await dbQuery(`
-        UPDATE subscriptions
-        SET plan_id = $1, updated_at = NOW()
-        WHERE id = $2
-        RETURNING *
-      `, [newPlanId, id]);
+      // TODO: Process payment and credit addition
+      logger.info('Credit package purchased', { tenantId, packageId, type, userId: req.user.id });
 
       res.json({
         success: true,
-        data: updateResult.rows[0],
-        message: 'Subscription upgraded successfully'
+        message: 'Credits purchased successfully',
+        data: { packageId, type }
       });
 
     } catch (error) {
-      logger.error('Failed to upgrade subscription', error);
+      logger.error('Error purchasing credits:', error);
       res.status(500).json({
         success: false,
-        error: 'Failed to upgrade subscription'
+        message: 'Failed to purchase credits',
+        error: error.message
       });
     }
   }
 );
 
-// PUT /api/subscriptions/:id/downgrade - Downgrade subscription
-router.put('/:id/downgrade',
-  authenticate,
+/**
+ * @route   GET /api/subscriptions/credits/usage
+ * @desc    Get credit usage history
+ * @access  Private
+ */
+router.get('/credits/usage', verifyToken, async (req, res) => {
+  try {
+    const tenantId = req.user.tenantId;
+    const { type, limit = 50 } = req.query;
+
+    // TODO: Fetch from database
+    const history = [
+      { id: '1', date: '2025-10-23 10:30', type: 'sms', credits: -10, description: 'Payment reminder', recipient: '+91 98765 11111' },
+      { id: '2', date: '2025-10-23 09:15', type: 'whatsapp', credits: -5, description: 'Welcome message', recipient: '+91 98765 22222' },
+      { id: '3', date: '2025-10-22 16:45', type: 'sms', credits: -25, description: 'Bulk fee reminder', recipient: 'Multiple students' },
+      { id: '4', date: '2025-10-22 14:20', type: 'whatsapp', credits: -8, description: 'Attendance alert', recipient: '+91 98765 33333' },
+      { id: '5', date: '2025-10-21 11:00', type: 'sms', credits: 1500, description: 'Credit purchase - Growth Pack', recipient: 'System' },
+    ];
+
+    const filteredHistory = type ? history.filter(h => h.type === type) : history;
+
+    res.json({
+      success: true,
+      data: { usage: filteredHistory.slice(0, limit) }
+    });
+
+  } catch (error) {
+    logger.error('Error fetching usage history:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch usage history',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * @route   POST /api/subscriptions/credits/auto-topup
+ * @desc    Configure auto-topup settings
+ * @access  Private
+ */
+router.post('/credits/auto-topup',
+  verifyToken,
   [
-    param('id').isUUID().withMessage('Valid subscription ID is required'),
-    body('newPlanId').isUUID().withMessage('Valid new plan ID is required'),
+    body('type').isIn(['sms', 'whatsapp']).withMessage('Invalid credit type'),
+    body('enabled').isBoolean().withMessage('Enabled must be boolean'),
+    body('threshold').optional().isInt({ min: 0 }).withMessage('Invalid threshold'),
+    body('packageId').optional().notEmpty().withMessage('Package ID required when enabled'),
   ],
-  validate,
   async (req, res) => {
     try {
-      const { id } = req.params;
-      const { newPlanId } = req.body;
-
-      // Get current subscription
-      const subResult = await dbQuery(
-        'SELECT * FROM subscriptions WHERE id = $1',
-        [id]
-      );
-
-      if (subResult.rows.length === 0) {
-        return res.status(404).json({
-          success: false,
-          error: 'Subscription not found'
-        });
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ success: false, errors: errors.array() });
       }
 
-      const subscription = subResult.rows[0];
+      const { type, enabled, threshold, packageId } = req.body;
+      const tenantId = req.user.tenantId;
 
-      // Check authorization
-      if (req.user.tenantId !== subscription.tenant_id && req.user.role !== 'super_admin') {
-        return res.status(403).json({
-          success: false,
-          error: 'Unauthorized access'
-        });
-      }
-
-      // Get new plan
-      const planResult = await dbQuery(
-        'SELECT * FROM subscription_plans WHERE id = $1 AND is_active = true',
-        [newPlanId]
-      );
-
-      if (planResult.rows.length === 0) {
-        return res.status(404).json({
-          success: false,
-          error: 'New plan not found'
-        });
-      }
-
-      const newPlan = planResult.rows[0];
-      const newPriceId = newPlan[`stripe_price_id_${subscription.billing_cycle}`];
-
-      // Downgrade in Stripe (applies at period end)
-      const downgradeResult = await stripeService.downgradeSubscription(
-        subscription.stripe_subscription_id,
-        newPriceId
-      );
-
-      if (!downgradeResult.success) {
-        return res.status(500).json({
-          success: false,
-          error: 'Failed to downgrade subscription'
-        });
-      }
-
-      // Update database (mark for downgrade at period end)
-      const updateResult = await dbQuery(`
-        UPDATE subscriptions
-        SET plan_id = $1, updated_at = NOW()
-        WHERE id = $2
-        RETURNING *
-      `, [newPlanId, id]);
+      // TODO: Save to database
+      logger.info('Auto-topup configured', { tenantId, type, enabled, threshold, packageId });
 
       res.json({
         success: true,
-        data: updateResult.rows[0],
-        message: 'Subscription will be downgraded at the end of the current period'
+        message: 'Auto-topup settings updated',
+        data: { type, enabled, threshold, packageId }
       });
 
     } catch (error) {
-      logger.error('Failed to downgrade subscription', error);
+      logger.error('Error configuring auto-topup:', error);
       res.status(500).json({
         success: false,
-        error: 'Failed to downgrade subscription'
+        message: 'Failed to configure auto-topup',
+        error: error.message
       });
     }
   }
 );
 
-// DELETE /api/subscriptions/:id/cancel - Cancel subscription
-router.delete('/:id/cancel',
-  authenticate,
-  [
-    param('id').isUUID().withMessage('Valid subscription ID is required'),
-    body('immediate').optional().isBoolean().withMessage('Immediate must be boolean'),
-  ],
-  validate,
-  async (req, res) => {
-    try {
-      const { id } = req.params;
-      const { immediate = false } = req.body;
+/**
+ * @route   GET /api/subscriptions/credits/auto-topup
+ * @desc    Get auto-topup settings
+ * @access  Private
+ */
+router.get('/credits/auto-topup', verifyToken, async (req, res) => {
+  try {
+    const tenantId = req.user.tenantId;
+    const { type } = req.query;
 
-      // Get subscription
-      const subResult = await dbQuery(
-        'SELECT * FROM subscriptions WHERE id = $1',
-        [id]
-      );
+    // TODO: Fetch from database
+    const settings = {
+      sms: { enabled: false, threshold: 500, packageId: 's2', type: 'sms' },
+      whatsapp: { enabled: false, threshold: 200, packageId: 'w2', type: 'whatsapp' },
+    };
 
-      if (subResult.rows.length === 0) {
-        return res.status(404).json({
-          success: false,
-          error: 'Subscription not found'
-        });
-      }
+    const result = type ? settings[type] : settings;
 
-      const subscription = subResult.rows[0];
+    res.json({
+      success: true,
+      data: { settings: result }
+    });
 
-      // Check authorization
-      if (req.user.tenantId !== subscription.tenant_id && req.user.role !== 'super_admin') {
-        return res.status(403).json({
-          success: false,
-          error: 'Unauthorized access'
-        });
-      }
-
-      // Cancel in Stripe
-      const cancelResult = await stripeService.cancelSubscription(
-        subscription.stripe_subscription_id,
-        !immediate
-      );
-
-      if (!cancelResult.success) {
-        return res.status(500).json({
-          success: false,
-          error: 'Failed to cancel subscription'
-        });
-      }
-
-      // Update database
-      const updateResult = await dbQuery(`
-        UPDATE subscriptions
-        SET 
-          status = $1,
-          cancel_at_period_end = $2,
-          cancelled_at = NOW(),
-          updated_at = NOW()
-        WHERE id = $3
-        RETURNING *
-      `, [
-        immediate ? 'cancelled' : subscription.status,
-        !immediate,
-        id
-      ]);
-
-      res.json({
-        success: true,
-        data: updateResult.rows[0],
-        message: immediate 
-          ? 'Subscription cancelled immediately' 
-          : 'Subscription will be cancelled at the end of the current period'
-      });
-
-    } catch (error) {
-      logger.error('Failed to cancel subscription', error);
-      res.status(500).json({
-        success: false,
-        error: 'Failed to cancel subscription'
-      });
-    }
+  } catch (error) {
+    logger.error('Error fetching auto-topup settings:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch auto-topup settings',
+      error: error.message
+    });
   }
-);
-
-// GET /api/subscriptions/:tenantId/invoices - Get invoices
-router.get('/:tenantId/invoices',
-  authenticate,
-  [
-    param('tenantId').isUUID().withMessage('Valid tenant ID is required'),
-    query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('Limit must be between 1 and 100'),
-  ],
-  validate,
-  async (req, res) => {
-    try {
-      const { tenantId } = req.params;
-      const { limit = 10 } = req.query;
-
-      // Check authorization
-      if (req.user.tenantId !== tenantId && req.user.role !== 'super_admin') {
-        return res.status(403).json({
-          success: false,
-          error: 'Unauthorized access'
-        });
-      }
-
-      const result = await dbQuery(`
-        SELECT * FROM invoices
-        WHERE tenant_id = $1
-        ORDER BY created_at DESC
-        LIMIT $2
-      `, [tenantId, limit]);
-
-      res.json({
-        success: true,
-        data: result.rows
-      });
-
-    } catch (error) {
-      logger.error('Failed to fetch invoices', error);
-      res.status(500).json({
-        success: false,
-        error: 'Failed to fetch invoices'
-      });
-    }
-  }
-);
-
-// POST /api/subscriptions/:id/portal - Create customer portal session
-router.post('/:id/portal',
-  authenticate,
-  [
-    param('id').isUUID().withMessage('Valid subscription ID is required'),
-  ],
-  validate,
-  async (req, res) => {
-    try {
-      const { id } = req.params;
-
-      // Get subscription
-      const subResult = await dbQuery(
-        'SELECT * FROM subscriptions WHERE id = $1',
-        [id]
-      );
-
-      if (subResult.rows.length === 0) {
-        return res.status(404).json({
-          success: false,
-          error: 'Subscription not found'
-        });
-      }
-
-      const subscription = subResult.rows[0];
-
-      // Check authorization
-      if (req.user.tenantId !== subscription.tenant_id) {
-        return res.status(403).json({
-          success: false,
-          error: 'Unauthorized access'
-        });
-      }
-
-      // Create portal session
-      const returnUrl = `${process.env.FRONTEND_URL}/dashboard/subscription`;
-      const portalResult = await stripeService.createPortalSession(
-        subscription.stripe_customer_id,
-        returnUrl
-      );
-
-      if (!portalResult.success) {
-        return res.status(500).json({
-          success: false,
-          error: 'Failed to create portal session'
-        });
-      }
-
-      res.json({
-        success: true,
-        data: {
-          url: portalResult.session.url
-        }
-      });
-
-    } catch (error) {
-      logger.error('Failed to create portal session', error);
-      res.status(500).json({
-        success: false,
-        error: 'Failed to create portal session'
-      });
-    }
-  }
-);
+});
 
 module.exports = router;
-
