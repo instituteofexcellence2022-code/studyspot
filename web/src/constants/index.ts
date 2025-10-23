@@ -1,3 +1,12 @@
+// Portal Mode Configuration
+export const PORTAL_MODE = process.env.REACT_APP_PORTAL_MODE || 'library'; // 'library' | 'admin'
+
+export const PORTAL_CONFIG = {
+  isLibraryPortal: PORTAL_MODE === 'library',
+  isAdminPortal: PORTAL_MODE === 'admin',
+  portalName: PORTAL_MODE === 'library' ? 'Library Portal' : 'Admin Portal',
+};
+
 // API Configuration
 export const API_CONFIG = {
   BASE_URL: process.env.REACT_APP_API_URL || 'http://localhost:3001',
@@ -141,10 +150,20 @@ export const ROUTES = {
 
 // User Roles and Permissions
 export const USER_ROLES = {
-  STUDENT: 'student',
-  LIBRARY_STAFF: 'library_staff',
-  LIBRARY_ADMIN: 'library_admin',
+  // Platform-level roles
   SUPER_ADMIN: 'super_admin',
+  PLATFORM_SUPPORT: 'platform_support',
+  
+  // Library-level roles (6 granular roles)
+  LIBRARY_OWNER: 'library_owner',          // Full access to library
+  BRANCH_MANAGER: 'branch_manager',        // Branch-level management
+  FRONT_DESK_STAFF: 'front_desk_staff',    // Daily operations
+  FACILITY_MANAGER: 'facility_manager',     // Maintenance & facilities
+  FINANCE_MANAGER: 'finance_manager',       // Financial operations
+  ANALYTICS_MANAGER: 'analytics_manager',   // Data analysis & reporting
+  
+  // Student role
+  STUDENT: 'student',
 } as const;
 
 export const ROLE_PERMISSIONS = {
@@ -186,9 +205,11 @@ export const ROLE_PERMISSIONS = {
 
 // Application Settings
 export const APP_CONFIG = {
-  NAME: '🎓 STUDYSPOT',
+  NAME: PORTAL_CONFIG.isAdminPortal ? '🎓 STUDYSPOT - Admin' : '🎓 STUDYSPOT',
   VERSION: '1.0.0',
-  DESCRIPTION: 'Multi-tenant SaaS platform for library management',
+  DESCRIPTION: PORTAL_CONFIG.isAdminPortal 
+    ? 'Platform management and administration'
+    : 'Multi-tenant SaaS platform for library management',
   DEFAULT_PAGE_SIZE: 10,
   MAX_PAGE_SIZE: 100,
   SESSION_TIMEOUT: 24 * 60 * 60 * 1000, // 24 hours in milliseconds
