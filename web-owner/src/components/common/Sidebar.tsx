@@ -483,6 +483,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
           <ListItem disablePadding sx={{ mb: 0.5 }}>
             <Tooltip title="Settings" placement="right">
               <ListItemButton 
+                onClick={() => handleNavigation(ROUTES.SETTINGS)}
                 sx={{ 
                   borderRadius: 1,
                   '&:hover': {

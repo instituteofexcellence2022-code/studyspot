@@ -91,6 +91,7 @@ const SmartSchedulerPage = lazy(() => import('./pages/ai/SmartSchedulerPage'));
 
 // Profile
 const ProfilePage = lazy(() => import('./pages/profile/ProfilePage'));
+const SettingsPage = lazy(() => import('./pages/settings/SettingsPage'));
 
 // Common Pages
 const HelpPage = lazy(() => import('./pages/common/HelpPage'));
@@ -309,6 +310,7 @@ const AppContent: React.FC = () => {
               {/* PROFILE & SETTINGS */}
               {/* ============================================ */}
               <Route path={ROUTES.PROFILE} element={<ProfilePage />} />
+              <Route path={ROUTES.SETTINGS} element={<SettingsPage />} />
               
               {/* Help & Support */}
               <Route path={ROUTES.HELP} element={<HelpPage />} />
