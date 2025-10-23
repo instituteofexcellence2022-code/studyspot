@@ -105,10 +105,10 @@ const DashboardPageEnhanced: React.FC = () => {
 
   // Quick actions
   const quickActions = [
-    { label: 'Add Student', icon: <AddIcon />, color: 'primary', path: '/students' },
-    { label: 'Record Payment', icon: <AttachMoney />, color: 'success', path: '/payments' },
-    { label: 'Manual Check-in', icon: <CheckCircle />, color: 'info', path: '/attendance' },
-    { label: 'Add Seat', icon: <EventSeat />, color: 'warning', path: '/seats' },
+    { label: 'Add Student', icon: <AddIcon />, color: 'primary', path: ROUTES.STUDENTS },
+    { label: 'Record Payment', icon: <AttachMoney />, color: 'success', path: ROUTES.PAYMENTS },
+    { label: 'Manual Check-in', icon: <CheckCircle />, color: 'info', path: ROUTES.ATTENDANCE },
+    { label: 'Add Seat', icon: <EventSeat />, color: 'warning', path: ROUTES.SEATS },
   ];
 
   // Recent activity
