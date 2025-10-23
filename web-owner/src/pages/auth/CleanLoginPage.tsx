@@ -17,9 +17,11 @@ import {
   PlayArrow,
   Google as GoogleIcon,
   GitHub as GitHubIcon,
+  SkipNext,
 } from '@mui/icons-material';
 import axios from 'axios';
 import { useAppDispatch } from '../../hooks/redux';
+import { setCredentials } from '../../store/slices/authSlice';
 import { ROUTES, API_CONFIG, STORAGE_KEYS } from '../../constants';
 import errorService from '../../services/errorService';
 import ENV from '../../config/environment';
@@ -35,6 +37,7 @@ const DEMO_ACCOUNT = {
 
 const CleanLoginPage: React.FC = () => {
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -171,6 +174,44 @@ const CleanLoginPage: React.FC = () => {
     await handleLogin(email, password);
   };
 
+  const handleSkipLogin = () => {
+    console.log('🔓 SKIP LOGIN - Bypassing authentication');
+    
+    // Create mock user data
+    const mockUser = {
+      id: 'demo-user-skip-123',
+      email: 'owner@demo.com',
+      firstName: 'Demo',
+      lastName: 'Owner',
+      role: 'library_owner' as const,
+      phone: '+1234567890',
+      status: 'active' as const,
+      tenantId: '00000000-0000-0000-0000-000000000000',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    const mockToken = 'skip-login-demo-token';
+
+    // Store in localStorage
+    localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, mockToken);
+    localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, mockToken);
+    localStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(mockUser));
+
+    // Dispatch to Redux
+    dispatch(setCredentials({
+      user: mockUser,
+      token: mockToken,
+      refreshToken: mockToken,
+    }));
+
+    // Navigate to dashboard
+    setSuccess('✅ Skipped login! Redirecting to dashboard...');
+    setTimeout(() => {
+      navigate(ROUTES.DASHBOARD);
+    }, 500);
+  };
+
   return (
     <Container maxWidth="sm">
       <Box
@@ -228,9 +269,23 @@ const CleanLoginPage: React.FC = () => {
             startIcon={<PlayArrow />}
             onClick={handleDemoAccountClick}
             disabled={loading}
-            sx={{ mb: 3, py: 1.5 }}
+            sx={{ mb: 2, py: 1.5 }}
           >
             {loading ? <CircularProgress size={24} /> : 'Try Demo Account'}
+          </Button>
+
+          {/* Skip Login Button */}
+          <Button
+            fullWidth
+            variant="outlined"
+            color="warning"
+            size="large"
+            startIcon={<SkipNext />}
+            onClick={handleSkipLogin}
+            disabled={loading}
+            sx={{ mb: 3, py: 1.5 }}
+          >
+            Skip Login (Go to Dashboard)
           </Button>
 
           <Divider sx={{ my: 3 }}>
