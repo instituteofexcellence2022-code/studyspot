@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box, Card, CardContent, Typography, Avatar, Paper, Button,
   Chip, Divider, List, ListItem, ListItemText, ListItemAvatar,
@@ -11,9 +12,11 @@ import {
   Notifications as NotificationIcon, CheckCircle, Warning,
 } from '@mui/icons-material';
 import { useAppSelector } from '../../hooks/redux';
+import { ROUTES } from '../../constants';
 
 const DashboardPageEnhanced: React.FC = () => {
   const { user } = useAppSelector((state) => state.auth);
+  const navigate = useNavigate();
   const [dateRange, setDateRange] = useState('today');
 
   // Enhanced stats with trends
@@ -226,6 +229,7 @@ const DashboardPageEnhanced: React.FC = () => {
                   variant="outlined"
                   color={action.color as any}
                   startIcon={action.icon}
+                  onClick={() => navigate(action.path)}
                   sx={{ py: 1.5 }}
                 >
                   {action.label}
