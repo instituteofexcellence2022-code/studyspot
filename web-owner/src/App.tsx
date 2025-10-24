@@ -56,6 +56,7 @@ const FeePlansPage = lazy(() => import('./pages/subscription/FeePlansPageAdvance
 const PaymentsPage = lazy(() => import('./pages/payment/PaymentsPageComprehensive'));
 const PaymentAnalyticsPage = lazy(() => import('./pages/analytics/PaymentAnalyticsPage'));
 const SubscriptionCreditsPage = lazy(() => import('./pages/subscription/SubscriptionCreditsPage'));
+const SeatManagementPage = lazy(() => import('./pages/seats/SeatManagementPage'));
 
 // Booking Management
 const BookingsPage = lazy(() => import('./pages/booking/BookingsPage'));
@@ -268,6 +269,7 @@ const AppContent: React.FC = () => {
               <Route path={ROUTES.PAYMENTS} element={<PaymentsPage />} />
               <Route path={ROUTES.PAYMENT_ANALYTICS} element={<PaymentAnalyticsPage />} />
               <Route path={ROUTES.SUBSCRIPTION_CREDITS} element={<SubscriptionCreditsPage />} />
+              <Route path={ROUTES.SEAT_MANAGEMENT} element={<SeatManagementPage />} />
               <Route path={ROUTES.STAFF} element={<StaffPage />} />
 
               {/* ============================================ */}

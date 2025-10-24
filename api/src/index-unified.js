@@ -28,6 +28,7 @@ const libraryRoutes = require('./routes/libraries');
 const bookingRoutes = require('./routes/bookings');
 const paymentRoutes = require('./routes/payments');
 const paymentAnalyticsRoutes = require('./routes/paymentAnalytics');
+const seatManagementRoutes = require('./routes/seatManagement');
 const notificationRoutes = require('./routes/notifications');
 const mapsRoutes = require('./routes/maps');
 const analyticsRoutes = require('./routes/analytics');
@@ -199,6 +200,7 @@ app.use('/api/libraries', libraryRoutes);   // Library CRUD + Seats
 app.use('/api/bookings', bookingRoutes);    // Booking management
 app.use('/api/payments', paymentRoutes);    // Payment processing + Razorpay
 app.use('/api/payment-analytics', paymentAnalyticsRoutes); // Payment analytics & insights
+app.use('/api/seat-management', seatManagementRoutes); // Seat & space management
 app.use('/api/notifications', notificationRoutes); // Notifications
 app.use('/api/maps', mapsRoutes);           // Google Maps integration
 app.use('/api/analytics', analyticsRoutes); // Analytics & reporting

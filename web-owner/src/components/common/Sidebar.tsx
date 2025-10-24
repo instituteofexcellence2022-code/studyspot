@@ -45,6 +45,7 @@ import {
   MenuBook,
   Brightness4 as DarkModeIcon,
   Brightness7 as LightModeIcon,
+  EditLocationAlt,
 } from '@mui/icons-material';
 
 import { ROUTES } from '../../constants';
@@ -180,6 +181,15 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
       roles: ['library_owner', 'super_admin'],
       description: 'Manage plans & communication credits',
       section: 'settings',
+    },
+    {
+      label: 'Seat & Space Designer',
+      path: ROUTES.SEAT_MANAGEMENT,
+      icon: <EditLocationAlt />,
+      roles: ['library_owner', 'branch_manager', 'facility_manager', 'super_admin'],
+      description: 'Design layouts & manage zones',
+      section: 'operations',
+      badge: { text: 'NEW', color: 'success' }
     },
     {
       label: 'Bookings',
