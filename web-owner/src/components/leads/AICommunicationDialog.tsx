@@ -473,8 +473,8 @@ Best,
         Select Communication Channel
       </Typography>
       
-      <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid item xs={12} sm={6} md={3}>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 3 }}>
+        <Box sx={{ flex: '1 1 200px', minWidth: '200px' }}>
           <Card 
             sx={{ 
               cursor: 'pointer',
@@ -493,7 +493,7 @@ Best,
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Box sx={{ flex: '1 1 200px', minWidth: '200px' }}>
           <Card 
             sx={{ 
               cursor: 'pointer',
@@ -512,7 +512,7 @@ Best,
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Box sx={{ flex: '1 1 200px', minWidth: '200px' }}>
           <Card 
             sx={{ 
               cursor: 'pointer',
@@ -531,7 +531,7 @@ Best,
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Box sx={{ flex: '1 1 200px', minWidth: '200px' }}>
           <Card 
             sx={{ 
               cursor: 'pointer',
@@ -740,39 +740,39 @@ Best,
             Lead Information
           </Typography>
           
-          <Grid container spacing={2}>
-            <Grid item xs={12} sm={6}>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+            <Box sx={{ flex: '1 1 200px', minWidth: '200px' }}>
               <Typography variant="body2" color="text.secondary">
                 Name
               </Typography>
               <Typography variant="body1">
                 {lead?.name || 'N/A'}
               </Typography>
-            </Grid>
-            <Grid item xs={12} sm={6}>
+            </Box>
+            <Box sx={{ flex: '1 1 200px', minWidth: '200px' }}>
               <Typography variant="body2" color="text.secondary">
                 Company
               </Typography>
               <Typography variant="body1">
                 {lead?.company || 'N/A'}
               </Typography>
-            </Grid>
-            <Grid item xs={12} sm={6}>
+            </Box>
+            <Box sx={{ flex: '1 1 200px', minWidth: '200px' }}>
               <Typography variant="body2" color="text.secondary">
                 Industry
               </Typography>
               <Typography variant="body1">
                 Technology
               </Typography>
-            </Grid>
-            <Grid item xs={12} sm={6}>
+            </Box>
+            <Box sx={{ flex: '1 1 200px', minWidth: '200px' }}>
               <Typography variant="body2" color="text.secondary">
                 Role
               </Typography>
               <Typography variant="body1">
                 {lead?.position || 'N/A'}
               </Typography>
-            </Grid>
+            </Box>
           </Grid>
         </CardContent>
       </Card>
