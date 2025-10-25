@@ -121,6 +121,7 @@ export const ROUTES = {
   FEE_PLANS: '/fee-plans',
   STUDENTS: '/students',
   ATTENDANCE: '/attendance',
+  BARCODE_QR: '/barcode-qr',
   PAYMENTS: '/payments',
   PAYMENT_ANALYTICS: '/payment-analytics',
   SUBSCRIPTION_CREDITS: '/subscription-credits',

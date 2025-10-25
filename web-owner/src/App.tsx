@@ -57,11 +57,15 @@ const PaymentsPage = lazy(() => import('./pages/payment/PaymentsPageComprehensiv
 const PaymentAnalyticsPage = lazy(() => import('./pages/analytics/PaymentAnalyticsPage'));
 const SubscriptionCreditsPage = lazy(() => import('./pages/subscription/SubscriptionCreditsPage'));
 const SeatManagementPage = lazy(() => import('./pages/seats/SeatManagementPage'));
+const SmartIoTDashboard = lazy(() => import('./pages/iot/SmartIoTDashboard'));
+const FaceRecognitionDashboard = lazy(() => import('./pages/attendance/FaceRecognitionDashboard'));
+const ExternalCameraDashboard = lazy(() => import('./components/face-recognition/ExternalCameraDashboard'));
 
 // Booking Management
 const BookingsPage = lazy(() => import('./pages/booking/BookingsPage'));
 const BookingDetailsPage = lazy(() => import('./pages/booking/BookingDetailsPage'));
 const AttendancePage = lazy(() => import('./pages/booking/AttendancePage'));
+const BarcodeQRPage = lazy(() => import('./pages/operations/BarcodeQRPage'));
 
 // Student Management
 const UsersPage = lazy(() => import('./pages/user/UsersPage'));
@@ -92,6 +96,13 @@ const RecommendationsPage = lazy(() => import('./pages/ai/RecommendationsPage'))
 const PredictiveAnalyticsPage = lazy(() => import('./pages/ai/PredictiveAnalyticsPage'));
 const SmartSchedulerPage = lazy(() => import('./pages/ai/SmartSchedulerPage'));
 
+// Issue Management
+const IssueManagementPage = lazy(() => import('./pages/issues/IssueManagementPage'));
+
+// Referral & Discount Management
+const ReferralDiscountManagementPage = lazy(() => import('./pages/referral/ReferralDiscountManagementPage'));
+const OfflinePaymentPage = lazy(() => import('./pages/offline-payments/OfflinePaymentPage'));
+
 // Profile
 const ProfilePage = lazy(() => import('./pages/profile/ProfilePage'));
 const SettingsPage = lazy(() => import('./pages/settings/SettingsPage'));
@@ -99,6 +110,10 @@ const SettingsPage = lazy(() => import('./pages/settings/SettingsPage'));
 // Common Pages
 const HelpPage = lazy(() => import('./pages/common/HelpPage'));
 const NotFoundPage = lazy(() => import('./pages/common/NotFoundPage'));
+
+// Organization Management
+const OrganizationOnboardingDashboard = lazy(() => import('./pages/onboarding/OrganizationOnboardingDashboard'));
+const FeatureControlDashboard = lazy(() => import('./pages/features/FeatureControlDashboard'));
 
 // ============================================
 // THEME CONFIGURATION - Library Owner Theme
@@ -266,10 +281,14 @@ const AppContent: React.FC = () => {
               <Route path={ROUTES.FEE_PLANS} element={<FeePlansPage />} />
               <Route path={ROUTES.STUDENTS} element={<StudentsPage />} />
               <Route path={ROUTES.ATTENDANCE} element={<AttendancePage />} />
+              <Route path={ROUTES.BARCODE_QR} element={<BarcodeQRPage />} />
               <Route path={ROUTES.PAYMENTS} element={<PaymentsPage />} />
               <Route path={ROUTES.PAYMENT_ANALYTICS} element={<PaymentAnalyticsPage />} />
               <Route path={ROUTES.SUBSCRIPTION_CREDITS} element={<SubscriptionCreditsPage />} />
               <Route path={ROUTES.SEAT_MANAGEMENT} element={<SeatManagementPage />} />
+              <Route path="/iot-dashboard" element={<SmartIoTDashboard />} />
+              <Route path="/face-recognition" element={<FaceRecognitionDashboard />} />
+              <Route path="/external-cameras" element={<ExternalCameraDashboard />} />
               <Route path={ROUTES.STAFF} element={<StaffPage />} />
 
               {/* ============================================ */}
@@ -314,6 +333,17 @@ const AppContent: React.FC = () => {
               <Route path={ROUTES.AI_SCHEDULER} element={<SmartSchedulerPage />} />
 
               {/* ============================================ */}
+              {/* ISSUE MANAGEMENT */}
+              {/* ============================================ */}
+              <Route path="/issues" element={<IssueManagementPage />} />
+
+              {/* ============================================ */}
+              {/* REFERRAL & DISCOUNT MANAGEMENT */}
+              {/* ============================================ */}
+              <Route path="/referral-discounts" element={<ReferralDiscountManagementPage />} />
+              <Route path="/offline-payments" element={<OfflinePaymentPage />} />
+
+              {/* ============================================ */}
               {/* PROFILE & SETTINGS */}
               {/* ============================================ */}
               <Route path={ROUTES.PROFILE} element={<ProfilePage />} />
@@ -321,6 +351,12 @@ const AppContent: React.FC = () => {
               
               {/* Help & Support */}
               <Route path={ROUTES.HELP} element={<HelpPage />} />
+              
+              {/* ============================================ */}
+              {/* ORGANIZATION MANAGEMENT */}
+              {/* ============================================ */}
+              <Route path="/onboarding" element={<OrganizationOnboardingDashboard />} />
+              <Route path="/feature-control" element={<FeatureControlDashboard />} />
             </Route>
 
             {/* ============================================ */}

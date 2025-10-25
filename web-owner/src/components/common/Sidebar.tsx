@@ -46,6 +46,15 @@ import {
   Brightness4 as DarkModeIcon,
   Brightness7 as LightModeIcon,
   EditLocationAlt,
+  Star,
+  Receipt,
+  SmartToy as SmartIcon,
+  Face as FaceIcon,
+  Videocam as CameraIcon,
+  Business as BusinessIcon,
+  Tune as TuneIcon,
+  QrCode as QrCodeIcon,
+  QrCodeScanner as QrCodeScannerIcon,
 } from '@mui/icons-material';
 
 import { ROUTES } from '../../constants';
@@ -81,23 +90,21 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
   
   const { user } = useAppSelector((state) => state.auth);
   
-  const [expandedSections, setExpandedSections] = useState<string[]>(['main', 'management']);
+  const [expandedSections, setExpandedSections] = useState<string[]>(['management', 'users', 'operations', 'finance', 'marketing', 'admin']); // All sections expanded by default
 
-  const drawerWidth = 260;
+  const drawerWidth = 280;
 
   const navigationItems: NavigationItem[] = [
-    // Main Section
+    // Library Management
     {
-      label: 'Dashboard',
-      path: ROUTES.DASHBOARD,
-      icon: <DashboardIcon />,
-      roles: ['student', 'library_staff', 'library_owner', 'branch_manager', 'super_admin'],
-      description: 'Overview & Analytics',
-      section: 'main',
-      badge: { text: 'Live', color: 'success' }
+      label: 'Organization Onboarding',
+      path: '/onboarding',
+      icon: <BusinessIcon />,
+      roles: ['library_owner', 'super_admin'],
+      description: 'Complete organization setup wizard',
+      section: 'management',
+      badge: { text: 'NEW', color: 'success' }
     },
-    
-    // Management Section
     {
       label: 'Libraries',
       path: ROUTES.LIBRARIES,
@@ -108,16 +115,16 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
       badge: { count: 12, color: 'primary' }
     },
     {
-      label: 'Seats',
-      path: ROUTES.SEATS,
+      label: 'Seat Management',
+      path: ROUTES.SEAT_MANAGEMENT,
       icon: <SeatIcon />,
-      roles: ['library_staff', 'library_owner', 'branch_manager', 'super_admin'],
-      description: 'Seat allocation & zones',
+      roles: ['library_staff', 'library_owner', 'branch_manager', 'facility_manager', 'super_admin'],
+      description: 'Design layouts, zones & seat allocation',
       section: 'management',
       badge: { count: 350, color: 'success' }
     },
     {
-      label: 'Fee Plans',
+      label: 'Pricing Plans',
       path: ROUTES.FEE_PLANS,
       icon: <FeePlanIcon />,
       roles: ['library_staff', 'library_owner', 'branch_manager', 'finance_manager', 'super_admin'],
@@ -126,7 +133,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
       badge: { count: 4, color: 'warning' }
     },
     
-    // Users Section
+    // User Management
     {
       label: 'Students',
       path: ROUTES.STUDENTS,
@@ -134,10 +141,10 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
       roles: ['library_staff', 'library_owner', 'branch_manager', 'super_admin'],
       description: 'Student management',
       section: 'users',
-      badge: { count: 234, color: 'info', text: 'API' }
+      badge: { count: 234, color: 'info' }
     },
     {
-      label: 'Staff',
+      label: 'Staff Members',
       path: ROUTES.STAFF,
       icon: <StaffIcon />,
       roles: ['library_owner', 'branch_manager', 'super_admin'],
@@ -146,7 +153,15 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
       badge: { count: 15, color: 'secondary' }
     },
     
-    // Operations Section
+    // Daily Operations
+    {
+      label: 'Bookings',
+      path: ROUTES.BOOKINGS,
+      icon: <BookingIcon />,
+      roles: ['student', 'library_staff', 'library_owner', 'branch_manager', 'super_admin'],
+      description: 'Seat reservations',
+      section: 'operations',
+    },
     {
       label: 'Attendance',
       path: ROUTES.ATTENDANCE,
@@ -157,12 +172,32 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
       badge: { count: 85, color: 'info', text: 'Today' }
     },
     {
+      label: 'QR Code & Barcode',
+      path: ROUTES.BARCODE_QR,
+      icon: <QrCodeIcon />,
+      roles: ['library_staff', 'library_owner', 'branch_manager', 'super_admin'],
+      description: 'Generate library QR codes for attendance',
+      section: 'operations',
+      badge: { text: 'NEW', color: 'success' }
+    },
+    {
+      label: 'Issue Management',
+      path: '/issues',
+      icon: <Assignment />,
+      roles: ['library_staff', 'library_owner', 'branch_manager', 'super_admin'],
+      description: 'Track and resolve student issues',
+      section: 'operations',
+      badge: { count: 5, color: 'warning' }
+    },
+    
+    // Financial Management
+    {
       label: 'Payments',
       path: ROUTES.PAYMENTS,
       icon: <PaymentIcon />,
       roles: ['library_staff', 'library_owner', 'branch_manager', 'finance_manager', 'super_admin'],
       description: 'Transactions & billing',
-      section: 'operations',
+      section: 'finance',
       badge: { text: '₹12K', color: 'success' }
     },
     {
@@ -171,38 +206,80 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
       icon: <AnalyticsIcon />,
       roles: ['library_owner', 'branch_manager', 'finance_manager', 'super_admin'],
       description: 'Revenue insights & forecasts',
-      section: 'operations',
-      badge: { text: '₹12K', color: 'success' }
+      section: 'finance',
     },
     {
       label: 'Subscription & Credits',
       path: ROUTES.SUBSCRIPTION_CREDITS,
       icon: <CreditCard />,
       roles: ['library_owner', 'super_admin'],
-      description: 'Manage plans & communication credits',
-      section: 'settings',
+      description: 'Plans, credits & billing management',
+      section: 'finance',
+      badge: { text: 'NEW', color: 'success' }
     },
     {
-      label: 'Seat & Space Designer',
-      path: ROUTES.SEAT_MANAGEMENT,
-      icon: <EditLocationAlt />,
-      roles: ['library_owner', 'branch_manager', 'facility_manager', 'super_admin'],
-      description: 'Design layouts & manage zones',
+      label: 'Billing & Invoices',
+      path: ROUTES.SUBSCRIPTION_BILLING,
+      icon: <Receipt />,
+      roles: ['library_owner', 'super_admin'],
+      description: 'Payment history and invoice management',
+      section: 'finance',
+    },
+    
+    // IoT & Smart Controls
+    {
+      label: 'Smart IoT Control',
+      path: '/iot-dashboard',
+      icon: <SmartIcon />,
+      roles: ['library_owner', 'super_admin'],
+      description: 'WiFi-controlled electrical appliance management',
       section: 'operations',
       badge: { text: 'NEW', color: 'success' }
     },
     {
-      label: 'Bookings',
-      path: ROUTES.BOOKINGS,
-      icon: <BookingIcon />,
-      roles: ['student', 'library_staff', 'library_owner', 'branch_manager', 'super_admin'],
-      description: 'Seat reservations',
+      label: 'Face Recognition',
+      path: '/face-recognition',
+      icon: <FaceIcon />,
+      roles: ['library_owner', 'super_admin'],
+      description: 'Biometric attendance with face recognition',
       section: 'operations',
+      badge: { text: 'AI', color: 'info' }
+    },
+    {
+      label: 'External Cameras',
+      path: '/external-cameras',
+      icon: <CameraIcon />,
+      roles: ['library_owner', 'super_admin'],
+      description: 'Manage CP Plus, Hikvision, and other IP cameras',
+      section: 'operations',
+      badge: { text: 'NEW', color: 'success' }
     },
     
-    // Admin Section
+    // Marketing & Growth
     {
-      label: 'Users',
+      label: 'Referral Program',
+      path: '/referral-discounts',
+      icon: <TrendingUp />,
+      roles: ['library_owner', 'branch_manager', 'super_admin'],
+      description: 'Manage referral programs and discount coupons',
+      section: 'marketing',
+      badge: { text: 'NEW', color: 'success' }
+    },
+    
+    // Payment Collection
+    {
+      label: 'Offline Payments',
+      path: '/offline-payments',
+      icon: <PaymentIcon />,
+      roles: ['library_staff', 'library_owner', 'branch_manager', 'super_admin'],
+      description: 'Automated offline payment collection with minimal human intervention',
+      section: 'finance',
+      badge: { text: 'AUTO', color: 'info' }
+    },
+    
+    // System Administration
+    {
+      label: 'User Accounts',
       path: ROUTES.USERS,
       icon: <UserIcon />,
       roles: ['library_owner', 'super_admin'],
@@ -210,12 +287,24 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
       section: 'admin',
     },
     {
-      label: 'Admin',
+      label: 'System Settings',
       path: ROUTES.ADMIN,
       icon: <AdminIcon />,
       roles: ['super_admin'],
       description: 'System settings',
       section: 'admin',
+    },
+    
+    
+    // Feature Control
+    {
+      label: 'Feature Control',
+      path: '/feature-control',
+      icon: <TuneIcon />,
+      roles: ['library_owner', 'super_admin'],
+      description: 'Enable/disable features and manage dependencies',
+      section: 'admin',
+      badge: { text: 'NEW', color: 'info' }
     },
   ];
 
@@ -242,54 +331,71 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
     );
   };
 
-  const filteredNavigationItems = navigationItems.filter(item =>
-    item.roles.includes(user?.role || '')
-  );
+  // Remove role-based filtering - show all navigation items
+  const filteredNavigationItems = navigationItems;
 
-  // Group items by section
+  // Group items by section - Professional workflow order
   const sections = {
-    main: filteredNavigationItems.filter(item => item.section === 'main'),
     management: filteredNavigationItems.filter(item => item.section === 'management'),
     users: filteredNavigationItems.filter(item => item.section === 'users'),
     operations: filteredNavigationItems.filter(item => item.section === 'operations'),
+    finance: filteredNavigationItems.filter(item => item.section === 'finance'),
+    marketing: filteredNavigationItems.filter(item => item.section === 'marketing'),
     admin: filteredNavigationItems.filter(item => item.section === 'admin'),
   };
 
   const sectionTitles = {
-    main: 'Overview',
-    management: 'Management',
+    management: 'Library',
     users: 'Users',
     operations: 'Operations',
-    admin: 'Administration',
+    finance: 'Finance',
+    marketing: 'Marketing',
+    admin: 'Admin',
   };
 
   const renderNavItem = (item: NavigationItem) => {
     const isActive = location.pathname === item.path;
     
     return (
-      <ListItem key={item.path} disablePadding sx={{ mb: 0.5 }}>
-        <Tooltip title={item.description || item.label} placement="right" arrow>
+      <ListItem key={item.path} disablePadding sx={{ mb: 0.3 }}>
+        <Tooltip title={item.description || item.label} placement="right" arrow sx={{ zIndex: theme.zIndex.drawer + 10 }}>
           <ListItemButton
             selected={isActive}
             onClick={() => handleNavigation(item.path)}
             sx={{
-              borderRadius: 1,
-              mx: 1,
-              transition: 'all 0.2s',
+              borderRadius: 1.5,
+              mx: 1.5,
+              py: 0.8,
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              position: 'relative',
+              overflow: 'hidden',
               '&.Mui-selected': {
-                backgroundColor: theme.palette.primary.main,
+                backgroundColor: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
                 color: 'white',
-                boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.4)}`,
+                boxShadow: `0 8px 25px ${alpha(theme.palette.primary.main, 0.4)}`,
+                transform: 'translateX(6px) scale(1.02)',
                 '&:hover': {
-                  backgroundColor: theme.palette.primary.dark,
+                  backgroundColor: `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.main} 100%)`,
+                  transform: 'translateX(6px) scale(1.02)',
                 },
                 '& .MuiListItemIcon-root': {
                   color: 'white',
                 },
+                '&::before': {
+                  content: '""',
+                  position: 'absolute',
+                  left: 0,
+                  top: 0,
+                  bottom: 0,
+                  width: '4px',
+                  background: 'white',
+                  borderRadius: '0 2px 2px 0',
+                },
               },
               '&:hover': {
-                backgroundColor: alpha(theme.palette.primary.main, 0.08),
+                backgroundColor: alpha(theme.palette.primary.main, 0.1),
                 transform: 'translateX(4px)',
+                boxShadow: `0 4px 15px ${alpha(theme.palette.primary.main, 0.2)}`,
               },
             }}
           >
@@ -309,8 +415,8 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
             <ListItemText 
               primary={item.label}
               primaryTypographyProps={{
-                fontSize: '0.9rem',
-                fontWeight: isActive ? 600 : 400,
+                fontSize: '0.85rem',
+                fontWeight: isActive ? 600 : 500,
               }}
             />
             {item.badge?.text && (
@@ -337,39 +443,45 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
     const isExpanded = expandedSections.includes(sectionKey);
     const title = sectionTitles[sectionKey as keyof typeof sectionTitles];
     
-    if (sectionKey === 'main') {
-      // Main section doesn't collapse
-      return (
-        <Box key={sectionKey} sx={{ mb: 1 }}>
-          {items.map(renderNavItem)}
-        </Box>
-      );
-    }
-    
     return (
       <Box key={sectionKey} sx={{ mb: 1 }}>
         <ListItemButton
           onClick={() => toggleSection(sectionKey)}
           sx={{
-            mx: 1,
-            borderRadius: 1,
-            py: 0.5,
+            mx: 1.5,
+            borderRadius: 1.5,
+            py: 0.8,
+            mb: 0.5,
+            background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.06)} 0%, ${alpha(theme.palette.primary.main, 0.02)} 100%)`,
+            border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
             '&:hover': {
-              backgroundColor: alpha(theme.palette.primary.main, 0.05),
+              backgroundColor: alpha(theme.palette.primary.main, 0.1),
+              transform: 'translateX(1px)',
+              boxShadow: `0 2px 8px ${alpha(theme.palette.primary.main, 0.15)}`,
             },
           }}
         >
           <ListItemText
             primary={title}
             primaryTypographyProps={{
-              fontSize: '0.75rem',
-              fontWeight: 700,
-              color: 'text.secondary',
+              fontSize: '0.7rem',
+              fontWeight: 600,
+              color: theme.palette.primary.main,
               textTransform: 'uppercase',
-              letterSpacing: 0.5,
+              letterSpacing: 0.3,
             }}
           />
-          {isExpanded ? <ExpandLess fontSize="small" /> : <ExpandMore fontSize="small" />}
+          <Box sx={{ 
+            display: 'flex', 
+            alignItems: 'center',
+            bgcolor: alpha(theme.palette.primary.main, 0.1),
+            borderRadius: 0.8,
+            px: 0.8,
+            py: 0.3,
+            transition: 'all 0.2s ease',
+          }}>
+            {isExpanded ? <ExpandLess sx={{ fontSize: '1rem' }} /> : <ExpandMore sx={{ fontSize: '1rem' }} />}
+          </Box>
         </ListItemButton>
         <Collapse in={isExpanded} timeout="auto" unmountOnExit>
           <List disablePadding sx={{ mt: 0.5 }}>
@@ -381,215 +493,353 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
   };
 
   const drawerContent = (
-    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'background.default' }}>
-      {/* Header with Branding */}
+    <Box sx={{ 
+      height: '100%', 
+      display: 'flex', 
+      flexDirection: 'column', 
+      bgcolor: 'background.default',
+      background: `linear-gradient(180deg, ${alpha(theme.palette.primary.main, 0.02)} 0%, ${theme.palette.background.default} 100%)`,
+    }}>
+      {/* Enhanced Header with Branding */}
       <Box 
         sx={{ 
-          p: 2.5, 
+          p: 3, 
           background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
           color: 'white',
+          position: 'relative',
+          '&::after': {
+            content: '""',
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: '1px',
+            background: `linear-gradient(90deg, transparent 0%, ${alpha('#fff', 0.3)} 50%, transparent 100%)`,
+          }
         }}
       >
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
           <Avatar 
             sx={{ 
               bgcolor: 'white', 
               color: theme.palette.primary.main,
-              width: 40,
-              height: 40,
-              mr: 1.5,
+              width: 48,
+              height: 48,
+              mr: 2,
               fontWeight: 700,
+              fontSize: '1.5rem',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
             }}
           >
             🎓
           </Avatar>
           <Box>
-            <Typography variant="h6" fontWeight={700} sx={{ lineHeight: 1.2 }}>
+            <Typography variant="h5" fontWeight={800} sx={{ lineHeight: 1.2, mb: 0.5 }}>
               STUDYSPOT
             </Typography>
-            <Typography variant="caption" sx={{ opacity: 0.9 }}>
-              Owner Portal
+            <Typography variant="body2" sx={{ opacity: 0.9, fontWeight: 500 }}>
+              Library Owner Portal
             </Typography>
+          </Box>
+        </Box>
+        <Box sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'space-between',
+          bgcolor: alpha('#fff', 0.1),
+          borderRadius: 2,
+          p: 1.5,
+          backdropFilter: 'blur(10px)',
+        }}>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <Box sx={{ 
+              width: 8, 
+              height: 8, 
+              borderRadius: '50%', 
+              bgcolor: '#4caf50', 
+              mr: 1,
+              animation: 'pulse 2s infinite',
+              '@keyframes pulse': {
+                '0%': { opacity: 1 },
+                '50%': { opacity: 0.5 },
+                '100%': { opacity: 1 },
+              }
+            }} />
+            <Typography variant="caption" sx={{ fontWeight: 600 }}>
+              System Online
+            </Typography>
+          </Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Chip 
+              label="v1.0.0" 
+              size="small" 
+              sx={{ 
+                bgcolor: alpha('#fff', 0.2), 
+                color: 'white',
+                fontWeight: 600,
+                fontSize: '0.7rem',
+              }} 
+            />
+            <Tooltip title={`Switch to ${theme.palette.mode === 'dark' ? 'Light' : 'Dark'} Mode`} sx={{ zIndex: theme.zIndex.drawer + 10 }}>
+              <IconButton
+                size="small"
+                onClick={() => dispatch(toggleTheme())}
+                sx={{
+                  bgcolor: alpha('#fff', 0.1),
+                  color: 'white',
+                  '&:hover': {
+                    bgcolor: alpha('#fff', 0.2),
+                  },
+                }}
+              >
+                {theme.palette.mode === 'dark' ? (
+                  <LightModeIcon fontSize="small" />
+                ) : (
+                  <DarkModeIcon fontSize="small" />
+                )}
+              </IconButton>
+            </Tooltip>
           </Box>
         </Box>
       </Box>
 
-      {/* User Profile Card */}
+      {/* Compact User Profile & Dashboard */}
       <Box 
         sx={{ 
-          p: 2, 
-          mx: 1.5, 
+          p: 1.5, 
+          mx: 2, 
           mt: 2,
           mb: 1,
           borderRadius: 2,
-          bgcolor: alpha(theme.palette.primary.main, 0.05),
-          border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+          background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.08)} 0%, ${alpha(theme.palette.primary.main, 0.03)} 100%)`,
+          border: `1px solid ${alpha(theme.palette.primary.main, 0.15)}`,
+          boxShadow: `0 2px 12px ${alpha(theme.palette.primary.main, 0.1)}`,
+          position: 'relative',
+          overflow: 'hidden',
+          '&::before': {
+            content: '""',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: '2px',
+            background: `linear-gradient(90deg, ${theme.palette.primary.main} 0%, ${theme.palette.secondary.main} 100%)`,
+          }
         }}
       >
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-          <Avatar 
-            sx={{ 
-              bgcolor: theme.palette.primary.main,
-              width: 36,
-              height: 36,
-              mr: 1.5,
-              fontSize: '1rem',
-            }}
-          >
-            {user?.firstName?.charAt(0) || 'U'}
-          </Avatar>
-          <Box sx={{ flex: 1 }}>
-            <Typography variant="body2" fontWeight={600} noWrap>
-              {user?.firstName} {user?.lastName}
-            </Typography>
-            <Typography variant="caption" color="text.secondary" noWrap>
-              {user?.role?.replace('_', ' ').toUpperCase()}
-            </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: 0 }}>
+            <Avatar 
+              sx={{ 
+                bgcolor: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+                width: 36,
+                height: 36,
+                mr: 1.5,
+                fontSize: '0.9rem',
+                fontWeight: 700,
+                boxShadow: `0 2px 8px ${alpha(theme.palette.primary.main, 0.3)}`,
+              }}
+            >
+              {user?.firstName?.charAt(0) || 'U'}
+            </Avatar>
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Typography variant="body2" fontWeight={600} noWrap sx={{ mb: 0.2, fontSize: '0.8rem' }}>
+                {user?.firstName} {user?.lastName}
+              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                <Chip 
+                  label={user?.role?.replace('_', ' ').toUpperCase() || 'USER'} 
+                  size="small" 
+                  sx={{ 
+                    bgcolor: alpha(theme.palette.primary.main, 0.1),
+                    color: theme.palette.primary.main,
+                    fontWeight: 600,
+                    fontSize: '0.6rem',
+                    height: 16,
+                  }} 
+                />
+                <Chip 
+                  label="ACTIVE" 
+                  size="small" 
+                  sx={{ 
+                    bgcolor: alpha('#4caf50', 0.1),
+                    color: '#4caf50',
+                    fontWeight: 600,
+                    fontSize: '0.6rem',
+                    height: 16,
+                  }} 
+                />
+              </Box>
+            </Box>
           </Box>
-          <Tooltip title="Notifications">
-            <IconButton size="small">
-              <Badge badgeContent={3} color="error">
-                <Notifications fontSize="small" />
-              </Badge>
-            </IconButton>
-          </Tooltip>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <Tooltip title="Notifications" sx={{ zIndex: theme.zIndex.drawer + 10 }}>
+              <IconButton 
+                size="small"
+                sx={{
+                  bgcolor: alpha(theme.palette.primary.main, 0.1),
+                  width: 28,
+                  height: 28,
+                  '&:hover': {
+                    bgcolor: alpha(theme.palette.primary.main, 0.2),
+                  }
+                }}
+              >
+                <Badge badgeContent={3} color="error" sx={{ '& .MuiBadge-badge': { fontSize: '0.6rem', height: 16, minWidth: 16 } }}>
+                  <Notifications sx={{ fontSize: '0.9rem' }} />
+                </Badge>
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Dashboard" sx={{ zIndex: theme.zIndex.drawer + 10 }}>
+              <IconButton 
+                size="small"
+                onClick={() => handleNavigation(ROUTES.DASHBOARD)}
+                sx={{
+                  bgcolor: alpha(theme.palette.primary.main, 0.1),
+                  width: 28,
+                  height: 28,
+                  '&:hover': {
+                    bgcolor: alpha(theme.palette.primary.main, 0.2),
+                  }
+                }}
+              >
+                <DashboardIcon sx={{ fontSize: '0.9rem' }} />
+              </IconButton>
+            </Tooltip>
+          </Box>
         </Box>
       </Box>
 
-      {/* Navigation Sections */}
-      <Box sx={{ flexGrow: 1, overflowY: 'auto', py: 1 }}>
-        {renderSection('main', sections.main)}
-        <Divider sx={{ my: 1 }} />
-        {renderSection('management', sections.management)}
-        {sections.users.length > 0 && (
-          <>
-            <Divider sx={{ my: 1 }} />
-            {renderSection('users', sections.users)}
-          </>
-        )}
-        {sections.operations.length > 0 && (
-          <>
-            <Divider sx={{ my: 1 }} />
-            {renderSection('operations', sections.operations)}
-          </>
-        )}
-        {sections.admin.length > 0 && (
-          <>
-            <Divider sx={{ my: 1 }} />
-            {renderSection('admin', sections.admin)}
-          </>
-        )}
+      {/* Enhanced Navigation Sections */}
+      <Box sx={{ 
+        flexGrow: 1, 
+        overflowY: 'auto', 
+        py: 1,
+        '&::-webkit-scrollbar': {
+          width: '4px',
+        },
+        '&::-webkit-scrollbar-track': {
+          background: alpha(theme.palette.primary.main, 0.05),
+          borderRadius: '2px',
+        },
+        '&::-webkit-scrollbar-thumb': {
+          background: alpha(theme.palette.primary.main, 0.2),
+          borderRadius: '2px',
+          '&:hover': {
+            background: alpha(theme.palette.primary.main, 0.3),
+          },
+        },
+      }}>
+            {renderSection('management', sections.management)}
+            {sections.users.length > 0 && (
+              <>
+                <Divider sx={{ 
+                  my: 1.5, 
+                  mx: 2,
+                  borderColor: alpha(theme.palette.primary.main, 0.1),
+                }} />
+                {renderSection('users', sections.users)}
+              </>
+            )}
+            {sections.operations.length > 0 && (
+              <>
+                <Divider sx={{ 
+                  my: 1.5, 
+                  mx: 2,
+                  borderColor: alpha(theme.palette.primary.main, 0.1),
+                }} />
+                {renderSection('operations', sections.operations)}
+              </>
+            )}
+            {sections.finance.length > 0 && (
+              <>
+                <Divider sx={{ 
+                  my: 1.5, 
+                  mx: 2,
+                  borderColor: alpha(theme.palette.primary.main, 0.1),
+                }} />
+                {renderSection('finance', sections.finance)}
+              </>
+            )}
+            {sections.marketing.length > 0 && (
+              <>
+                <Divider sx={{ 
+                  my: 1.5, 
+                  mx: 2,
+                  borderColor: alpha(theme.palette.primary.main, 0.1),
+                }} />
+                {renderSection('marketing', sections.marketing)}
+              </>
+            )}
+            {sections.admin.length > 0 && (
+              <>
+                <Divider sx={{ 
+                  my: 1.5, 
+                  mx: 2,
+                  borderColor: alpha(theme.palette.primary.main, 0.1),
+                }} />
+                {renderSection('admin', sections.admin)}
+              </>
+            )}
       </Box>
 
-      {/* Footer Actions */}
+      {/* Compact Footer Actions */}
       <Box 
         sx={{ 
           p: 1.5, 
           borderTop: 1, 
-          borderColor: 'divider',
-          bgcolor: alpha(theme.palette.background.default, 0.5),
+          borderColor: alpha(theme.palette.primary.main, 0.1),
+          background: `linear-gradient(180deg, ${alpha(theme.palette.background.default, 0.8)} 0%, ${alpha(theme.palette.primary.main, 0.02)} 100%)`,
+          backdropFilter: 'blur(10px)',
         }}
       >
-        <List disablePadding>
-          <ListItem disablePadding sx={{ mb: 0.5 }}>
-            <Tooltip title="View Profile" placement="right">
-              <ListItemButton 
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Tooltip title="View Profile" placement="right" sx={{ zIndex: theme.zIndex.drawer + 10 }}>
+              <IconButton 
+                size="small"
                 onClick={() => handleNavigation(ROUTES.PROFILE)}
                 sx={{ 
-                  borderRadius: 1,
+                  bgcolor: alpha(theme.palette.primary.main, 0.1),
                   '&:hover': {
-                    backgroundColor: alpha(theme.palette.primary.main, 0.08),
+                    bgcolor: alpha(theme.palette.primary.main, 0.2),
                   },
                 }}
               >
-                <ListItemIcon sx={{ minWidth: 40 }}>
-                  <ProfileIcon fontSize="small" />
-                </ListItemIcon>
-                <ListItemText 
-                  primary="Profile" 
-                  primaryTypographyProps={{ fontSize: '0.9rem' }}
-                />
-              </ListItemButton>
+                <ProfileIcon fontSize="small" />
+              </IconButton>
             </Tooltip>
-          </ListItem>
-          <ListItem disablePadding sx={{ mb: 0.5 }}>
-            <Tooltip title="Settings" placement="right">
-              <ListItemButton 
+            <Tooltip title="Settings" placement="right" sx={{ zIndex: theme.zIndex.drawer + 10 }}>
+              <IconButton 
+                size="small"
                 onClick={() => handleNavigation(ROUTES.SETTINGS)}
                 sx={{ 
-                  borderRadius: 1,
+                  bgcolor: alpha(theme.palette.primary.main, 0.1),
                   '&:hover': {
-                    backgroundColor: alpha(theme.palette.primary.main, 0.08),
+                    bgcolor: alpha(theme.palette.primary.main, 0.2),
                   },
                 }}
               >
-                <ListItemIcon sx={{ minWidth: 40 }}>
-                  <SettingsIcon fontSize="small" />
-                </ListItemIcon>
-                <ListItemText 
-                  primary="Settings" 
-                  primaryTypographyProps={{ fontSize: '0.9rem' }}
-                />
-              </ListItemButton>
+                <SettingsIcon fontSize="small" />
+              </IconButton>
             </Tooltip>
-          </ListItem>
-          <ListItem disablePadding sx={{ mb: 0.5 }}>
-            <Tooltip title={`Switch to ${theme.palette.mode === 'dark' ? 'Light' : 'Dark'} Mode`} placement="right">
-              <ListItemButton 
-                onClick={() => dispatch(toggleTheme())}
-                sx={{ 
-                  borderRadius: 1,
-                  '&:hover': {
-                    backgroundColor: alpha(theme.palette.primary.main, 0.08),
-                  },
-                }}
-              >
-                <ListItemIcon sx={{ minWidth: 40 }}>
-                  {theme.palette.mode === 'dark' ? (
-                    <LightModeIcon fontSize="small" />
-                  ) : (
-                    <DarkModeIcon fontSize="small" />
-                  )}
-                </ListItemIcon>
-                <ListItemText 
-                  primary={theme.palette.mode === 'dark' ? 'Light Mode' : 'Dark Mode'} 
-                  primaryTypographyProps={{ fontSize: '0.9rem' }}
-                />
-                <Chip 
-                  label={theme.palette.mode === 'dark' ? '🌙' : '☀️'} 
-                  size="small"
-                  sx={{ 
-                    height: 20, 
-                    fontSize: '0.7rem',
-                    bgcolor: alpha(theme.palette.primary.main, 0.1),
-                  }}
-                />
-              </ListItemButton>
-            </Tooltip>
-          </ListItem>
-          <ListItem disablePadding>
-            <Tooltip title="Logout" placement="right">
-              <ListItemButton 
-                onClick={handleLogout}
-                sx={{ 
-                  borderRadius: 1,
-                  color: 'error.main',
-                  '&:hover': {
-                    backgroundColor: alpha(theme.palette.error.main, 0.08),
-                  },
-                }}
-              >
-                <ListItemIcon sx={{ minWidth: 40, color: 'inherit' }}>
-                  <LogoutIcon fontSize="small" />
-                </ListItemIcon>
-                <ListItemText 
-                  primary="Logout" 
-                  primaryTypographyProps={{ fontSize: '0.9rem' }}
-                />
-              </ListItemButton>
-            </Tooltip>
-          </ListItem>
-        </List>
+          </Box>
+          <Tooltip title="Logout" placement="right" sx={{ zIndex: theme.zIndex.drawer + 10 }}>
+            <IconButton 
+              size="small"
+              onClick={handleLogout}
+              sx={{ 
+                bgcolor: alpha(theme.palette.error.main, 0.1),
+                color: 'error.main',
+                '&:hover': {
+                  bgcolor: alpha(theme.palette.error.main, 0.2),
+                },
+              }}
+            >
+              <LogoutIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        </Box>
       </Box>
     </Box>
   );
@@ -602,10 +852,18 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
       sx={{
         width: drawerWidth,
         flexShrink: 0,
+        zIndex: theme.zIndex.drawer,
         '& .MuiDrawer-paper': {
           width: drawerWidth,
           boxSizing: 'border-box',
           borderRight: `1px solid ${theme.palette.divider}`,
+          position: 'fixed',
+          height: '100vh',
+          zIndex: theme.zIndex.drawer,
+          boxShadow: '0 8px 24px rgba(0,0,0,0.1)',
+          background: theme.palette.background.paper,
+          top: 0,
+          left: 0,
         },
       }}
     >
