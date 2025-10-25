@@ -95,17 +95,11 @@ import {
   StackedLineChart as StackedChartIcon,
   CandlestickChart as CandleChartIcon,
   WaterfallChart as WaterfallChartIcon,
-  Sankey as SankeyChartIcon,
-  TreeMap as TreeMapIcon,
-  HeatMap as HeatMapIcon,
   Radar as RadarChartIcon,
-  PolarChart as PolarChartIcon,
-  Gauge as GaugeChartIcon,
-  Speedometer as SpeedometerIcon,
   DashboardCustomize as CustomDashboardIcon,
   ViewModule as ModuleIcon,
   ViewList as ListViewIcon,
-  ViewGrid as GridViewIcon,
+  GridView as GridViewIcon,
   ViewComfy as ComfyViewIcon,
   ViewStream as StreamViewIcon,
   ViewSidebar as SidebarViewIcon,
@@ -113,7 +107,7 @@ import {
   ViewCarousel as CarouselViewIcon,
   ViewDay as DayViewIcon,
   ViewWeek as WeekViewIcon,
-  ViewMonth as MonthViewIcon,
+  CalendarMonth as MonthViewIcon,
   ViewAgenda as AgendaViewIcon,
   ViewQuilt as QuiltViewIcon,
   ViewArray as ArrayViewIcon,
@@ -311,7 +305,7 @@ const LeadQualificationDialog: React.FC<LeadQualificationDialogProps> = ({
         switch (question.type) {
           case 'select':
             const optionIndex = question.options?.indexOf(answer) || 0;
-            score = (optionIndex / (question.options?.length - 1)) * 100;
+            score = (optionIndex / Math.max((question.options?.length || 1) - 1, 1)) * 100;
             break;
           case 'rating':
             score = (answer / 5) * 100;
@@ -422,27 +416,27 @@ const LeadQualificationDialog: React.FC<LeadQualificationDialogProps> = ({
         Lead Information
       </Typography>
       
-      <Grid container spacing={2}>
-        <Grid item xs={12} sm={6}>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+        <Box sx={{ flex: '1 1 200px', minWidth: '200px' }}>
           <TextField
             fullWidth
             label="Name"
             value={qualificationData.name || ''}
-            onChange={(e) => setQualificationData(prev => ({ ...prev, name: e.target.value }))}
+            onChange={(e) => setQualificationData((prev: any) => ({ ...prev, name: e.target.value }))}
             variant="outlined"
           />
         </Grid>
-        <Grid item xs={12} sm={6}>
+        <Box sx={{ flex: '1 1 200px', minWidth: '200px' }}>
           <TextField
             fullWidth
             label="Email"
             type="email"
             value={qualificationData.email || ''}
-            onChange={(e) => setQualificationData(prev => ({ ...prev, email: e.target.value }))}
+            onChange={(e) => setQualificationData((prev: any) => ({ ...prev, email: e.target.value }))}
             variant="outlined"
           />
         </Grid>
-        <Grid item xs={12} sm={6}>
+        <Box sx={{ flex: '1 1 200px', minWidth: '200px' }}>
           <TextField
             fullWidth
             label="Phone"
@@ -451,7 +445,7 @@ const LeadQualificationDialog: React.FC<LeadQualificationDialogProps> = ({
             variant="outlined"
           />
         </Grid>
-        <Grid item xs={12} sm={6}>
+        <Box sx={{ flex: '1 1 200px', minWidth: '200px' }}>
           <TextField
             fullWidth
             label="Company"
@@ -460,7 +454,7 @@ const LeadQualificationDialog: React.FC<LeadQualificationDialogProps> = ({
             variant="outlined"
           />
         </Grid>
-        <Grid item xs={12}>
+        <Box xs={12}>
           <TextField
             fullWidth
             label="Position"
@@ -581,11 +575,11 @@ const LeadQualificationDialog: React.FC<LeadQualificationDialogProps> = ({
           </Card>
           
           {/* Category Scores */}
-          <Grid container spacing={2} sx={{ mb: 3 }}>
+          <Box spacing={2} sx={{ mb: 3 }}>
             {Object.entries(aiScore).filter(([key]) => 
               ['budget', 'authority', 'need', 'timeline', 'fit'].includes(key)
             ).map(([category, score]) => (
-              <Grid item xs={12} sm={6} md={4} key={category}>
+              <Box xs={12} sm={6} md={4} key={category}>
                 <Card>
                   <CardContent sx={{ textAlign: 'center' }}>
                     <Typography variant="h4" color={`${getScoreColor(score as number)}.main`}>

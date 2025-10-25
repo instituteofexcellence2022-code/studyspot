@@ -129,7 +129,7 @@ import {
   ViewCarousel as CarouselViewIcon,
   ViewDay as DayViewIcon,
   ViewWeek as WeekViewIcon,
-  ViewMonth as MonthViewIcon,
+  CalendarMonth as MonthViewIcon,
   ViewAgenda as AgendaViewIcon,
   ViewQuilt as QuiltViewIcon,
   ViewArray as ArrayViewIcon,
@@ -211,7 +211,7 @@ import {
   ViewCarousel as CarouselViewIcon2,
   ViewDay as DayViewIcon2,
   ViewWeek as WeekViewIcon2,
-  ViewMonth as MonthViewIcon2,
+  CalendarMonth as MonthViewIcon2,
   ViewAgenda as AgendaViewIcon2,
   ViewQuilt as QuiltViewIcon2,
   ViewArray as ArrayViewIcon2,
@@ -321,26 +321,26 @@ const LeadAnalyticsDashboard: React.FC<LeadAnalyticsDashboardProps> = ({
       const aiInsights = [
         {
           id: '1',
-          type: 'opportunity',
+          type: 'opportunity' as const,
           title: 'High-Value Lead Opportunity',
           description: '3 enterprise leads with 85+ scores are ready for executive outreach',
-          impact: 'high',
+          impact: 'high' as const,
           actionable: true
         },
         {
           id: '2',
-          type: 'warning',
+          type: 'warning' as const,
           title: 'Low Response Rate',
           description: 'Email response rate dropped 15% this week. Consider A/B testing subject lines',
-          impact: 'medium',
+          impact: 'medium' as const,
           actionable: true
         },
         {
           id: '3',
-          type: 'success',
+          type: 'success' as const,
           title: 'Conversion Rate Improvement',
           description: 'Demo-to-conversion rate increased 23% after implementing AI scheduling',
-          impact: 'high',
+          impact: 'high' as const,
           actionable: false
         }
       ];
@@ -367,8 +367,8 @@ const LeadAnalyticsDashboard: React.FC<LeadAnalyticsDashboardProps> = ({
   const renderOverviewTab = () => (
     <Box>
       {/* Key Metrics */}
-      <Grid container spacing={3} sx={{ mb: 3 }}>
-        <Grid item xs={12} sm={6} md={3}>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3, mb: 3 }}>
+        <Box sx={{ flex: '1 1 200px', minWidth: '200px' }}>
           <Card>
             <CardContent sx={{ textAlign: 'center' }}>
               <Typography variant="h4" color="primary" gutterBottom>
@@ -386,7 +386,7 @@ const LeadAnalyticsDashboard: React.FC<LeadAnalyticsDashboardProps> = ({
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Box sx={{ flex: '1 1 200px', minWidth: '200px' }}>
           <Card>
             <CardContent sx={{ textAlign: 'center' }}>
               <Typography variant="h4" color="success.main" gutterBottom>
@@ -404,7 +404,7 @@ const LeadAnalyticsDashboard: React.FC<LeadAnalyticsDashboardProps> = ({
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Box sx={{ flex: '1 1 200px', minWidth: '200px' }}>
           <Card>
             <CardContent sx={{ textAlign: 'center' }}>
               <Typography variant="h4" color="warning.main" gutterBottom>
@@ -422,7 +422,7 @@ const LeadAnalyticsDashboard: React.FC<LeadAnalyticsDashboardProps> = ({
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Box sx={{ flex: '1 1 200px', minWidth: '200px' }}>
           <Card>
             <CardContent sx={{ textAlign: 'center' }}>
               <Typography variant="h4" color="info.main" gutterBottom>
@@ -470,8 +470,8 @@ const LeadAnalyticsDashboard: React.FC<LeadAnalyticsDashboardProps> = ({
       </Card>
 
       {/* Top Sources and Performers */}
-      <Grid container spacing={3}>
-        <Grid item xs={12} md={6}>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+        <Box sx={{ flex: '1 1 300px', minWidth: '300px' }}>
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>
@@ -504,7 +504,7 @@ const LeadAnalyticsDashboard: React.FC<LeadAnalyticsDashboardProps> = ({
           </Card>
         </Grid>
         
-        <Grid item xs={12} md={6}>
+        <Box sx={{ flex: '1 1 300px', minWidth: '300px' }}>
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>
@@ -551,8 +551,11 @@ const LeadAnalyticsDashboard: React.FC<LeadAnalyticsDashboardProps> = ({
         <CardContent>
           <Stack spacing={3}>
             {Object.entries(analyticsData?.funnelMetrics || {}).map(([stage, count], index) => {
-              const percentage = index === 0 ? 100 : (count / analyticsData?.funnelMetrics.awareness) * 100;
-              const dropOff = index > 0 ? ((analyticsData?.funnelMetrics[Object.keys(analyticsData?.funnelMetrics)[index - 1]] - count) / analyticsData?.funnelMetrics[Object.keys(analyticsData?.funnelMetrics)[index - 1]]) * 100 : 0;
+              const awareness = analyticsData?.funnelMetrics?.awareness || 1;
+              const percentage = index === 0 ? 100 : (count / awareness) * 100;
+              const previousStage = index > 0 ? Object.keys(analyticsData?.funnelMetrics || {})[index - 1] : null;
+              const previousCount = previousStage ? (analyticsData?.funnelMetrics as any)?.[previousStage] || 0 : 0;
+              const dropOff = index > 0 && previousCount > 0 ? ((previousCount - count) / previousCount) * 100 : 0;
               
               return (
                 <Box key={stage}>
