@@ -189,3 +189,4 @@ INSERT INTO promotional_campaigns (tenant_id, name, description, campaign_type, 
 (gen_random_uuid(), 'Summer Study Campaign', 'Promote study sessions during summer', 'seasonal', 'all', 50000.00, 10000, 1000, 'draft', '2024-06-01 00:00:00', '2024-08-31 23:59:59');
 
 
+

@@ -23,6 +23,7 @@ import StudentFormDialog from '../../components/students/StudentFormDialog';
 import StudentBulkOperationsDialog from '../../components/students/StudentBulkOperationsDialog';
 import StudentAnalyticsDashboard from '../../components/students/StudentAnalyticsDashboard';
 import EnhancedStudentProfile from '../../components/students/EnhancedStudentProfile';
+import StudentCommunicationDialog from '../../components/students/StudentCommunicationDialog';
 
 // Enhanced Student interface
 interface Student {
@@ -90,6 +91,7 @@ const StudentsPageAdvanced: React.FC = () => {
   const [bulkOperationsOpen, setBulkOperationsOpen] = useState(false);
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
+  const [communicationDialogOpen, setCommunicationDialogOpen] = useState(false);
   
   const [currentStudent, setCurrentStudent] = useState<Partial<Student> | null>(null);
   const [editMode, setEditMode] = useState(false);
@@ -901,6 +903,15 @@ const StudentsPageAdvanced: React.FC = () => {
                   Bulk Operations ({selectedStudents.length})
                 </Button>
                 <Button
+                  variant="contained"
+                  color="secondary"
+                  startIcon={<Email />}
+                  onClick={() => setCommunicationDialogOpen(true)}
+                  disabled={selectedStudents.length === 0}
+                >
+                  Send Communication ({selectedStudents.length})
+                </Button>
+                <Button
                   variant="outlined"
                   startIcon={<ExportIcon />}
                   onClick={() => setBulkOperationsOpen(true)}
@@ -1252,6 +1263,18 @@ const StudentsPageAdvanced: React.FC = () => {
           setEditMode(true);
           setAddDialogOpen(true);
           setProfileDialogOpen(false);
+        }}
+      />
+
+      {/* Communication Dialog */}
+      <StudentCommunicationDialog
+        open={communicationDialogOpen}
+        onClose={() => setCommunicationDialogOpen(false)}
+        selectedStudents={selectedStudents}
+        students={students}
+        onSend={(type, data) => {
+          console.log('Communication sent:', type, data);
+          setSnackbar({ open: true, message: `✅ Communication sent successfully to ${selectedStudents.length} students!`, severity: 'success' });
         }}
       />
 

@@ -319,3 +319,4 @@ COMMENT ON COLUMN issues.satisfaction_rating IS 'Student satisfaction rating (1-
 COMMENT ON COLUMN issue_response_templates.usage_count IS 'How many times this template has been used';
 
 
+

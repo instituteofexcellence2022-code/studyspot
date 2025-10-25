@@ -139,3 +139,4 @@ INSERT INTO issue_automation_templates (tenant_id, name, description, template_t
  '{"event": "issue_resolved", "recipients": ["reporter", "assignee"], "template": "resolution_notification"}');
 
 
+

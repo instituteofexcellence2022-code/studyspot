@@ -149,3 +149,4 @@ export const calculateYearlySavings = (plan: SubscriptionPlan) => {
   return { amount: yearlySavings, percent: savingsPercent };
 };
 
+

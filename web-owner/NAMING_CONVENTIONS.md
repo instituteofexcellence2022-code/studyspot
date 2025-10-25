@@ -130,3 +130,4 @@ src/
 - ❌ `Clean*` or `Simple*` prefixes (use standard names)
 - ❌ Mixed singular/plural folder names
 - ❌ Inconsistent page suffixes (`Page` vs `Dashboard` vs `Management`)
+
