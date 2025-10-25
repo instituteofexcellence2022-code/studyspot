@@ -60,6 +60,7 @@ import {
   Group as GroupIcon,
   Notifications as NotificationsIcon,
   Send as SendIcon,
+  Email as EmailIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
   Add as AddIcon,
