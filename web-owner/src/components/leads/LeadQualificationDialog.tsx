@@ -425,7 +425,7 @@ const LeadQualificationDialog: React.FC<LeadQualificationDialogProps> = ({
             onChange={(e) => setQualificationData((prev: any) => ({ ...prev, name: e.target.value }))}
             variant="outlined"
           />
-        </Grid>
+        </Box>
         <Box sx={{ flex: '1 1 200px', minWidth: '200px' }}>
           <TextField
             fullWidth
@@ -435,7 +435,7 @@ const LeadQualificationDialog: React.FC<LeadQualificationDialogProps> = ({
             onChange={(e) => setQualificationData((prev: any) => ({ ...prev, email: e.target.value }))}
             variant="outlined"
           />
-        </Grid>
+        </Box>
         <Box sx={{ flex: '1 1 200px', minWidth: '200px' }}>
           <TextField
             fullWidth
@@ -444,7 +444,7 @@ const LeadQualificationDialog: React.FC<LeadQualificationDialogProps> = ({
             onChange={(e) => setQualificationData(prev => ({ ...prev, phone: e.target.value }))}
             variant="outlined"
           />
-        </Grid>
+        </Box>
         <Box sx={{ flex: '1 1 200px', minWidth: '200px' }}>
           <TextField
             fullWidth
@@ -453,7 +453,7 @@ const LeadQualificationDialog: React.FC<LeadQualificationDialogProps> = ({
             onChange={(e) => setQualificationData(prev => ({ ...prev, company: e.target.value }))}
             variant="outlined"
           />
-        </Grid>
+        </Box>
         <Box xs={12}>
           <TextField
             fullWidth
@@ -462,7 +462,7 @@ const LeadQualificationDialog: React.FC<LeadQualificationDialogProps> = ({
             onChange={(e) => setQualificationData(prev => ({ ...prev, position: e.target.value }))}
             variant="outlined"
           />
-        </Grid>
+        </Box>
       </Grid>
     </Box>
   );
@@ -596,9 +596,9 @@ const LeadQualificationDialog: React.FC<LeadQualificationDialogProps> = ({
                     />
                   </CardContent>
                 </Card>
-              </Grid>
+              </Box>
             ))}
-          </Grid>
+          </Box>
         </Box>
       ) : null}
     </Box>

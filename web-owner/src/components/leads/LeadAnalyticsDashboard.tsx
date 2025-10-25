@@ -385,7 +385,7 @@ const LeadAnalyticsDashboard: React.FC<LeadAnalyticsDashboardProps> = ({
               </Box>
             </CardContent>
           </Card>
-        </Grid>
+        </Box>
         <Box sx={{ flex: '1 1 200px', minWidth: '200px' }}>
           <Card>
             <CardContent sx={{ textAlign: 'center' }}>
@@ -403,7 +403,7 @@ const LeadAnalyticsDashboard: React.FC<LeadAnalyticsDashboardProps> = ({
               </Box>
             </CardContent>
           </Card>
-        </Grid>
+        </Box>
         <Box sx={{ flex: '1 1 200px', minWidth: '200px' }}>
           <Card>
             <CardContent sx={{ textAlign: 'center' }}>
@@ -421,7 +421,7 @@ const LeadAnalyticsDashboard: React.FC<LeadAnalyticsDashboardProps> = ({
               </Box>
             </CardContent>
           </Card>
-        </Grid>
+        </Box>
         <Box sx={{ flex: '1 1 200px', minWidth: '200px' }}>
           <Card>
             <CardContent sx={{ textAlign: 'center' }}>
@@ -439,7 +439,7 @@ const LeadAnalyticsDashboard: React.FC<LeadAnalyticsDashboardProps> = ({
               </Box>
             </CardContent>
           </Card>
-        </Grid>
+        </Box>
       </Grid>
 
       {/* AI Insights */}
@@ -502,7 +502,7 @@ const LeadAnalyticsDashboard: React.FC<LeadAnalyticsDashboardProps> = ({
               </List>
             </CardContent>
           </Card>
-        </Grid>
+        </Box>
         
         <Box sx={{ flex: '1 1 300px', minWidth: '300px' }}>
           <Card>
@@ -535,7 +535,7 @@ const LeadAnalyticsDashboard: React.FC<LeadAnalyticsDashboardProps> = ({
               </List>
             </CardContent>
           </Card>
-        </Grid>
+        </Box>
       </Grid>
     </Box>
   );
