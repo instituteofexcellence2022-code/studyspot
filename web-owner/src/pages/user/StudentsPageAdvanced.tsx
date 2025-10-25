@@ -20,10 +20,9 @@ import {
 } from '@mui/icons-material';
 import studentsService, { Student as APIStudent, StudentsFilters } from '../../services/studentsService';
 import StudentFormDialog from '../../components/students/StudentFormDialog';
-import StudentBulkOperationsDialog from '../../components/students/StudentBulkOperationsDialog';
-import StudentAnalyticsDashboard from '../../components/students/StudentAnalyticsDashboard';
+import UnifiedBulkOperations from '../../components/students/UnifiedBulkOperations';
+import UnifiedStudentAnalytics from '../../components/students/UnifiedStudentAnalytics';
 import EnhancedStudentProfile from '../../components/students/EnhancedStudentProfile';
-import StudentCommunicationDialog from '../../components/students/StudentCommunicationDialog';
 import AttendanceTrackingSystem from '../../components/students/AttendanceTrackingSystem';
 import StudentDocumentManagement from '../../components/students/StudentDocumentManagement';
 import KYCVerificationSystem from '../../components/students/KYCVerificationSystem';
@@ -93,9 +92,7 @@ const StudentsPageAdvanced: React.FC = () => {
   const [groupDialogOpen, setGroupDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [bulkOperationsOpen, setBulkOperationsOpen] = useState(false);
-  const [analyticsOpen, setAnalyticsOpen] = useState(false);
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
-  const [communicationDialogOpen, setCommunicationDialogOpen] = useState(false);
   
   const [currentStudent, setCurrentStudent] = useState<Partial<Student> | null>(null);
   const [editMode, setEditMode] = useState(false);
@@ -564,12 +561,11 @@ const StudentsPageAdvanced: React.FC = () => {
       <Paper sx={{ mb: 3 }}>
             <Tabs value={activeTab} onChange={(e, newValue) => setActiveTab(newValue)}>
               <Tab label="Student List" icon={<PersonIcon />} />
-              <Tab label="Analytics" icon={<AssessmentIcon />} />
+              <Tab label="Unified Analytics" icon={<AssessmentIcon />} />
               <Tab label="Attendance" icon={<CalendarToday />} />
               <Tab label="Documents" icon={<Description />} />
               <Tab label="KYC Verification" icon={<VerifiedIcon />} />
               <Tab label="Fee Management" icon={<PaymentIcon />} />
-              <Tab label="Bulk Operations" icon={<GroupIcon />} />
             </Tabs>
       </Paper>
 
@@ -878,8 +874,13 @@ const StudentsPageAdvanced: React.FC = () => {
       )}
 
       {activeTab === 1 && (
-        <StudentAnalyticsDashboard
+        <UnifiedStudentAnalytics
           students={students}
+          activeTab={0}
+          onTabChange={(tab) => {
+            // Handle tab change within analytics
+            console.log('Analytics tab changed to:', tab);
+          }}
           onExport={(format) => {
             // Handle export
             console.log('Exporting analytics in format:', format);
@@ -930,62 +931,6 @@ const StudentsPageAdvanced: React.FC = () => {
         />
       )}
 
-      {activeTab === 6 && (
-        <Box>
-          <Card sx={{ mb: 3 }}>
-            <CardContent>
-              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <GroupIcon color="primary" />
-                Bulk Operations
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                Select students from the list and perform bulk operations
-              </Typography>
-              <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                <Button
-                  variant="contained"
-                  startIcon={<GroupIcon />}
-                  onClick={() => setBulkOperationsOpen(true)}
-                  disabled={selectedStudents.length === 0}
-                >
-                  Bulk Operations ({selectedStudents.length})
-                </Button>
-                <Button
-                  variant="contained"
-                  color="secondary"
-                  startIcon={<Email />}
-                  onClick={() => setCommunicationDialogOpen(true)}
-                  disabled={selectedStudents.length === 0}
-                >
-                  Send Communication ({selectedStudents.length})
-                </Button>
-                <Button
-                  variant="outlined"
-                  startIcon={<ExportIcon />}
-                  onClick={() => setBulkOperationsOpen(true)}
-                  disabled={selectedStudents.length === 0}
-                >
-                  Export Selected
-                </Button>
-                <Button
-                  variant="outlined"
-                  startIcon={<BadgeIcon />}
-                  onClick={() => setBulkOperationsOpen(true)}
-                  disabled={selectedStudents.length === 0}
-                >
-                  Generate ID Cards
-                </Button>
-              </Box>
-            </CardContent>
-          </Card>
-
-          {selectedStudents.length === 0 && (
-            <Alert severity="info">
-              Please select students from the Student List tab to perform bulk operations.
-            </Alert>
-          )}
-        </Box>
-      )}
 
       {/* Student Form Dialog */}
       <StudentFormDialog
@@ -1289,8 +1234,8 @@ const StudentsPageAdvanced: React.FC = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Bulk Operations Dialog */}
-      <StudentBulkOperationsDialog
+      {/* Unified Bulk Operations Dialog */}
+      <UnifiedBulkOperations
         open={bulkOperationsOpen}
         onClose={() => setBulkOperationsOpen(false)}
         selectedStudents={selectedStudents}
@@ -1314,17 +1259,6 @@ const StudentsPageAdvanced: React.FC = () => {
         }}
       />
 
-      {/* Communication Dialog */}
-      <StudentCommunicationDialog
-        open={communicationDialogOpen}
-        onClose={() => setCommunicationDialogOpen(false)}
-        selectedStudents={selectedStudents}
-        students={students}
-        onSend={(type, data) => {
-          console.log('Communication sent:', type, data);
-          setSnackbar({ open: true, message: `✅ Communication sent successfully to ${selectedStudents.length} students!`, severity: 'success' });
-        }}
-      />
 
       {/* Snackbar */}
       <Snackbar
