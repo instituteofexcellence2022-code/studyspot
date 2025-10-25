@@ -121,7 +121,7 @@ const MOCK_PAYMENTS: Payment[] = [
   },
 ];
 
-const PaymentsPageComprehensive: React.FC = () => {
+const RevenueManagementPage: React.FC = () => {
   const theme = useTheme();
   const [payments, setPayments] = useState<Payment[]>(MOCK_PAYMENTS);
   const [filteredPayments, setFilteredPayments] = useState<Payment[]>(MOCK_PAYMENTS);
@@ -640,7 +640,7 @@ const PaymentsPageComprehensive: React.FC = () => {
       <OfflinePaymentDialog
         open={offlinePaymentOpen}
         onClose={() => setOfflinePaymentOpen(false)}
-        onSubmit={handleAddOfflineRevenue}
+        onSuccess={handleAddOfflineRevenue}
       />
 
       {/* Revenue Verification Dialog */}
@@ -695,5 +695,5 @@ const PaymentsPageComprehensive: React.FC = () => {
   );
 };
 
-export default PaymentsPageComprehensive;
+export default RevenueManagementPage;
 

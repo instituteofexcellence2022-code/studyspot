@@ -1,6 +1,7 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { Box, Button, Container, Typography } from '@mui/material';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
+import Logger from '../../utils/logger';
 
 interface Props {
   children: ReactNode;
@@ -23,8 +24,11 @@ class ErrorBoundary extends Component<Props, State> {
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('Uncaught error:', error, errorInfo);
+    Logger.error('Uncaught error in ErrorBoundary', error, 'ErrorBoundary');
+    Logger.error('Error info', errorInfo, 'ErrorBoundary');
+    
     // TODO: Send to error tracking service (Sentry)
+    // Sentry.captureException(error, { extra: errorInfo });
   }
 
   private handleReset = () => {

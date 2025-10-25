@@ -46,7 +46,7 @@ class Logger {
   /**
    * Debug log (only in development with DEBUG=true)
    */
-  static debug(message: string, data?: any, context?: string): void {
+  static debug(message: string, data?: unknown, context?: string): void {
     if (!this.isDevelopment || !this.isDebugEnabled) return;
 
     const formatted = this.formatMessage(LogLevel.DEBUG, message, context);
@@ -56,7 +56,7 @@ class Logger {
   /**
    * Info log (only in development)
    */
-  static info(message: string, data?: any, context?: string): void {
+  static info(message: string, data?: unknown, context?: string): void {
     if (!this.isDevelopment) return;
 
     const formatted = this.formatMessage(LogLevel.INFO, message, context);
@@ -66,7 +66,7 @@ class Logger {
   /**
    * Warning log
    */
-  static warn(message: string, data?: any, context?: string): void {
+  static warn(message: string, data?: unknown, context?: string): void {
     const formatted = this.formatMessage(LogLevel.WARN, message, context);
     console.warn(`%c${formatted}`, this.getColor(LogLevel.WARN), data || '');
 
@@ -79,13 +79,13 @@ class Logger {
   /**
    * Error log
    */
-  static error(message: string, error?: any, context?: string): void {
+  static error(message: string, error?: unknown, context?: string): void {
     const formatted = this.formatMessage(LogLevel.ERROR, message, context);
     console.error(`%c${formatted}`, this.getColor(LogLevel.ERROR));
     
     if (error) {
       console.error('Error details:', error);
-      if (error.stack) {
+      if (error instanceof Error && error.stack) {
         console.error('Stack trace:', error.stack);
       }
     }
@@ -99,7 +99,7 @@ class Logger {
   /**
    * Log user action
    */
-  static userAction(action: string, details?: any): void {
+  static userAction(action: string, details?: unknown): void {
     this.info(`User Action: ${action}`, details, 'UserAction');
 
     // In production, send to analytics
@@ -126,7 +126,7 @@ class Logger {
   /**
    * Log state change
    */
-  static stateChange(store: string, action: string, data?: any): void {
+  static stateChange(store: string, action: string, data?: unknown): void {
     this.debug(`${store} - ${action}`, data, 'Redux');
   }
 
@@ -136,7 +136,7 @@ class Logger {
   private static sendToLoggingService(
     level: string,
     message: string,
-    data?: any,
+    data?: unknown,
     context?: string
   ): void {
     // In production: integrate with logging service
@@ -162,7 +162,7 @@ class Logger {
   /**
    * Send to analytics service (placeholder for production)
    */
-  private static sendToAnalytics(event: string, action: string, details?: any): void {
+  private static sendToAnalytics(event: string, action: string, details?: unknown): void {
     // In production: integrate with analytics
     // Example: Google Analytics, Mixpanel, Amplitude, etc.
     

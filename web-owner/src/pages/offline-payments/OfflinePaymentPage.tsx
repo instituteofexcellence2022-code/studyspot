@@ -31,6 +31,15 @@ import {
   Badge,
   Tooltip,
   CircularProgress,
+  Tabs,
+  Tab,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Switch,
+  FormControlLabel,
+  Slider,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -44,13 +53,76 @@ import {
   AutoAwesome as AutoIcon,
   TrendingUp as TrendingIcon,
   History as HistoryIcon,
+  Palette as PaletteIcon,
+  ViewModule as TemplateIcon,
+  Preview as PreviewIcon,
+  Delete as DeleteIcon,
+  Add as AddIcon,
+  ContentCopy as CopyIcon,
+  Download as DownloadIcon,
+  Upload as UploadIcon,
+  Save as SaveIcon,
+  Business as BusinessIcon,
+  School as SchoolIcon,
+  AttachMoney as MoneyIcon,
+  Description as DescriptionIcon,
+  Settings as SettingsIcon,
+  Visibility as ViewIcon,
+  Star as StarIcon,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
 import { offlinePaymentService, Student, Staff, OfflinePayment } from '../../services/offlinePaymentService';
 
+interface BillingTemplate {
+  id: string;
+  name: string;
+  description: string;
+  category: 'library' | 'tuition' | 'membership' | 'custom' | 'professional';
+  layout: 'modern' | 'classic' | 'minimal' | 'elegant' | 'corporate';
+  colors: {
+    primary: string;
+    secondary: string;
+    accent: string;
+    background: string;
+    text: string;
+  };
+  fonts: {
+    heading: string;
+    body: string;
+    monospace: string;
+  };
+  logo: {
+    enabled: boolean;
+    position: 'top-left' | 'top-center' | 'top-right';
+    size: 'small' | 'medium' | 'large';
+  };
+  header: {
+    showBusinessInfo: boolean;
+    showContactInfo: boolean;
+    showInvoiceNumber: boolean;
+    showDate: boolean;
+  };
+  items: {
+    showDescription: boolean;
+    showQuantity: boolean;
+    showUnitPrice: boolean;
+    showTotal: boolean;
+  };
+  footer: {
+    showTerms: boolean;
+    showPaymentInfo: boolean;
+    showSignature: boolean;
+  };
+  isDefault: boolean;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 const OfflinePaymentPage: React.FC = () => {
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState(0);
   const [activeStep, setActiveStep] = useState(0);
   const [students, setStudents] = useState<Student[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
@@ -68,6 +140,12 @@ const OfflinePaymentPage: React.FC = () => {
   const [receipt, setReceipt] = useState<any>(null);
   const [showReceipt, setShowReceipt] = useState(false);
   const [recentPayments, setRecentPayments] = useState<OfflinePayment[]>([]);
+  
+  // Billing Template states
+  const [templates, setTemplates] = useState<BillingTemplate[]>([]);
+  const [selectedTemplate, setSelectedTemplate] = useState<BillingTemplate | null>(null);
+  const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<BillingTemplate | null>(null);
 
   // Auto-load staff and recent payments
   useEffect(() => {
@@ -196,7 +274,7 @@ const OfflinePaymentPage: React.FC = () => {
     <Box sx={{ p: 3 }}>
       <Typography variant="h4" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
         <PaymentIcon color="primary" />
-        Offline Payment Collection
+        Collect Fees & Billing Templates
         <Chip 
           label="AUTOMATED" 
           color="success" 
@@ -205,6 +283,24 @@ const OfflinePaymentPage: React.FC = () => {
           sx={{ ml: 2 }}
         />
       </Typography>
+
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+        <Tabs value={activeTab} onChange={(e, newValue) => setActiveTab(newValue)}>
+          <Tab 
+            label="Collect Fees" 
+            icon={<PaymentIcon />} 
+            iconPosition="start"
+          />
+          <Tab 
+            label="Billing Templates" 
+            icon={<TemplateIcon />} 
+            iconPosition="start"
+          />
+        </Tabs>
+      </Box>
+
+      {activeTab === 0 && (
+        <Box>
 
       <Grid container spacing={3}>
         {/* Main Payment Flow */}
@@ -681,6 +777,109 @@ const OfflinePaymentPage: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+        </Box>
+      )}
+
+      {activeTab === 1 && (
+        <Box>
+          <Card>
+            <CardContent>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                <Typography variant="h5" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <TemplateIcon color="primary" />
+                  Billing Templates
+                </Typography>
+                <Button
+                  variant="contained"
+                  startIcon={<AddIcon />}
+                  onClick={() => setTemplateDialogOpen(true)}
+                >
+                  Create Template
+                </Button>
+              </Box>
+              
+              <Grid container spacing={2}>
+                {templates.map((template) => (
+                  <Grid item xs={12} sm={6} md={4} key={template.id}>
+                    <Card 
+                      sx={{ 
+                        cursor: 'pointer',
+                        border: selectedTemplate?.id === template.id ? 2 : 1,
+                        borderColor: selectedTemplate?.id === template.id ? 'primary.main' : 'divider',
+                        '&:hover': { boxShadow: 3 }
+                      }}
+                      onClick={() => setSelectedTemplate(template)}
+                    >
+                      <CardContent>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                          <Typography variant="h6" noWrap>
+                            {template.name}
+                          </Typography>
+                          {template.isDefault && (
+                            <Chip label="Default" color="primary" size="small" />
+                          )}
+                        </Box>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                          {template.description}
+                        </Typography>
+                        <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+                          <Chip label={template.category} size="small" variant="outlined" />
+                          <Chip label={template.layout} size="small" variant="outlined" />
+                        </Box>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Box sx={{ display: 'flex', gap: 0.5 }}>
+                            <IconButton size="small" onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingTemplate(template);
+                              setTemplateDialogOpen(true);
+                            }}>
+                              <EditIcon fontSize="small" />
+                            </IconButton>
+                            <IconButton size="small" onClick={(e) => {
+                              e.stopPropagation();
+                              // Handle duplicate
+                            }}>
+                              <CopyIcon fontSize="small" />
+                            </IconButton>
+                            <IconButton size="small" onClick={(e) => {
+                              e.stopPropagation();
+                              // Handle delete
+                            }}>
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </Box>
+                          <IconButton size="small">
+                            <PreviewIcon fontSize="small" />
+                          </IconButton>
+                        </Box>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                ))}
+              </Grid>
+              
+              {templates.length === 0 && (
+                <Box sx={{ textAlign: 'center', py: 4 }}>
+                  <TemplateIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
+                  <Typography variant="h6" color="text.secondary" gutterBottom>
+                    No billing templates created yet
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                    Create your first professional invoice template
+                  </Typography>
+                  <Button
+                    variant="contained"
+                    startIcon={<AddIcon />}
+                    onClick={() => setTemplateDialogOpen(true)}
+                  >
+                    Create First Template
+                  </Button>
+                </Box>
+              )}
+            </CardContent>
+          </Card>
+        </Box>
+      )}
     </Box>
   );
 };

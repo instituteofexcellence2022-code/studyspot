@@ -30,7 +30,7 @@ interface Payment {
 type SortField = keyof Payment;
 type SortOrder = 'asc' | 'desc';
 
-const PaymentsPageEnhanced: React.FC = () => {
+const SubscriptionPaymentsPage: React.FC = () => {
   const [payments, setPayments] = useState<Payment[]>(INITIAL_PAYMENTS);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -315,5 +315,5 @@ const PaymentsPageEnhanced: React.FC = () => {
   );
 };
 
-export default PaymentsPageEnhanced;
+export default SubscriptionPaymentsPage;
 

@@ -173,7 +173,7 @@ const MOCK_PENDING: PendingPayment[] = [
 // MAIN COMPONENT
 // =====================================================
 
-const PaymentAnalyticsPage: React.FC = () => {
+const RevenueAnalyticsPage: React.FC = () => {
   const theme = useTheme();
   const [dateRange, setDateRange] = useState('month');
   const [stats, setStats] = useState<PaymentStats>(MOCK_STATS);
@@ -625,5 +625,5 @@ const PaymentAnalyticsPage: React.FC = () => {
   );
 };
 
-export default PaymentAnalyticsPage;
+export default RevenueAnalyticsPage;
 

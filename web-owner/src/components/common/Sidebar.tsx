@@ -92,11 +92,12 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
   
   const { user } = useAppSelector((state) => state.auth);
   
-  const [expandedSections, setExpandedSections] = useState<string[]>(['management', 'users', 'operations', 'finance', 'marketing', 'admin']); // All sections expanded by default
+  const [expandedSections, setExpandedSections] = useState<string[]>(['quick', 'management', 'users', 'operations', 'finance', 'marketing', 'admin']); // All sections expanded by default
 
   const drawerWidth = 280;
 
   const navigationItems: NavigationItem[] = [
+    
     // Library Management
     {
       label: 'Organization Onboarding',
@@ -204,7 +205,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
     // Financial Management
     {
       label: 'Revenue',
-      path: ROUTES.PAYMENTS,
+        path: ROUTES.REVENUE_MANAGEMENT,
       icon: <PaymentIcon />,
       roles: ['library_staff', 'library_owner', 'branch_manager', 'finance_manager', 'super_admin'],
       description: 'Transactions & billing',
@@ -214,7 +215,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
 
     {
       label: 'Revenue Analytics',
-      path: ROUTES.PAYMENT_ANALYTICS,
+        path: ROUTES.REVENUE_ANALYTICS,
       icon: <AnalyticsIcon />,
       roles: ['library_owner', 'branch_manager', 'finance_manager', 'super_admin'],
       description: 'Revenue insights & forecasts',
@@ -245,15 +246,6 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
       description: 'Track payments, send reminders, and manage outstanding dues',
       section: 'finance',
       badge: { text: 'NEW', color: 'success' }
-    },
-    {
-      label: 'Billing Templates',
-      path: ROUTES.BILLING_TEMPLATES,
-      icon: <TemplateIcon />,
-      roles: ['library_staff', 'library_owner', 'branch_manager', 'finance_manager', 'super_admin'],
-      description: 'Create and customize professional invoice templates',
-      section: 'finance',
-      badge: { text: 'NEW', color: 'primary' }
     },
     
     // IoT & Smart Controls
@@ -296,16 +288,6 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
       badge: { text: 'NEW', color: 'success' }
     },
     
-    // Payment Collection
-    {
-      label: 'Offline Payments',
-      path: '/offline-payments',
-      icon: <PaymentIcon />,
-      roles: ['library_staff', 'library_owner', 'branch_manager', 'super_admin'],
-      description: 'Automated offline payment collection with minimal human intervention',
-      section: 'finance',
-      badge: { text: 'AUTO', color: 'info' }
-    },
     
     // System Administration
     {
@@ -329,7 +311,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
     // Feature Control
     {
       label: 'Feature Control',
-      path: '/feature-control',
+      path: ROUTES.FEATURE_CONTROL,
       icon: <TuneIcon />,
       roles: ['library_owner', 'super_admin'],
       description: 'Enable/disable features and manage dependencies',
@@ -366,6 +348,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
 
   // Group items by section - Professional workflow order
   const sections = {
+    quick: filteredNavigationItems.filter(item => !item.section),
     management: filteredNavigationItems.filter(item => item.section === 'management'),
     users: filteredNavigationItems.filter(item => item.section === 'users'),
     operations: filteredNavigationItems.filter(item => item.section === 'operations'),
@@ -375,6 +358,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
   };
 
   const sectionTitles = {
+    quick: 'Quick Access',
     management: 'Library',
     users: 'Users',
     operations: 'Operations',
@@ -659,23 +643,23 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
       >
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: 0 }}>
-            <Avatar 
-              sx={{ 
+          <Avatar 
+            sx={{ 
                 bgcolor: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-                width: 36,
-                height: 36,
-                mr: 1.5,
+              width: 36,
+              height: 36,
+              mr: 1.5,
                 fontSize: '0.9rem',
                 fontWeight: 700,
                 boxShadow: `0 2px 8px ${alpha(theme.palette.primary.main, 0.3)}`,
-              }}
-            >
-              {user?.firstName?.charAt(0) || 'U'}
-            </Avatar>
+            }}
+          >
+            {user?.firstName?.charAt(0) || 'U'}
+          </Avatar>
             <Box sx={{ flex: 1, minWidth: 0 }}>
               <Typography variant="body2" fontWeight={600} noWrap sx={{ mb: 0.2, fontSize: '0.8rem' }}>
-                {user?.firstName} {user?.lastName}
-              </Typography>
+              {user?.firstName} {user?.lastName}
+            </Typography>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                 <Chip 
                   label={user?.role?.replace('_', ' ').toUpperCase() || 'USER'} 
@@ -717,9 +701,9 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
               >
                 <Badge badgeContent={3} color="error" sx={{ '& .MuiBadge-badge': { fontSize: '0.6rem', height: 16, minWidth: 16 } }}>
                   <Notifications sx={{ fontSize: '0.9rem' }} />
-                </Badge>
-              </IconButton>
-            </Tooltip>
+              </Badge>
+            </IconButton>
+          </Tooltip>
             <Tooltip title="Dashboard" sx={{ zIndex: theme.zIndex.drawer + 10 }}>
               <IconButton 
                 size="small"
@@ -760,27 +744,37 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
           },
         },
       }}>
-            {renderSection('management', sections.management)}
-            {sections.users.length > 0 && (
+            {sections.quick.length > 0 && (
               <>
+                {renderSection('quick', sections.quick)}
                 <Divider sx={{ 
                   my: 1.5, 
                   mx: 2,
                   borderColor: alpha(theme.palette.primary.main, 0.1),
                 }} />
-                {renderSection('users', sections.users)}
               </>
             )}
-            {sections.operations.length > 0 && (
-              <>
+        {renderSection('management', sections.management)}
+        {sections.users.length > 0 && (
+          <>
                 <Divider sx={{ 
                   my: 1.5, 
                   mx: 2,
                   borderColor: alpha(theme.palette.primary.main, 0.1),
                 }} />
-                {renderSection('operations', sections.operations)}
-              </>
-            )}
+            {renderSection('users', sections.users)}
+          </>
+        )}
+        {sections.operations.length > 0 && (
+          <>
+                <Divider sx={{ 
+                  my: 1.5, 
+                  mx: 2,
+                  borderColor: alpha(theme.palette.primary.main, 0.1),
+                }} />
+            {renderSection('operations', sections.operations)}
+          </>
+        )}
             {sections.finance.length > 0 && (
               <>
                 <Divider sx={{ 
@@ -799,18 +793,18 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
                   borderColor: alpha(theme.palette.primary.main, 0.1),
                 }} />
                 {renderSection('marketing', sections.marketing)}
-              </>
-            )}
-            {sections.admin.length > 0 && (
-              <>
+          </>
+        )}
+        {sections.admin.length > 0 && (
+          <>
                 <Divider sx={{ 
                   my: 1.5, 
                   mx: 2,
                   borderColor: alpha(theme.palette.primary.main, 0.1),
                 }} />
-                {renderSection('admin', sections.admin)}
-              </>
-            )}
+            {renderSection('admin', sections.admin)}
+          </>
+        )}
       </Box>
 
       {/* Compact Footer Actions */}
@@ -836,7 +830,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
                   },
                 }}
               >
-                <ProfileIcon fontSize="small" />
+                  <ProfileIcon fontSize="small" />
               </IconButton>
             </Tooltip>
             <Tooltip title="Settings" placement="right" sx={{ zIndex: theme.zIndex.drawer + 10 }}>
@@ -850,25 +844,25 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
                   },
                 }}
               >
-                <SettingsIcon fontSize="small" />
+                  <SettingsIcon fontSize="small" />
               </IconButton>
             </Tooltip>
           </Box>
           <Tooltip title="Logout" placement="right" sx={{ zIndex: theme.zIndex.drawer + 10 }}>
             <IconButton 
-              size="small"
-              onClick={handleLogout}
-              sx={{ 
+                  size="small"
+                onClick={handleLogout}
+                sx={{ 
                 bgcolor: alpha(theme.palette.error.main, 0.1),
-                color: 'error.main',
-                '&:hover': {
+                  color: 'error.main',
+                  '&:hover': {
                   bgcolor: alpha(theme.palette.error.main, 0.2),
-                },
-              }}
-            >
-              <LogoutIcon fontSize="small" />
+                  },
+                }}
+              >
+                  <LogoutIcon fontSize="small" />
             </IconButton>
-          </Tooltip>
+            </Tooltip>
         </Box>
       </Box>
     </Box>

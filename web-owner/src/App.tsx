@@ -53,9 +53,9 @@ const LibraryCreatePage = lazy(() => import('./pages/library/LibraryCreatePage')
 const LibraryEditPage = lazy(() => import('./pages/library/LibraryEditPage'));
 const SeatsPage = lazy(() => import('./pages/library/SeatsPage'));
 const FeePlansPage = lazy(() => import('./pages/subscription/FeePlansPageAdvanced'));
-const PaymentsPage = lazy(() => import('./pages/payment/PaymentsPageComprehensive'));
+const RevenueManagementPage = lazy(() => import('./pages/revenue/RevenueManagementPage'));
 
-const PaymentAnalyticsPage = lazy(() => import('./pages/analytics/PaymentAnalyticsPage'));
+const RevenueAnalyticsPage = lazy(() => import('./pages/revenue/RevenueAnalyticsPage'));
 const SubscriptionCreditsPage = lazy(() => import('./pages/subscription/SubscriptionCreditsPage'));
 const SeatManagementPage = lazy(() => import('./pages/seats/SeatManagementPage'));
 const SmartIoTDashboard = lazy(() => import('./pages/iot/SmartIoTDashboard'));
@@ -289,9 +289,9 @@ const AppContent: React.FC = () => {
               <Route path={ROUTES.ATTENDANCE} element={<AttendancePage />} />
               <Route path={ROUTES.BARCODE_QR} element={<BarcodeQRPage />} />
               <Route path={ROUTES.LEAD_CAPTURE} element={<LeadCapturePage />} />
-              <Route path={ROUTES.PAYMENTS} element={<PaymentsPage />} />
+              <Route path={ROUTES.REVENUE_MANAGEMENT} element={<RevenueManagementPage />} />
 
-              <Route path={ROUTES.PAYMENT_ANALYTICS} element={<PaymentAnalyticsPage />} />
+              <Route path={ROUTES.REVENUE_ANALYTICS} element={<RevenueAnalyticsPage />} />
               <Route path={ROUTES.SUBSCRIPTION_CREDITS} element={<SubscriptionCreditsPage />} />
               <Route path={ROUTES.SEAT_MANAGEMENT} element={<SeatManagementPage />} />
               <Route path="/iot-dashboard" element={<SmartIoTDashboard />} />
@@ -370,7 +370,7 @@ const AppContent: React.FC = () => {
               {/* ORGANIZATION MANAGEMENT */}
               {/* ============================================ */}
               <Route path="/onboarding" element={<OrganizationOnboardingDashboard />} />
-              <Route path="/feature-control" element={<FeatureControlDashboard />} />
+              <Route path={ROUTES.FEATURE_CONTROL} element={<FeatureControlDashboard />} />
             </Route>
 
             {/* ============================================ */}
