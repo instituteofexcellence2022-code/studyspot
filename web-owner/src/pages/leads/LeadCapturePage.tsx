@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import LeadQualificationDialog from '../../components/leads/LeadQualificationDialog';
 import SmartSchedulingDialog from '../../components/leads/SmartSchedulingDialog';
 import AICommunicationDialog from '../../components/leads/AICommunicationDialog';
+import ConversionAutomationDialog from '../../components/leads/ConversionAutomationDialog';
+import LeadAnalyticsDashboard from '../../components/leads/LeadAnalyticsDashboard';
 import {
   Box,
   Card,
@@ -284,6 +286,7 @@ const LeadCapturePage: React.FC = () => {
   const [qualificationDialogOpen, setQualificationDialogOpen] = useState(false);
   const [schedulingDialogOpen, setSchedulingDialogOpen] = useState(false);
   const [communicationDialogOpen, setCommunicationDialogOpen] = useState(false);
+  const [conversionDialogOpen, setConversionDialogOpen] = useState(false);
   const [aiInsights, setAiInsights] = useState<AIInsight[]>([]);
   const [campaigns, setCampaigns] = useState<AICampaign[]>([]);
   const [leadSources, setLeadSources] = useState<LeadSource[]>([]);
@@ -497,6 +500,11 @@ const LeadCapturePage: React.FC = () => {
     setCommunicationDialogOpen(true);
   };
 
+  const handleConversionAutomation = (lead: Lead) => {
+    setSelectedLead(lead);
+    setConversionDialogOpen(true);
+  };
+
   const handleSaveQualification = (leadData: any) => {
     setLeads(prev => prev.map(lead => 
       lead.id === leadData.id ? { ...lead, ...leadData } : lead
@@ -545,6 +553,27 @@ const LeadCapturePage: React.FC = () => {
       } : lead
     ));
     setCommunicationDialogOpen(false);
+  };
+
+  const handleSaveConversionAutomation = (automationData: any) => {
+    // Update lead with automation data
+    setLeads(prev => prev.map(lead => 
+      lead.id === automationData.leadId ? { 
+        ...lead, 
+        status: 'automated',
+        nextAction: 'Automation active',
+        aiInsights: [...lead.aiInsights, {
+          id: Date.now().toString(),
+          type: 'conversion',
+          title: 'Automation Activated',
+          description: `Conversion automation workflow activated with ${automationData.workflow.name}`,
+          confidence: 0.85,
+          actionable: false,
+          timestamp: new Date()
+        }]
+      } : lead
+    ));
+    setConversionDialogOpen(false);
   };
 
   const getStatusColor = (status: string) => {
@@ -684,6 +713,11 @@ const LeadCapturePage: React.FC = () => {
                     <Tooltip title="Send Message">
                       <IconButton size="small" onClick={() => handleSendMessage(lead)} color="info">
                         <AIIcon />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Conversion Automation">
+                      <IconButton size="small" onClick={() => handleConversionAutomation(lead)} color="warning">
+                        <AutoAwesomeIcon />
                       </IconButton>
                     </Tooltip>
                     <Tooltip title="Edit Lead">
@@ -835,70 +869,11 @@ const LeadCapturePage: React.FC = () => {
   );
 
   const renderAnalyticsTab = () => (
-    <Box>
-      <Card sx={{ mb: 3, background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', color: 'white' }}>
-        <CardContent>
-          <Typography variant="h4" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <AnalyticsIcon fontSize="large" />
-            Analytics & Optimization
-          </Typography>
-          <Typography variant="body1" sx={{ opacity: 0.9 }}>
-            Conversion funnel analytics, AI performance monitoring, and ROI tracking
-          </Typography>
-        </CardContent>
-      </Card>
-
-      <Grid container spacing={3}>
-        <Grid item xs={12} md={3}>
-          <Card>
-            <CardContent sx={{ textAlign: 'center' }}>
-              <Typography variant="h4" color="primary" gutterBottom>
-                {leads.length}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Total Leads
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12} md={3}>
-          <Card>
-            <CardContent sx={{ textAlign: 'center' }}>
-              <Typography variant="h4" color="success.main" gutterBottom>
-                {leads.filter(l => l.status === 'converted').length}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Converted
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12} md={3}>
-          <Card>
-            <CardContent sx={{ textAlign: 'center' }}>
-              <Typography variant="h4" color="warning.main" gutterBottom>
-                {Math.round(leads.reduce((acc, lead) => acc + lead.conversionProbability, 0) / leads.length * 100) || 0}%
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Avg. Conversion Rate
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12} md={3}>
-          <Card>
-            <CardContent sx={{ textAlign: 'center' }}>
-              <Typography variant="h4" color="info.main" gutterBottom>
-                {Math.round(leads.reduce((acc, lead) => acc + lead.score, 0) / leads.length) || 0}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Avg. Lead Score
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
-    </Box>
+    <LeadAnalyticsDashboard 
+      leads={leads}
+      campaigns={campaigns}
+      onRefresh={() => window.location.reload()}
+    />
   );
 
   return (
@@ -1039,6 +1014,14 @@ const LeadCapturePage: React.FC = () => {
         onClose={() => setCommunicationDialogOpen(false)}
         lead={selectedLead}
         onSend={handleSaveMessage}
+      />
+
+      {/* Conversion Automation Dialog */}
+      <ConversionAutomationDialog
+        open={conversionDialogOpen}
+        onClose={() => setConversionDialogOpen(false)}
+        lead={selectedLead}
+        onActivate={handleSaveConversionAutomation}
       />
     </Box>
   );
