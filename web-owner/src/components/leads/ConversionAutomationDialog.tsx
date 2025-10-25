@@ -571,8 +571,8 @@ const ConversionAutomationDialog: React.FC<ConversionAutomationDialogProps> = ({
                 <Typography variant="subtitle2" gutterBottom>
                   Performance Metrics:
                 </Typography>
-                <Grid container spacing={2}>
-                  <Grid item xs={6}>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+                  <Box sx={{ flex: '1 1 200px', minWidth: '200px' }}>
                     <Box sx={{ textAlign: 'center', p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
                       <Typography variant="h6" color="primary">
                         {workflow.performance.leadsProcessed}
@@ -580,7 +580,7 @@ const ConversionAutomationDialog: React.FC<ConversionAutomationDialogProps> = ({
                       <Typography variant="caption">Leads Processed</Typography>
                     </Box>
                   </Grid>
-                  <Grid item xs={6}>
+                  <Box sx={{ flex: '1 1 200px', minWidth: '200px' }}>
                     <Box sx={{ textAlign: 'center', p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
                       <Typography variant="h6" color="success.main">
                         {workflow.performance.conversions}
@@ -688,8 +688,8 @@ const ConversionAutomationDialog: React.FC<ConversionAutomationDialogProps> = ({
         Automation Timeline & Settings
       </Typography>
       
-      <Grid container spacing={3}>
-        <Grid item xs={12} md={6}>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+        <Box sx={{ flex: '1 1 300px', minWidth: '300px' }}>
           <Card>
             <CardContent>
               <Typography variant="subtitle1" gutterBottom>
@@ -744,7 +744,7 @@ const ConversionAutomationDialog: React.FC<ConversionAutomationDialogProps> = ({
           </Card>
         </Grid>
         
-        <Grid item xs={12} md={6}>
+        <Box sx={{ flex: '1 1 300px', minWidth: '300px' }}>
           <Card>
             <CardContent>
               <Typography variant="subtitle1" gutterBottom>
@@ -791,8 +791,8 @@ const ConversionAutomationDialog: React.FC<ConversionAutomationDialogProps> = ({
         </Typography>
       </Alert>
       
-      <Grid container spacing={3}>
-        <Grid item xs={12} md={6}>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+        <Box sx={{ flex: '1 1 300px', minWidth: '300px' }}>
           <Card>
             <CardContent>
               <Typography variant="subtitle1" gutterBottom>
@@ -835,7 +835,7 @@ const ConversionAutomationDialog: React.FC<ConversionAutomationDialogProps> = ({
           </Card>
         </Grid>
         
-        <Grid item xs={12} md={6}>
+        <Box sx={{ flex: '1 1 300px', minWidth: '300px' }}>
           <Card>
             <CardContent>
               <Typography variant="subtitle1" gutterBottom>
