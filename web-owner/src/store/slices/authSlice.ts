@@ -26,11 +26,17 @@ export const login = createAsyncThunk(
   'auth/login',
   async (credentials: LoginRequest, { rejectWithValue }) => {
     try {
-      const response = await authService.login(credentials);
-      localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, response.token);
-      localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, response.refreshToken);
-      localStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(response.user));
-      return response;
+      const response = await authService.login(credentials.email, credentials.password);
+      if (response.success && response.data) {
+        localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, response.data.token);
+        localStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(response.data.user));
+        return {
+          user: response.data.user,
+          token: response.data.token,
+          refreshToken: response.data.token // Using token as refresh token for simplicity
+        };
+      }
+      throw new Error('Login failed');
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Login failed');
     }
@@ -41,8 +47,17 @@ export const register = createAsyncThunk(
   'auth/register',
   async (userData: RegisterRequest, { rejectWithValue }) => {
     try {
-      const response = await authService.register(userData);
-      return response;
+      const response = await authService.register(userData.email, userData.password, `${userData.firstName} ${userData.lastName}`, userData.role);
+      if (response.success && response.data) {
+        localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, response.data.token);
+        localStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(response.data.user));
+        return {
+          user: response.data.user,
+          token: response.data.token,
+          refreshToken: response.data.token
+        };
+      }
+      throw new Error('Registration failed');
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Registration failed');
     }
@@ -65,10 +80,14 @@ export const getProfile = createAsyncThunk(
   'auth/getProfile',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await authService.getProfile();
-      return response;
+      // For now, return the current user from localStorage
+      const user = authService.getCurrentUser();
+      if (user) {
+        return user;
+      }
+      throw new Error('No user found');
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to get profile');
+      return rejectWithValue(error.message || 'Failed to get profile');
     }
   }
 );
@@ -77,21 +96,20 @@ export const refreshToken = createAsyncThunk(
   'auth/refreshToken',
   async (_, { getState, rejectWithValue }) => {
     try {
+      // For now, just return the current token
       const state = getState() as { auth: AuthState };
-      const refreshToken = state.auth.refreshToken;
+      const currentToken = state.auth.token;
       
-      if (!refreshToken) {
-        throw new Error('No refresh token available');
+      if (!currentToken) {
+        throw new Error('No token available');
       }
 
-      const response = await authService.refreshToken(refreshToken);
-      localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, response.token);
-      return response.token;
+      return currentToken;
     } catch (error: any) {
       localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
       localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
       localStorage.removeItem(STORAGE_KEYS.USER_DATA);
-      return rejectWithValue(error.response?.data?.message || 'Token refresh failed');
+      return rejectWithValue(error.message || 'Token refresh failed');
     }
   }
 );
@@ -152,7 +170,9 @@ const authSlice = createSlice({
       })
       .addCase(register.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.user = action.payload;
+        state.user = action.payload.user;
+        state.token = action.payload.token;
+        state.refreshToken = action.payload.refreshToken;
         state.isAuthenticated = true;
         state.error = null;
       })

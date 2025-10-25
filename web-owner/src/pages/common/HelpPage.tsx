@@ -143,7 +143,7 @@ const HelpPage: React.FC = () => {
       topics: [
         {
           question: 'What subscription plans are available?',
-          answer: 'We offer Free, Starter (₹2,999/mo), Pro (₹9,999/mo), and Enterprise (custom) plans. Each plan has different limits on libraries, users, and SMS credits.',
+          answer: 'We offer Free (₹0/mo), Starter (₹99/mo), Professional (₹249/mo), and Enterprise (₹599/mo) plans. Each plan has different limits on libraries, users, and SMS credits.',
         },
         {
           question: 'How do I upgrade my plan?',

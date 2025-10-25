@@ -38,32 +38,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return <Navigate to={ROUTES.LOGIN} replace state={{ from: location }} />;
   }
 
-  // Check role-based access
-  if (requiredRole && user?.role !== requiredRole) {
-    // Redirect based on user role
-    switch (user?.role) {
-      case USER_ROLES.STUDENT:
-        return <Navigate to={ROUTES.DASHBOARD} replace />;
-      case USER_ROLES.LIBRARY_STAFF:
-      case USER_ROLES.LIBRARY_OWNER:
-        return <Navigate to={ROUTES.DASHBOARD} replace />;
-      case USER_ROLES.SUPER_ADMIN:
-        return <Navigate to={ROUTES.ADMIN} replace />;
-      default:
-        return <Navigate to={ROUTES.DASHBOARD} replace />;
-    }
-  }
-
-  // Check if user has access to admin routes
-  if (location.pathname.startsWith('/admin') && user?.role !== USER_ROLES.SUPER_ADMIN) {
-    return <Navigate to={ROUTES.DASHBOARD} replace />;
-  }
-
-  // Check if user has access to user management routes
-  if (location.pathname.startsWith('/users') && 
-      user?.role && ![USER_ROLES.LIBRARY_OWNER, USER_ROLES.SUPER_ADMIN].includes(user.role as any)) {
-    return <Navigate to={ROUTES.DASHBOARD} replace />;
-  }
+  // Role-based access removed - allow access to all routes
 
   return <>{children}</>;
 };

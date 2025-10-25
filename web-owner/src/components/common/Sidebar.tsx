@@ -55,6 +55,7 @@ import {
   Tune as TuneIcon,
   QrCode as QrCodeIcon,
   QrCodeScanner as QrCodeScannerIcon,
+  PersonAdd as PersonAddIcon,
 } from '@mui/icons-material';
 
 import { ROUTES } from '../../constants';
@@ -179,6 +180,15 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
       description: 'Generate library QR codes for attendance',
       section: 'operations',
       badge: { text: 'NEW', color: 'success' }
+    },
+    {
+      label: 'Lead Capture & Demo Classes',
+      path: ROUTES.LEAD_CAPTURE,
+      icon: <PersonAddIcon />,
+      roles: ['library_staff', 'library_owner', 'branch_manager', 'super_admin'],
+      description: 'AI-powered lead tracking and demo class management',
+      section: 'operations',
+      badge: { text: 'AI', color: 'primary' }
     },
     {
       label: 'Issue Management',

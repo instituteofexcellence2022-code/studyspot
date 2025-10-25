@@ -37,7 +37,6 @@ import {
 } from '@mui/material';
 import {
   CheckCircle as CheckIcon,
-  Cancel as CancelIcon,
   Star as StarIcon,
 } from '@mui/icons-material';
 import { useAppDispatch, useAppSelector } from '../../hooks/redux';
@@ -48,6 +47,7 @@ import {
 } from '../../store/slices/subscriptionSlice';
 import { SubscriptionPlan, BillingCycle } from '../../types/subscription';
 import { ROUTES } from '../../constants';
+import { DEFAULT_SUBSCRIPTION_PLANS, getRecommendedPlan, calculateYearlySavings } from '../../constants/subscriptionPlans';
 
 const SubscriptionPlansPage: React.FC = () => {
   const navigate = useNavigate();
@@ -59,6 +59,13 @@ const SubscriptionPlansPage: React.FC = () => {
   const { user } = useAppSelector((state) => state.auth);
   
   const [isYearly, setIsYearly] = useState(selectedBillingCycle === 'yearly');
+
+  // Fallback plans to ensure consistency across platform
+  // Use shared fallback plans
+  const fallbackPlans: SubscriptionPlan[] = DEFAULT_SUBSCRIPTION_PLANS;
+
+  // Use API plans or fallback plans
+  const displayPlans = plans.length > 0 ? plans : fallbackPlans;
 
   useEffect(() => {
     dispatch(fetchPlans());
@@ -76,12 +83,7 @@ const SubscriptionPlansPage: React.FC = () => {
     navigate(ROUTES.SUBSCRIPTION_CHECKOUT);
   }, [dispatch, navigate]);
 
-  const calculateYearlySavings = useCallback((plan: SubscriptionPlan) => {
-    const monthlyTotal = plan.price_monthly * 12;
-    const yearlySavings = monthlyTotal - plan.price_yearly;
-    const savingsPercent = Math.round((yearlySavings / monthlyTotal) * 100);
-    return { amount: yearlySavings, percent: savingsPercent };
-  }, []);
+  // Use shared calculateYearlySavings function
 
   const getPrice = useCallback((plan: SubscriptionPlan) => {
     return isYearly ? plan.price_yearly : plan.price_monthly;
@@ -91,11 +93,7 @@ const SubscriptionPlansPage: React.FC = () => {
     return isYearly ? 'per year' : 'per month';
   }, [isYearly]);
 
-  // Determine recommended plan (usually middle-tier)
-  const getRecommendedPlan = useCallback(() => {
-    if (plans.length === 3) return plans[1]?.id; // Middle plan
-    return null;
-  }, [plans]);
+  // Use shared getRecommendedPlan function
 
   if (plansLoading) {
     return (
@@ -105,8 +103,8 @@ const SubscriptionPlansPage: React.FC = () => {
           <Skeleton variant="text" width="40%" sx={{ mx: 'auto' }} height={30} />
         </Box>
         <Grid container spacing={3}>
-          {[1, 2, 3].map((i) => (
-            <Grid item xs={12} md={4} key={i}>
+          {[1, 2, 3, 4].map((i) => (
+            <Grid item xs={12} md={6} lg={3} key={i}>
               <Skeleton variant="rectangular" height={500} />
             </Grid>
           ))}
@@ -115,16 +113,13 @@ const SubscriptionPlansPage: React.FC = () => {
     );
   }
 
-  if (plansError) {
-    return (
-      <Container maxWidth="lg" sx={{ py: 4 }}>
-        <Alert severity="error">{plansError}</Alert>
-      </Container>
-    );
-  }
+  // Show error message but continue to render plans
+  const showErrorAlert = plansError && plans.length === 0;
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
+      {/* Plans are always available via fallback system */}
+
       {/* Header */}
       <Box sx={{ textAlign: 'center', mb: 4 }}>
         <Typography variant="h3" component="h1" gutterBottom fontWeight="bold">
@@ -191,7 +186,7 @@ const SubscriptionPlansPage: React.FC = () => {
 
       {/* Plans Grid */}
       <Grid container spacing={3} alignItems="stretch">
-        {plans.map((plan) => {
+        {displayPlans.map((plan) => {
           const price = getPrice(plan);
           const priceLabel = getPriceLabel();
           const isRecommended = plan.id === getRecommendedPlan();

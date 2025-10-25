@@ -22,6 +22,7 @@ import InvoiceDialog from '../../components/invoices/InvoiceDialog';
 import OfflinePaymentDialog from '../../components/payments/OfflinePaymentDialog';
 import PaymentVerificationDialog from '../../components/payments/PaymentVerificationDialog';
 import { generatePaymentInvoice, generateReceipt, InvoiceData } from '../../utils/invoiceGenerator';
+import { useNavigate } from 'react-router-dom';
 
 interface Payment {
   id: string;
@@ -123,6 +124,7 @@ const MOCK_PAYMENTS: Payment[] = [
 
 const PaymentsPageComprehensive: React.FC = () => {
   const theme = useTheme();
+  const navigate = useNavigate();
   const [payments, setPayments] = useState<Payment[]>(MOCK_PAYMENTS);
   const [filteredPayments, setFilteredPayments] = useState<Payment[]>(MOCK_PAYMENTS);
   const [searchTerm, setSearchTerm] = useState('');
@@ -347,7 +349,17 @@ const PaymentsPageComprehensive: React.FC = () => {
           >
             Show QR Code
           </Button>
-          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setOfflinePaymentOpen(true)}>
+          <Button 
+            variant="contained" 
+            startIcon={<AddIcon />} 
+            onClick={() => navigate('/offline-payments')}
+            sx={{ 
+              background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
+              '&:hover': {
+                background: 'linear-gradient(45deg, #1976D2 30%, #1CB5E0 90%)',
+              }
+            }}
+          >
             Add Offline Payment
           </Button>
         </Box>

@@ -39,36 +39,20 @@ import {
 } from '@mui/material';
 import { GridLegacy as Grid } from '@mui/material';
 import { useTheme, alpha } from '@mui/material/styles';
+import { DEFAULT_SUBSCRIPTION_PLANS } from '../../constants/subscriptionPlans';
 import {
   CreditCard,
   ShoppingCart,
-  TrendingUp,
   Warning,
   CheckCircle,
-  Message,
   Sms,
   WhatsApp,
-  Notifications,
-  AutorenewRounded,
-  AttachMoney,
   History,
   Settings,
-  Info,
   Upgrade,
   Compare,
-  Add,
-  Remove,
-  LocalOffer,
-  VerifiedUser,
-  Speed,
-  CloudUpload,
-  Analytics,
-  Group,
   Check,
-  Close,
   Star,
-  ArrowUpward,
-  ArrowDownward,
 } from '@mui/icons-material';
 
 // =====================================================
@@ -128,72 +112,20 @@ interface UsageHistory {
 // MOCK DATA
 // =====================================================
 
-const MOCK_PLANS: SubscriptionPlan[] = [
-  {
-    id: '1',
-    name: 'Starter',
-    description: 'Perfect for small libraries',
-    price: 999,
-    billingCycle: 'monthly',
-    features: [
-      '1 Library Location',
-      'Up to 50 Seats',
-      '3 Staff Members',
-      'Basic Analytics',
-      'Email Support',
-      '100 SMS/month',
-      '50 WhatsApp/month'
-    ],
-    maxLibraries: 1,
-    maxSeats: 50,
-    maxStaff: 3,
-  },
-  {
-    id: '2',
-    name: 'Professional',
-    description: 'Most popular for growing businesses',
-    price: 2499,
-    billingCycle: 'monthly',
-    features: [
-      '3 Library Locations',
-      'Up to 200 Seats',
-      '10 Staff Members',
-      'Advanced Analytics',
-      'Priority Support',
-      '500 SMS/month',
-      '300 WhatsApp/month',
-      'Custom Branding',
-      'API Access'
-    ],
-    maxLibraries: 3,
-    maxSeats: 200,
-    maxStaff: 10,
-    isPopular: true,
-    isCurrentPlan: true,
-  },
-  {
-    id: '3',
-    name: 'Enterprise',
-    description: 'For large organizations',
-    price: 4999,
-    billingCycle: 'monthly',
-    features: [
-      'Unlimited Libraries',
-      'Unlimited Seats',
-      'Unlimited Staff',
-      'Real-time Analytics',
-      '24/7 Dedicated Support',
-      'Unlimited SMS',
-      'Unlimited WhatsApp',
-      'White-label Solution',
-      'Custom Integrations',
-      'SLA Guarantee'
-    ],
-    maxLibraries: -1,
-    maxSeats: -1,
-    maxStaff: -1,
-  },
-];
+// Use shared subscription plans
+const MOCK_PLANS: SubscriptionPlan[] = DEFAULT_SUBSCRIPTION_PLANS.map(plan => ({
+  id: plan.id,
+  name: plan.name,
+  description: plan.description,
+  price: plan.price_monthly,
+  billingCycle: 'monthly' as const,
+  features: plan.features,
+  maxLibraries: plan.limits.max_libraries === -1 ? 999999 : (plan.limits.max_libraries || 0),
+  maxSeats: plan.limits.max_seats === -1 ? 999999 : (plan.limits.max_seats || 0),
+  maxStaff: plan.limits.max_staff === -1 ? 999999 : (plan.limits.max_staff || 0),
+  isPopular: plan.id === 'professional',
+  isCurrentPlan: plan.id === 'professional',
+}));
 
 const MOCK_SMS_PACKAGES: CreditPackage[] = [
   { id: 's1', name: 'Starter Pack', type: 'sms', credits: 500, price: 299, validityDays: 30 },

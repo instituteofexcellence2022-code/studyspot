@@ -42,10 +42,31 @@ class SubscriptionService {
    */
   async getPlans(): Promise<SubscriptionPlan[]> {
     try {
-      const response: any = await apiClient.get(`${this.baseUrl}/plans`);
+      const response: any = await apiClient.get('/api/subscriptions/plans');
       
-      if (response.data.success && response.data.data) {
-        return response.data.data;
+      if (response.data.success && response.data.data && response.data.data.plans) {
+        // Transform the API response to match our SubscriptionPlan interface
+        return response.data.data.plans.map((plan: any) => ({
+          id: plan.id,
+          name: plan.name,
+          display_name: plan.name,
+          description: plan.description,
+          price_monthly: plan.price,
+          price_yearly: Math.round(plan.price * 12 * 0.8), // 20% discount for yearly
+          features: plan.features,
+          limits: {
+            max_libraries: plan.maxLibraries,
+            max_users: plan.maxSeats,
+            max_seats: plan.maxSeats,
+            max_staff: plan.maxStaff,
+            ai_features: plan.features.some((f: string) => f.toLowerCase().includes('ai') || f.toLowerCase().includes('analytics')),
+            analytics: plan.features.some((f: string) => f.toLowerCase().includes('analytics')),
+            api_access: plan.features.some((f: string) => f.toLowerCase().includes('api')),
+            priority_support: plan.features.some((f: string) => f.toLowerCase().includes('support')),
+            custom_branding: plan.features.some((f: string) => f.toLowerCase().includes('branding') || f.toLowerCase().includes('white-label'))
+          },
+          is_active: true
+        }));
       }
       
       throw new Error(response.data.error || 'Failed to fetch subscription plans');

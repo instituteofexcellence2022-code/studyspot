@@ -66,6 +66,7 @@ const BookingsPage = lazy(() => import('./pages/booking/BookingsPage'));
 const BookingDetailsPage = lazy(() => import('./pages/booking/BookingDetailsPage'));
 const AttendancePage = lazy(() => import('./pages/booking/AttendancePage'));
 const BarcodeQRPage = lazy(() => import('./pages/operations/BarcodeQRPage'));
+const LeadCapturePage = lazy(() => import('./pages/leads/LeadCapturePage'));
 
 // Student Management
 const UsersPage = lazy(() => import('./pages/user/UsersPage'));
@@ -282,6 +283,7 @@ const AppContent: React.FC = () => {
               <Route path={ROUTES.STUDENTS} element={<StudentsPage />} />
               <Route path={ROUTES.ATTENDANCE} element={<AttendancePage />} />
               <Route path={ROUTES.BARCODE_QR} element={<BarcodeQRPage />} />
+              <Route path={ROUTES.LEAD_CAPTURE} element={<LeadCapturePage />} />
               <Route path={ROUTES.PAYMENTS} element={<PaymentsPage />} />
               <Route path={ROUTES.PAYMENT_ANALYTICS} element={<PaymentAnalyticsPage />} />
               <Route path={ROUTES.SUBSCRIPTION_CREDITS} element={<SubscriptionCreditsPage />} />

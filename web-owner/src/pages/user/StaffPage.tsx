@@ -29,7 +29,41 @@ type SortField = keyof Staff;
 type SortOrder = 'asc' | 'desc';
 
 const StaffPageEnhanced: React.FC = () => {
-  const [staff, setStaff] = useState<Staff[]>(INITIAL_STAFF);
+  // Load staff from localStorage (from onboarding) or use initial data
+  const getInitialStaff = () => {
+    try {
+      const onboardingStaff = localStorage.getItem('onboardingStaffData');
+      if (onboardingStaff) {
+        const parsedStaff = JSON.parse(onboardingStaff);
+        // Convert onboarding staff format to main staff format
+        return parsedStaff.map((s: any) => ({
+          id: parseInt(s.id) || Date.now(),
+          name: s.name,
+          email: s.email,
+          phone: s.phone || '',
+          role: s.role,
+          department: s.department || 'General',
+          status: 'active',
+          joinDate: new Date().toISOString().split('T')[0]
+        }));
+      }
+    } catch (error) {
+      console.error('Error loading onboarding staff data:', error);
+    }
+    return INITIAL_STAFF;
+  };
+
+  const [staff, setStaff] = useState<Staff[]>(getInitialStaff());
+  
+  // Sync staff changes to localStorage
+  const syncStaffToStorage = (updatedStaff: Staff[]) => {
+    try {
+      localStorage.setItem('onboardingStaffData', JSON.stringify(updatedStaff));
+    } catch (error) {
+      console.error('Error syncing staff data:', error);
+    }
+  };
+  
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
@@ -104,14 +138,19 @@ const StaffPageEnhanced: React.FC = () => {
     
     setLoading(true);
     setTimeout(() => {
+      let updatedStaff: Staff[];
       if (editMode && currentStaff.id) {
-        setStaff(staff.map(s => s.id === currentStaff.id ? currentStaff as Staff : s));
+        updatedStaff = staff.map(s => s.id === currentStaff.id ? currentStaff as Staff : s);
+        setStaff(updatedStaff);
         setSnackbar({ open: true, message: 'Staff updated!', severity: 'success' });
       } else {
         const newStaff: Staff = { id: Math.max(...staff.map(s => s.id), 0) + 1, ...currentStaff as Omit<Staff, 'id'> };
-        setStaff([...staff, newStaff]);
+        updatedStaff = [...staff, newStaff];
+        setStaff(updatedStaff);
         setSnackbar({ open: true, message: 'Staff added!', severity: 'success' });
       }
+      // Sync to localStorage
+      syncStaffToStorage(updatedStaff);
       setDialogOpen(false);
       setLoading(false);
     }, 500);
@@ -126,7 +165,10 @@ const StaffPageEnhanced: React.FC = () => {
     if (staffToDelete) {
       setLoading(true);
       setTimeout(() => {
-        setStaff(staff.filter(s => s.id !== staffToDelete.id));
+        const updatedStaff = staff.filter(s => s.id !== staffToDelete.id);
+        setStaff(updatedStaff);
+        // Sync to localStorage
+        syncStaffToStorage(updatedStaff);
         setSnackbar({ open: true, message: 'Staff removed!', severity: 'success' });
         setDeleteDialogOpen(false);
         setStaffToDelete(null);

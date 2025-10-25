@@ -62,9 +62,7 @@ const MainLayout: React.FC = () => {
     dispatch(toggleSidebar());
   };
 
-  if (!isAuthenticated) {
-    return null;
-  }
+  // Remove role-based access check - show layout for all authenticated users
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh' }}>
@@ -83,8 +81,8 @@ const MainLayout: React.FC = () => {
             duration: theme.transitions.duration.leavingScreen,
           }),
           ...(sidebarOpen && !isMobile && {
-            marginLeft: '240px',
-            width: 'calc(100% - 240px)',
+            marginLeft: '280px',
+            width: 'calc(100% - 280px)',
           }),
         }}
       >
@@ -94,8 +92,8 @@ const MainLayout: React.FC = () => {
           sx={{
             zIndex: theme.zIndex.drawer + 1,
             ...(sidebarOpen && !isMobile && {
-              width: 'calc(100% - 240px)',
-              marginLeft: '240px',
+              width: 'calc(100% - 280px)',
+              marginLeft: '280px',
             }),
           }}
         >

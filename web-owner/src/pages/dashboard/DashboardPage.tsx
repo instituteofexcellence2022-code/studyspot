@@ -287,7 +287,7 @@ const DashboardPageEnhanced: React.FC = () => {
             <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
               Last updated: {lastRefresh.toLocaleTimeString()}
               {autoRefresh && ' • Auto-refresh ON'}
-            </Typography>
+      </Typography>
           </Box>
           <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
             <Tooltip title={autoRefresh ? 'Auto-refresh ON' : 'Auto-refresh OFF'}>
@@ -324,8 +324,8 @@ const DashboardPageEnhanced: React.FC = () => {
           </Box>
         </Box>
         <Typography variant="subtitle1" color="text.secondary">
-          Here's what's happening with your libraries today.
-        </Typography>
+        Here's what's happening with your libraries today.
+      </Typography>
       </Box>
 
       {/* Loading Progress */}
@@ -583,8 +583,8 @@ const DashboardPageEnhanced: React.FC = () => {
                 <br />
                 <Typography variant="caption">
                   (Click to view detailed reports)
-                </Typography>
-              </Typography>
+            </Typography>
+            </Typography>
             </Box>
           </Paper>
         </Grid>

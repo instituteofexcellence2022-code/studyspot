@@ -1,4 +1,5 @@
 import React, { useState, useRef, useMemo, useCallback } from 'react';
+import ZoneEditDialog from '../../components/seats/ZoneEditDialog';
 import {
   Box,
   Paper,
@@ -102,6 +103,7 @@ const UserFriendlyDesigner: React.FC = () => {
   const [isDrawingZone, setIsDrawingZone] = useState(false);
   const [currentZoneDraw, setCurrentZoneDraw] = useState<any>(null);
   const [selectedZoneType, setSelectedZoneType] = useState<string>('premium');
+  const [editingZone, setEditingZone] = useState<any>(null);
   
   // AI Recommendations
   const [showAIPanel, setShowAIPanel] = useState(true);
@@ -1395,6 +1397,15 @@ const UserFriendlyDesigner: React.FC = () => {
       </Box>
 
       {/* Dialogs */}
+      <ZoneEditDialog
+        open={editingZone !== null}
+        zone={editingZone}
+        onClose={() => setEditingZone(null)}
+        onSave={(updatedZone) => {
+          setMarkedZones(markedZones.map(z => z.id === updatedZone.id ? updatedZone : z));
+          setEditingZone(null);
+        }}
+      />
 
       <Dialog open={showCustomAreaDialog} onClose={() => setShowCustomAreaDialog(false)} maxWidth="xs" fullWidth>
         <DialogTitle>Add Custom Area</DialogTitle>
