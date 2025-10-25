@@ -45,10 +45,6 @@ import {
   Checkbox,
   FormGroup,
   Autocomplete,
-  TimePicker,
-  DatePicker,
-  LocalizationProvider,
-  AdapterDateFns
 } from '@mui/material';
 import {
   Schedule as ScheduleIcon,
@@ -105,17 +101,11 @@ import {
   StackedLineChart as StackedChartIcon,
   CandlestickChart as CandleChartIcon,
   WaterfallChart as WaterfallChartIcon,
-  Sankey as SankeyChartIcon,
-  TreeMap as TreeMapIcon,
-  HeatMap as HeatMapIcon,
   Radar as RadarChartIcon,
-  PolarChart as PolarChartIcon,
-  Gauge as GaugeChartIcon,
-  Speedometer as SpeedometerIcon,
   DashboardCustomize as CustomDashboardIcon,
   ViewModule as ModuleIcon,
   ViewList as ListViewIcon,
-  ViewGrid as GridViewIcon,
+  GridView as GridViewIcon,
   ViewComfy as ComfyViewIcon,
   ViewStream as StreamViewIcon,
   ViewSidebar as SidebarViewIcon,
@@ -123,7 +113,7 @@ import {
   ViewCarousel as CarouselViewIcon,
   ViewDay as DayViewIcon,
   ViewWeek as WeekViewIcon,
-  ViewMonth as MonthViewIcon,
+  CalendarMonth as MonthViewIcon,
   ViewAgenda as AgendaViewIcon,
   ViewQuilt as QuiltViewIcon,
   ViewArray as ArrayViewIcon,
@@ -321,7 +311,7 @@ const SmartSchedulingDialog: React.FC<SmartSchedulingDialogProps> = ({
       </Typography>
       
       <Grid container spacing={3}>
-        <Grid item xs={12} md={6}>
+        <Box sx={{ flex: '1 1 45%', minWidth: '300px' }}>
           <Card>
             <CardContent>
               <Typography variant="subtitle1" gutterBottom>
@@ -379,9 +369,9 @@ const SmartSchedulingDialog: React.FC<SmartSchedulingDialogProps> = ({
               </RadioGroup>
             </CardContent>
           </Card>
-        </Grid>
+        </Box>
         
-        <Grid item xs={12} md={6}>
+        <Box sx={{ flex: '1 1 45%', minWidth: '300px' }}>
           <Card>
             <CardContent>
               <Typography variant="subtitle1" gutterBottom>
@@ -405,9 +395,9 @@ const SmartSchedulingDialog: React.FC<SmartSchedulingDialogProps> = ({
               </Typography>
             </CardContent>
           </Card>
-        </Grid>
+        </Box>
         
-        <Grid item xs={12}>
+        <Box sx={{ width: '100%' }}>
           <Card>
             <CardContent>
               <Typography variant="subtitle1" gutterBottom>
@@ -433,8 +423,8 @@ const SmartSchedulingDialog: React.FC<SmartSchedulingDialogProps> = ({
               </FormGroup>
             </CardContent>
           </Card>
-        </Grid>
-      </Grid>
+        </Box>
+              </Box>
     </Box>
   );
 
@@ -502,7 +492,7 @@ const SmartSchedulingDialog: React.FC<SmartSchedulingDialogProps> = ({
                 </Alert>
                 
                 <Grid container spacing={2}>
-                  <Grid item xs={12} md={6}>
+                  <Box sx={{ flex: '1 1 45%', minWidth: '300px' }}>
                     <Typography variant="subtitle2" color="success.main" gutterBottom>
                       Benefits:
                     </Typography>
@@ -516,8 +506,8 @@ const SmartSchedulingDialog: React.FC<SmartSchedulingDialogProps> = ({
                         </ListItem>
                       ))}
                     </List>
-                  </Grid>
-                  <Grid item xs={12} md={6}>
+                  </Box>
+                  <Box sx={{ flex: '1 1 45%', minWidth: '300px' }}>
                     <Typography variant="subtitle2" color="warning.main" gutterBottom>
                       Considerations:
                     </Typography>
@@ -531,8 +521,8 @@ const SmartSchedulingDialog: React.FC<SmartSchedulingDialogProps> = ({
                         </ListItem>
                       ))}
                     </List>
-                  </Grid>
-                </Grid>
+                  </Box>
+                </Box>
               </CardContent>
             </Card>
           ))}
@@ -556,31 +546,31 @@ const SmartSchedulingDialog: React.FC<SmartSchedulingDialogProps> = ({
             </Typography>
             
             <Grid container spacing={2}>
-              <Grid item xs={12} sm={6}>
+              <Box sx={{ flex: '1 1 200px', minWidth: '150px' }}>
                 <Typography variant="body2" color="text.secondary">
                   Date & Time
                 </Typography>
                 <Typography variant="body1">
                   {selectedTimeSlot.date.toLocaleDateString()} at {selectedTimeSlot.startTime}
                 </Typography>
-              </Grid>
-              <Grid item xs={12} sm={6}>
+              </Box>
+              <Box sx={{ flex: '1 1 200px', minWidth: '150px' }}>
                 <Typography variant="body2" color="text.secondary">
                   Duration
                 </Typography>
                 <Typography variant="body1">
                   {selectedTimeSlot.duration} minutes
                 </Typography>
-              </Grid>
-              <Grid item xs={12} sm={6}>
+              </Box>
+              <Box sx={{ flex: '1 1 200px', minWidth: '150px' }}>
                 <Typography variant="body2" color="text.secondary">
                   Type
                 </Typography>
                 <Typography variant="body1" sx={{ textTransform: 'capitalize' }}>
                   {selectedTimeSlot.type.replace('_', ' ')}
                 </Typography>
-              </Grid>
-              <Grid item xs={12} sm={6}>
+              </Box>
+              <Box sx={{ flex: '1 1 200px', minWidth: '150px' }}>
                 <Typography variant="body2" color="text.secondary">
                   AI Score
                 </Typography>
@@ -589,8 +579,8 @@ const SmartSchedulingDialog: React.FC<SmartSchedulingDialogProps> = ({
                   color={getScoreColor(selectedTimeSlot.aiScore) as any}
                   size="small"
                 />
-              </Grid>
-            </Grid>
+              </Box>
+            </Box>
           </CardContent>
         </Card>
       )}
@@ -602,39 +592,39 @@ const SmartSchedulingDialog: React.FC<SmartSchedulingDialogProps> = ({
           </Typography>
           
           <Grid container spacing={2}>
-            <Grid item xs={12} sm={6}>
+            <Box sx={{ flex: '1 1 200px', minWidth: '150px' }}>
               <Typography variant="body2" color="text.secondary">
                 Name
               </Typography>
               <Typography variant="body1">
                 {lead?.name || 'N/A'}
               </Typography>
-            </Grid>
-            <Grid item xs={12} sm={6}>
+            </Box>
+            <Box sx={{ flex: '1 1 200px', minWidth: '150px' }}>
               <Typography variant="body2" color="text.secondary">
                 Email
               </Typography>
               <Typography variant="body1">
                 {lead?.email || 'N/A'}
               </Typography>
-            </Grid>
-            <Grid item xs={12} sm={6}>
+            </Box>
+            <Box sx={{ flex: '1 1 200px', minWidth: '150px' }}>
               <Typography variant="body2" color="text.secondary">
                 Company
               </Typography>
               <Typography variant="body1">
                 {lead?.company || 'N/A'}
               </Typography>
-            </Grid>
-            <Grid item xs={12} sm={6}>
+            </Box>
+            <Box sx={{ flex: '1 1 200px', minWidth: '150px' }}>
               <Typography variant="body2" color="text.secondary">
                 Phone
               </Typography>
               <Typography variant="body1">
                 {lead?.phone || 'N/A'}
               </Typography>
-            </Grid>
-          </Grid>
+            </Box>
+          </Box>
         </CardContent>
       </Card>
     </Box>

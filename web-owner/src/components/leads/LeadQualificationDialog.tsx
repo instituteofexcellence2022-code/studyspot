@@ -441,7 +441,7 @@ const LeadQualificationDialog: React.FC<LeadQualificationDialogProps> = ({
             fullWidth
             label="Phone"
             value={qualificationData.phone || ''}
-            onChange={(e) => setQualificationData(prev => ({ ...prev, phone: e.target.value }))}
+            onChange={(e) => setQualificationData((prev: any) => ({ ...prev, phone: e.target.value }))}
             variant="outlined"
           />
         </Box>
@@ -450,16 +450,16 @@ const LeadQualificationDialog: React.FC<LeadQualificationDialogProps> = ({
             fullWidth
             label="Company"
             value={qualificationData.company || ''}
-            onChange={(e) => setQualificationData(prev => ({ ...prev, company: e.target.value }))}
+            onChange={(e) => setQualificationData((prev: any) => ({ ...prev, company: e.target.value }))}
             variant="outlined"
           />
         </Box>
-        <Box xs={12}>
+        <Box sx={{ width: '100%' }}>
           <TextField
             fullWidth
             label="Position"
             value={qualificationData.position || ''}
-            onChange={(e) => setQualificationData(prev => ({ ...prev, position: e.target.value }))}
+            onChange={(e) => setQualificationData((prev: any) => ({ ...prev, position: e.target.value }))}
             variant="outlined"
           />
         </Box>
@@ -575,11 +575,11 @@ const LeadQualificationDialog: React.FC<LeadQualificationDialogProps> = ({
           </Card>
           
           {/* Category Scores */}
-          <Box spacing={2} sx={{ mb: 3 }}>
+          <Box sx={{ mb: 3, display: 'flex', flexWrap: 'wrap', gap: 2 }}>
             {Object.entries(aiScore).filter(([key]) => 
               ['budget', 'authority', 'need', 'timeline', 'fit'].includes(key)
             ).map(([category, score]) => (
-              <Box xs={12} sm={6} md={4} key={category}>
+              <Box key={category} sx={{ flex: '1 1 200px', minWidth: '200px' }}>
                 <Card>
                   <CardContent sx={{ textAlign: 'center' }}>
                     <Typography variant="h4" color={`${getScoreColor(score as number)}.main`}>

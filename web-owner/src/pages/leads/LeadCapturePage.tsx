@@ -51,13 +51,6 @@ import {
   Slider,
   InputAdornment,
   Autocomplete,
-  Timeline,
-  TimelineItem,
-  TimelineSeparator,
-  TimelineConnector,
-  TimelineContent,
-  TimelineDot,
-  TimelineOppositeContent
 } from '@mui/material';
 import {
   PersonAdd as PersonAddIcon,
@@ -146,17 +139,11 @@ import {
   StackedLineChart as StackedChartIcon,
   CandlestickChart as CandleChartIcon,
   WaterfallChart as WaterfallChartIcon,
-  Sankey as SankeyChartIcon,
-  TreeMap as TreeMapIcon,
-  HeatMap as HeatMapIcon,
   Radar as RadarChartIcon,
-  PolarChart as PolarChartIcon,
-  Gauge as GaugeChartIcon,
-  Speedometer as SpeedometerIcon,
   DashboardCustomize as CustomDashboardIcon,
   ViewModule as ModuleIcon,
   ViewList as ListViewIcon,
-  ViewGrid as GridViewIcon,
+  GridView as GridViewIcon,
   ViewComfy as ComfyViewIcon,
   ViewStream as StreamViewIcon,
   ViewSidebar as SidebarViewIcon,
@@ -164,7 +151,7 @@ import {
   ViewCarousel as CarouselViewIcon,
   ViewDay as DayViewIcon,
   ViewWeek as WeekViewIcon,
-  ViewMonth as MonthViewIcon,
+  CalendarMonth as MonthViewIcon,
   ViewAgenda as AgendaViewIcon,
   ViewQuilt as QuiltViewIcon,
   ViewArray as ArrayViewIcon,
@@ -546,7 +533,7 @@ const LeadCapturePage: React.FC = () => {
           type: messageData.channel,
           content: messageData.content,
           timestamp: new Date(),
-          outcome: 'sent',
+          outcome: 'positive' as const,
           aiGenerated: true,
           sentiment: 0.5
         }]
@@ -560,7 +547,7 @@ const LeadCapturePage: React.FC = () => {
     setLeads(prev => prev.map(lead => 
       lead.id === automationData.leadId ? { 
         ...lead, 
-        status: 'automated',
+        status: 'contacted' as const,
         nextAction: 'Automation active',
         aiInsights: [...lead.aiInsights, {
           id: Date.now().toString(),
