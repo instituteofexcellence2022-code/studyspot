@@ -56,6 +56,7 @@ import {
   QrCode as QrCodeIcon,
   QrCodeScanner as QrCodeScannerIcon,
   PersonAdd as PersonAddIcon,
+  ViewList as TemplateIcon,
 } from '@mui/icons-material';
 
 import { ROUTES } from '../../constants';
@@ -202,7 +203,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
     
     // Financial Management
     {
-      label: 'Payments',
+      label: 'Revenue',
       path: ROUTES.PAYMENTS,
       icon: <PaymentIcon />,
       roles: ['library_staff', 'library_owner', 'branch_manager', 'finance_manager', 'super_admin'],
@@ -210,8 +211,9 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
       section: 'finance',
       badge: { text: '₹12K', color: 'success' }
     },
+
     {
-      label: 'Payment Analytics',
+      label: 'Revenue Analytics',
       path: ROUTES.PAYMENT_ANALYTICS,
       icon: <AnalyticsIcon />,
       roles: ['library_owner', 'branch_manager', 'finance_manager', 'super_admin'],
@@ -234,6 +236,24 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
       roles: ['library_owner', 'super_admin'],
       description: 'Payment history and invoice management',
       section: 'finance',
+    },
+    {
+      label: 'Pending Payments Tracking',
+      path: ROUTES.INVOICE_MANAGEMENT,
+      icon: <Receipt />,
+      roles: ['library_staff', 'library_owner', 'branch_manager', 'finance_manager', 'super_admin'],
+      description: 'Track payments, send reminders, and manage outstanding dues',
+      section: 'finance',
+      badge: { text: 'NEW', color: 'success' }
+    },
+    {
+      label: 'Billing Templates',
+      path: ROUTES.BILLING_TEMPLATES,
+      icon: <TemplateIcon />,
+      roles: ['library_staff', 'library_owner', 'branch_manager', 'finance_manager', 'super_admin'],
+      description: 'Create and customize professional invoice templates',
+      section: 'finance',
+      badge: { text: 'NEW', color: 'primary' }
     },
     
     // IoT & Smart Controls
@@ -298,7 +318,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
     },
     {
       label: 'System Settings',
-      path: ROUTES.ADMIN,
+      path: ROUTES.SETTINGS,
       icon: <AdminIcon />,
       roles: ['super_admin'],
       description: 'System settings',
@@ -360,7 +380,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
     operations: 'Operations',
     finance: 'Finance',
     marketing: 'Marketing',
-    admin: 'Admin',
+    admin: 'Administration',
   };
 
   const renderNavItem = (item: NavigationItem) => {

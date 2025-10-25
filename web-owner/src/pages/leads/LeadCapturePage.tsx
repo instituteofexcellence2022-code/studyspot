@@ -11,7 +11,6 @@ import {
   Typography,
   Button,
   TextField,
-  Grid,
   Chip,
   Avatar,
   IconButton,
@@ -514,7 +513,7 @@ const LeadCapturePage: React.FC = () => {
   const filteredLeads = leads.filter(lead => {
     const matchesSearch = lead.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          lead.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         lead.company?.toLowerCase().includes(searchTerm.toLowerCase());
+                         lead.school?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = filterStatus === 'all' || lead.status === filterStatus;
     const matchesPriority = filterPriority === 'all' || lead.priority === filterPriority;
     const matchesSource = filterSource === 'all' || lead.source === filterSource;
@@ -546,6 +545,12 @@ const LeadCapturePage: React.FC = () => {
         name: leadData.name || '',
         email: leadData.email || '',
         phone: leadData.phone || '',
+        age: leadData.age || 0,
+        grade: leadData.grade || '',
+        school: leadData.school || '',
+        parentName: leadData.parentName || '',
+        parentEmail: leadData.parentEmail || '',
+        parentPhone: leadData.parentPhone || '',
         source: leadData.source || 'Website',
         status: 'new',
         score: 0,
@@ -556,6 +561,11 @@ const LeadCapturePage: React.FC = () => {
         lastContact: new Date(),
         nextAction: 'Initial contact',
         assignedTo: 'Unassigned',
+        subjects: [],
+        learningGoals: [],
+        preferredSubjects: [],
+        studySchedule: '',
+        parentInvolvement: leadData.parentInvolvement || 'medium',
         interests: [],
         communicationHistory: [],
         demoHistory: [],
@@ -611,7 +621,11 @@ const LeadCapturePage: React.FC = () => {
           engagement: 0,
           feedback: '',
           conversion: false,
-          nextSteps: 'Prepare demo materials'
+          nextSteps: 'Prepare demo materials',
+          subjects: scheduleData.subjects || [],
+          parentAttended: false,
+          studentEngagement: 0,
+          subjectInterest: {}
         }]
       } : lead
     ));
@@ -631,7 +645,8 @@ const LeadCapturePage: React.FC = () => {
           timestamp: new Date(),
           outcome: 'positive' as const,
           aiGenerated: true,
-          sentiment: 0.5
+          sentiment: 0.5,
+          recipient: 'student' as const
         }]
       } : lead
     ));
@@ -652,7 +667,8 @@ const LeadCapturePage: React.FC = () => {
           description: `Conversion automation workflow activated with ${automationData.workflow.name}`,
           confidence: 0.85,
           actionable: false,
-          timestamp: new Date()
+          timestamp: new Date(),
+          category: 'conversion' as const
         }]
       } : lead
     ));
@@ -765,9 +781,9 @@ const LeadCapturePage: React.FC = () => {
       </Card>
 
       {/* Leads Grid */}
-      <Grid container spacing={3}>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
         {filteredLeads.map((lead) => (
-          <Grid item xs={12} md={6} lg={4} key={lead.id}>
+          <Box sx={{ flex: '1 1 300px', minWidth: '300px' }} key={lead.id}>
             <Card sx={{ height: '100%', position: 'relative', '&:hover': { boxShadow: 6 } }}>
               <CardContent>
                 <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 2 }}>
@@ -867,9 +883,9 @@ const LeadCapturePage: React.FC = () => {
                 </Box>
               </CardContent>
             </Card>
-          </Grid>
+          </Box>
         ))}
-      </Grid>
+      </Box>
 
       {filteredLeads.length === 0 && (
         <Card>
@@ -907,9 +923,9 @@ const LeadCapturePage: React.FC = () => {
         </CardContent>
       </Card>
 
-      <Grid container spacing={3}>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
         {campaigns.map((campaign) => (
-          <Grid item xs={12} md={6} key={campaign.id}>
+          <Box sx={{ flex: '1 1 400px', minWidth: '400px' }} key={campaign.id}>
             <Card sx={{ height: '100%' }}>
               <CardContent>
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
@@ -927,20 +943,16 @@ const LeadCapturePage: React.FC = () => {
 
                 <Box sx={{ mb: 2 }}>
                   <Typography variant="subtitle2" gutterBottom>Performance Metrics</Typography>
-                  <Grid container spacing={1}>
-                    <Grid item xs={6}>
-                      <Box sx={{ textAlign: 'center', p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
-                        <Typography variant="h6" color="primary">{campaign.performance.sent}</Typography>
-                        <Typography variant="caption">Sent</Typography>
-                      </Box>
-                    </Grid>
-                    <Grid item xs={6}>
-                      <Box sx={{ textAlign: 'center', p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
-                        <Typography variant="h6" color="success.main">{campaign.performance.converted}</Typography>
-                        <Typography variant="caption">Converted</Typography>
-                      </Box>
-                    </Grid>
-                  </Grid>
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    <Box sx={{ flex: 1, textAlign: 'center', p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
+                      <Typography variant="h6" color="primary">{campaign.performance.sent}</Typography>
+                      <Typography variant="caption">Sent</Typography>
+                    </Box>
+                    <Box sx={{ flex: 1, textAlign: 'center', p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
+                      <Typography variant="h6" color="success.main">{campaign.performance.converted}</Typography>
+                      <Typography variant="caption">Converted</Typography>
+                    </Box>
+                  </Box>
                 </Box>
 
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -953,11 +965,189 @@ const LeadCapturePage: React.FC = () => {
                 </Box>
               </CardContent>
             </Card>
-          </Grid>
+          </Box>
         ))}
-      </Grid>
+      </Box>
     </Box>
   );
+
+  const renderDemoManagementTab = () => {
+    const scheduledDemos = leads.filter(lead => lead.status === 'demo_scheduled');
+    const completedDemos = leads.filter(lead => lead.demoHistory.some(demo => demo.conversion !== undefined));
+    
+    return (
+      <Box>
+        <Typography variant="h5" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <SchoolIcon color="primary" />
+          Demo Class Management
+        </Typography>
+        
+        {/* Demo Statistics */}
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3, mb: 4 }}>
+          <Card sx={{ flex: '1 1 200px', minWidth: '200px' }}>
+            <CardContent sx={{ textAlign: 'center' }}>
+              <Typography variant="h4" color="primary" gutterBottom>
+                {scheduledDemos.length}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Scheduled Demos
+              </Typography>
+            </CardContent>
+          </Card>
+          <Card sx={{ flex: '1 1 200px', minWidth: '200px' }}>
+            <CardContent sx={{ textAlign: 'center' }}>
+              <Typography variant="h4" color="success.main" gutterBottom>
+                {completedDemos.length}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Completed Demos
+              </Typography>
+            </CardContent>
+          </Card>
+          <Card sx={{ flex: '1 1 200px', minWidth: '200px' }}>
+            <CardContent sx={{ textAlign: 'center' }}>
+              <Typography variant="h4" color="warning.main" gutterBottom>
+                {Math.round((completedDemos.length / Math.max(leads.length, 1)) * 100)}%
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Conversion Rate
+              </Typography>
+            </CardContent>
+          </Card>
+        </Box>
+
+        {/* Scheduled Demos */}
+        <Card sx={{ mb: 3 }}>
+          <CardContent>
+            <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <CalendarIcon color="primary" />
+              Upcoming Demo Classes
+            </Typography>
+            {scheduledDemos.length > 0 ? (
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+                {scheduledDemos.map((lead) => {
+                  const latestDemo = lead.demoHistory[lead.demoHistory.length - 1];
+                  return (
+                    <Card key={lead.id} sx={{ flex: '1 1 300px', minWidth: '300px' }}>
+                      <CardContent>
+                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                          <Typography variant="h6">{lead.name}</Typography>
+                          <Chip 
+                            label={lead.grade} 
+                            color="primary" 
+                            size="small"
+                          />
+                        </Box>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                          School: {lead.school}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                          Parent: {lead.parentName}
+                        </Typography>
+                        {latestDemo && (
+                          <Box sx={{ mb: 2 }}>
+                            <Typography variant="body2" color="text.secondary">
+                              Demo Date: {new Date(latestDemo.scheduledDate).toLocaleDateString()}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              Type: {latestDemo.type.replace('_', ' ')}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              Duration: {latestDemo.duration} minutes
+                            </Typography>
+                          </Box>
+                        )}
+                        <Box sx={{ display: 'flex', gap: 1 }}>
+                          <Button size="small" variant="outlined" startIcon={<EditIcon />}>
+                            Edit
+                          </Button>
+                          <Button size="small" variant="contained" startIcon={<CheckCircleIcon />}>
+                            Mark Complete
+                          </Button>
+                        </Box>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </Box>
+            ) : (
+              <Box sx={{ textAlign: 'center', py: 4 }}>
+                <CalendarIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
+                <Typography variant="h6" color="text.secondary">
+                  No scheduled demos
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Schedule demo classes to see them here
+                </Typography>
+              </Box>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Demo History */}
+        <Card>
+          <CardContent>
+            <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <AssessmentIcon color="primary" />
+              Demo History & Feedback
+            </Typography>
+            {completedDemos.length > 0 ? (
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+                {completedDemos.map((lead) => (
+                  <Card key={lead.id} sx={{ flex: '1 1 300px', minWidth: '300px' }}>
+                    <CardContent>
+                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                        <Typography variant="h6">{lead.name}</Typography>
+                        <Chip 
+                          label={lead.grade} 
+                          color="success" 
+                          size="small"
+                        />
+                      </Box>
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                        School: {lead.school}
+                      </Typography>
+                      {lead.demoHistory.map((demo, index) => (
+                        <Box key={index} sx={{ mb: 2, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+                          <Typography variant="body2" color="text.secondary">
+                            Date: {new Date(demo.scheduledDate).toLocaleDateString()}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            Type: {demo.type.replace('_', ' ')}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            Engagement: {demo.studentEngagement}/10
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            Conversion: {demo.conversion ? 'Yes' : 'No'}
+                          </Typography>
+                          {demo.feedback && (
+                            <Typography variant="body2" sx={{ mt: 1 }}>
+                              Feedback: {demo.feedback}
+                            </Typography>
+                          )}
+                        </Box>
+                      ))}
+                    </CardContent>
+                  </Card>
+                ))}
+              </Box>
+            ) : (
+              <Box sx={{ textAlign: 'center', py: 4 }}>
+                <AssessmentIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
+                <Typography variant="h6" color="text.secondary">
+                  No completed demos
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Complete demo classes to see feedback and history here
+                </Typography>
+              </Box>
+            )}
+          </CardContent>
+        </Card>
+      </Box>
+    );
+  };
 
   const renderAnalyticsTab = () => (
     <LeadAnalyticsDashboard 
@@ -1011,14 +1201,7 @@ const LeadCapturePage: React.FC = () => {
           </Typography>
         </Box>
       )}
-      {activeTab === 3 && (
-        <Box sx={{ textAlign: 'center', py: 6 }}>
-          <SchoolIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
-          <Typography variant="h6" color="text.secondary">
-            Demo Management - Coming Soon
-          </Typography>
-        </Box>
-      )}
+      {activeTab === 3 && renderDemoManagementTab()}
       {activeTab === 4 && renderAnalyticsTab()}
 
       {/* Lead Dialog */}
@@ -1028,16 +1211,16 @@ const LeadCapturePage: React.FC = () => {
         </DialogTitle>
         <DialogContent>
           <Box sx={{ pt: 1 }}>
-            <Grid container spacing={2}>
-              <Grid item xs={12} sm={6}>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+              <Box sx={{ flex: '1 1 200px', minWidth: '200px' }}>
                 <TextField
                   fullWidth
                   label="Name"
                   defaultValue={selectedLead?.name || ''}
                   variant="outlined"
                 />
-              </Grid>
-              <Grid item xs={12} sm={6}>
+              </Box>
+              <Box sx={{ flex: '1 1 200px', minWidth: '200px' }}>
                 <TextField
                   fullWidth
                   label="Email"
@@ -1045,16 +1228,16 @@ const LeadCapturePage: React.FC = () => {
                   defaultValue={selectedLead?.email || ''}
                   variant="outlined"
                 />
-              </Grid>
-              <Grid item xs={12} sm={6}>
+              </Box>
+              <Box sx={{ flex: '1 1 200px', minWidth: '200px' }}>
                 <TextField
                   fullWidth
                   label="Phone"
                   defaultValue={selectedLead?.phone || ''}
                   variant="outlined"
                 />
-              </Grid>
-              <Grid item xs={12} sm={6}>
+              </Box>
+              <Box sx={{ flex: '1 1 200px', minWidth: '200px' }}>
                 <TextField
                   fullWidth
                   label="Age"
@@ -1062,32 +1245,32 @@ const LeadCapturePage: React.FC = () => {
                   defaultValue={selectedLead?.age || ''}
                   variant="outlined"
                 />
-              </Grid>
-              <Grid item xs={12} sm={6}>
+              </Box>
+              <Box sx={{ flex: '1 1 200px', minWidth: '200px' }}>
                 <TextField
                   fullWidth
                   label="Grade"
                   defaultValue={selectedLead?.grade || ''}
                   variant="outlined"
                 />
-              </Grid>
-              <Grid item xs={12} sm={6}>
+              </Box>
+              <Box sx={{ flex: '1 1 200px', minWidth: '200px' }}>
                 <TextField
                   fullWidth
                   label="School"
                   defaultValue={selectedLead?.school || ''}
                   variant="outlined"
                 />
-              </Grid>
-              <Grid item xs={12} sm={6}>
+              </Box>
+              <Box sx={{ flex: '1 1 200px', minWidth: '200px' }}>
                 <TextField
                   fullWidth
                   label="Parent Name"
                   defaultValue={selectedLead?.parentName || ''}
                   variant="outlined"
                 />
-              </Grid>
-              <Grid item xs={12} sm={6}>
+              </Box>
+              <Box sx={{ flex: '1 1 200px', minWidth: '200px' }}>
                 <TextField
                   fullWidth
                   label="Parent Email"
@@ -1095,16 +1278,16 @@ const LeadCapturePage: React.FC = () => {
                   defaultValue={selectedLead?.parentEmail || ''}
                   variant="outlined"
                 />
-              </Grid>
-              <Grid item xs={12} sm={6}>
+              </Box>
+              <Box sx={{ flex: '1 1 200px', minWidth: '200px' }}>
                 <TextField
                   fullWidth
                   label="Parent Phone"
                   defaultValue={selectedLead?.parentPhone || ''}
                   variant="outlined"
                 />
-              </Grid>
-              <Grid item xs={12} sm={6}>
+              </Box>
+              <Box sx={{ flex: '1 1 200px', minWidth: '200px' }}>
                 <FormControl fullWidth>
                   <InputLabel>Parent Involvement</InputLabel>
                   <Select
@@ -1116,8 +1299,8 @@ const LeadCapturePage: React.FC = () => {
                     <MenuItem value="low">Low</MenuItem>
                   </Select>
                 </FormControl>
-              </Grid>
-              <Grid item xs={12}>
+              </Box>
+              <Box sx={{ width: '100%' }}>
                 <TextField
                   fullWidth
                   label="Notes"
@@ -1126,8 +1309,8 @@ const LeadCapturePage: React.FC = () => {
                   defaultValue={selectedLead?.notes || ''}
                   variant="outlined"
                 />
-              </Grid>
-            </Grid>
+              </Box>
+            </Box>
           </Box>
         </DialogContent>
         <DialogActions>

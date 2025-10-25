@@ -127,7 +127,7 @@ const PaymentsPageEnhanced: React.FC = () => {
       setLoading(true);
       setTimeout(() => {
         setPayments(payments.filter(p => p.id !== paymentToDelete.id));
-        setSnackbar({ open: true, message: 'Payment deleted!', severity: 'success' });
+        setSnackbar({ open: true, message: 'Revenue deleted!', severity: 'success' });
         setDeleteDialogOpen(false);
         setPaymentToDelete(null);
         setLoading(false);

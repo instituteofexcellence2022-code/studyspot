@@ -12,7 +12,6 @@ import {
   MenuItem,
   Box,
   Typography,
-  Grid,
   Chip,
   Card,
   CardContent,
@@ -123,38 +122,65 @@ import {
   ViewTimeline as TimelineViewIcon,
   ViewComfyAlt as ComfyAltViewIcon,
   ViewCompact as CompactViewIcon,
-  ViewCompactAlt as CompactAltViewIcon,
-  ViewCozy as CozyViewIcon,
   ViewSidebarOutlined as SidebarOutlinedIcon,
   ViewSidebarRounded as SidebarRoundedIcon,
   ViewSidebarSharp as SidebarSharpIcon,
-  ViewSidebarTwoTone as SidebarTwoToneIcon,
-  ViewSidebarOutlined as SidebarOutlinedIcon2,
-  ViewSidebarRounded as SidebarRoundedIcon2,
-  ViewSidebarSharp as SidebarSharpIcon2,
-  ViewSidebarTwoTone as SidebarTwoToneIcon2
+  ViewSidebarTwoTone as SidebarTwoToneIcon
 } from '@mui/icons-material';
+
+// Interfaces
+interface Lead {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  age: number;
+  grade: string;
+  school: string;
+  parentName: string;
+  parentEmail: string;
+  parentPhone: string;
+  source: string;
+  status: string;
+  score: number;
+  priority: string;
+  tags: string[];
+  notes: string;
+  createdAt: Date;
+  lastContact: Date;
+  nextAction: string;
+  assignedTo: string;
+  subjects: string[];
+  learningGoals: string[];
+  preferredSubjects: string[];
+  studySchedule: string;
+  parentInvolvement: 'high' | 'medium' | 'low';
+  budget?: number;
+  timeline?: string;
+  interests: string[];
+  communicationHistory: any[];
+  demoHistory: any[];
+  conversionProbability: number;
+  aiInsights: any[];
+}
 
 interface SmartSchedulingDialogProps {
   open: boolean;
   onClose: () => void;
-  lead?: any;
+  lead: Lead | null;
   onSchedule: (scheduleData: any) => void;
 }
 
 interface TimeSlot {
   id: string;
+  date: Date;
   startTime: string;
   endTime: string;
-  date: Date;
-  type: 'online' | 'in_person' | 'phone';
-  location?: string;
-  meetingLink?: string;
-  attendees: string[];
-  duration: number; // minutes
-  availability: 'available' | 'tentative' | 'unavailable';
-  aiScore: number; // 0-100
-  reason?: string;
+  duration: number;
+  type: string;
+  availability: string;
+  aiScore: number;
+  reason: string;
 }
 
 interface AISuggestion {
@@ -176,7 +202,7 @@ const SmartSchedulingDialog: React.FC<SmartSchedulingDialogProps> = ({
   const [currentStep, setCurrentStep] = useState(0);
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<TimeSlot | null>(null);
-  const [demoType, setDemoType] = useState<'online' | 'in_person' | 'phone'>('online');
+  const [demoType, setDemoType] = useState<'individual_demo' | 'group_demo' | 'online' | 'in_person'>('individual_demo');
   const [duration, setDuration] = useState(60);
   const [aiSuggestions, setAiSuggestions] = useState<AISuggestion[]>([]);
   const [isGeneratingSuggestions, setIsGeneratingSuggestions] = useState(false);
@@ -189,53 +215,42 @@ const SmartSchedulingDialog: React.FC<SmartSchedulingDialogProps> = ({
     'Send Invitations'
   ];
 
-  useEffect(() => {
-    if (open && lead) {
-      setScheduleData({
-        leadId: lead.id,
-        leadName: lead.name,
-        leadEmail: lead.email,
-        leadPhone: lead.phone,
-        company: lead.company
-      });
-      setCurrentStep(0);
-      setAiSuggestions([]);
-    }
-  }, [open, lead]);
+  const getScoreColor = (score: number) => {
+    if (score >= 80) return 'success';
+    if (score >= 60) return 'warning';
+    return 'error';
+  };
 
   const generateAISuggestions = async () => {
     setIsGeneratingSuggestions(true);
     
-    // Simulate AI analysis delay
+    // Simulate AI processing
     await new Promise(resolve => setTimeout(resolve, 2000));
     
-    // Mock AI suggestions based on lead data and preferences
     const mockSuggestions: AISuggestion[] = [
       {
         id: '1',
         timeSlot: {
           id: 'slot1',
-          startTime: '10:00',
-          endTime: '11:00',
-          date: new Date(Date.now() + 24 * 60 * 60 * 1000), // Tomorrow
-          type: demoType,
+          date: new Date(Date.now() + 24 * 60 * 60 * 1000),
+          startTime: '10:00 AM',
+          endTime: '11:00 AM',
           duration: duration,
-          attendees: [lead?.name || 'Lead'],
+          type: demoType,
           availability: 'available',
           aiScore: 95,
           reason: 'Optimal time based on lead engagement patterns'
         },
-        confidence: 0.95,
-        reasoning: 'Based on lead engagement data, this time slot has the highest conversion probability. Lead typically responds to emails between 9-11 AM.',
+        confidence: 0.92,
+        reasoning: 'Student shows high engagement during morning hours based on previous interactions',
         benefits: [
-          'High engagement probability',
-          'Lead is typically available',
-          'Optimal for decision-making',
-          'Allows for follow-up same day'
+          'High student engagement expected',
+          'Parent availability confirmed',
+          'No conflicting school activities'
         ],
         risks: [
-          'May conflict with other meetings',
-          'Requires preparation time'
+          'Early morning might be rushed',
+          'Limited time for follow-up questions'
         ],
         alternativeSlots: []
       },
@@ -243,26 +258,25 @@ const SmartSchedulingDialog: React.FC<SmartSchedulingDialogProps> = ({
         id: '2',
         timeSlot: {
           id: 'slot2',
-          startTime: '14:00',
-          endTime: '15:00',
-          date: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000), // Day after tomorrow
-          type: demoType,
+          date: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
+          startTime: '3:00 PM',
+          endTime: '4:00 PM',
           duration: duration,
-          attendees: [lead?.name || 'Lead'],
+          type: demoType,
           availability: 'available',
           aiScore: 87,
           reason: 'Good alternative with high availability'
         },
-        confidence: 0.87,
-        reasoning: 'Second-best option with good availability and moderate engagement probability.',
+        confidence: 0.78,
+        reasoning: 'After-school time aligns with student schedule and parent availability',
         benefits: [
-          'Good availability',
-          'Allows for preparation',
-          'Less rushed timing'
+          'After-school timing is ideal',
+          'Parent can attend easily',
+          'Student is fresh and focused'
         ],
         risks: [
-          'Lower engagement probability',
-          'May require more follow-up'
+          'May conflict with homework time',
+          'Student might be tired'
         ],
         alternativeSlots: []
       }
@@ -272,37 +286,6 @@ const SmartSchedulingDialog: React.FC<SmartSchedulingDialogProps> = ({
     setIsGeneratingSuggestions(false);
   };
 
-  const handleNext = () => {
-    if (currentStep === 0) {
-      // Generate AI suggestions after preferences are set
-      generateAISuggestions();
-    }
-    setCurrentStep(prev => prev + 1);
-  };
-
-  const handleBack = () => {
-    setCurrentStep(prev => prev - 1);
-  };
-
-  const handleSchedule = () => {
-    const finalScheduleData = {
-      ...scheduleData,
-      selectedTimeSlot,
-      demoType,
-      duration,
-      aiSuggestions,
-      scheduledAt: new Date()
-    };
-    onSchedule(finalScheduleData);
-    onClose();
-  };
-
-  const getScoreColor = (score: number) => {
-    if (score >= 90) return 'success';
-    if (score >= 70) return 'warning';
-    return 'error';
-  };
-
   const renderDemoPreferences = () => (
     <Box>
       <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -310,7 +293,7 @@ const SmartSchedulingDialog: React.FC<SmartSchedulingDialogProps> = ({
         Demo Preferences
       </Typography>
       
-      <Grid container spacing={3}>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 3 }}>
         <Box sx={{ flex: '1 1 45%', minWidth: '300px' }}>
           <Card>
             <CardContent>
@@ -423,7 +406,7 @@ const SmartSchedulingDialog: React.FC<SmartSchedulingDialogProps> = ({
                 options={['Mathematics', 'Physics', 'Chemistry', 'Biology', 'English', 'History', 'Geography', 'Computer Science', 'Economics']}
                 value={scheduleData.subjects || []}
                 onChange={(event, newValue) => {
-                  setScheduleData(prev => ({ ...prev, subjects: newValue }));
+                  setScheduleData((prev: any) => ({ ...prev, subjects: newValue }));
                 }}
                 renderInput={(params) => (
                   <TextField
@@ -485,7 +468,7 @@ const SmartSchedulingDialog: React.FC<SmartSchedulingDialogProps> = ({
             </CardContent>
           </Card>
         </Box>
-              </Box>
+      </Box>
     </Box>
   );
 
@@ -493,17 +476,17 @@ const SmartSchedulingDialog: React.FC<SmartSchedulingDialogProps> = ({
     <Box>
       <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
         <AutoAwesomeIcon color="primary" />
-        AI Time Suggestions
+        AI-Powered Time Suggestions
       </Typography>
       
       {isGeneratingSuggestions ? (
         <Box sx={{ textAlign: 'center', py: 4 }}>
           <CircularProgress size={60} />
           <Typography variant="h6" sx={{ mt: 2 }}>
-            Analyzing optimal times...
+            Analyzing optimal scheduling...
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Our AI is considering lead behavior, availability, and engagement patterns
+            AI is considering student schedule, parent availability, and engagement patterns
           </Typography>
         </Box>
       ) : (
@@ -521,39 +504,27 @@ const SmartSchedulingDialog: React.FC<SmartSchedulingDialogProps> = ({
             >
               <CardContent>
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                    <Avatar sx={{ bgcolor: 'primary.main' }}>
-                      {index + 1}
-                    </Avatar>
-                    <Box>
-                      <Typography variant="h6">
-                        {suggestion.timeSlot.date.toLocaleDateString()} at {suggestion.timeSlot.startTime}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {suggestion.timeSlot.duration} minutes • {suggestion.timeSlot.type}
-                      </Typography>
-                    </Box>
-                  </Box>
-                  <Box sx={{ textAlign: 'right' }}>
+                  <Typography variant="h6">
+                    {suggestion.timeSlot.date.toLocaleDateString()} at {suggestion.timeSlot.startTime}
+                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                     <Chip 
                       label={`${suggestion.timeSlot.aiScore}%`} 
                       color={getScoreColor(suggestion.timeSlot.aiScore) as any}
                       size="small"
                     />
                     <Typography variant="caption" display="block" color="text.secondary">
-                      AI Score
+                      {Math.round(suggestion.confidence * 100)}% confidence
                     </Typography>
                   </Box>
                 </Box>
                 
-                <Alert severity="info" sx={{ mb: 2 }}>
-                  <Typography variant="body2">
-                    <strong>AI Reasoning:</strong> {suggestion.reasoning}
-                  </Typography>
-                </Alert>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  {suggestion.reasoning}
+                </Typography>
                 
-                <Grid container spacing={2}>
-                  <Box sx={{ flex: '1 1 45%', minWidth: '300px' }}>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+                  <Box sx={{ flex: '1 1 45%', minWidth: '200px' }}>
                     <Typography variant="subtitle2" color="success.main" gutterBottom>
                       Benefits:
                     </Typography>
@@ -568,7 +539,7 @@ const SmartSchedulingDialog: React.FC<SmartSchedulingDialogProps> = ({
                       ))}
                     </List>
                   </Box>
-                  <Box sx={{ flex: '1 1 45%', minWidth: '300px' }}>
+                  <Box sx={{ flex: '1 1 45%', minWidth: '200px' }}>
                     <Typography variant="subtitle2" color="warning.main" gutterBottom>
                       Considerations:
                     </Typography>
@@ -589,24 +560,14 @@ const SmartSchedulingDialog: React.FC<SmartSchedulingDialogProps> = ({
           ))}
         </Stack>
       )}
-    </Box>
-  );
-
-  const renderScheduleConfirmation = () => (
-    <Box>
-      <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-        <CheckCircleIcon color="primary" />
-        Schedule Confirmation
-      </Typography>
       
       {selectedTimeSlot && (
         <Card sx={{ mb: 3 }}>
           <CardContent>
             <Typography variant="h6" gutterBottom>
-              Demo Session Details
+              Selected Time Slot
             </Typography>
-            
-            <Grid container spacing={2}>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
               <Box sx={{ flex: '1 1 200px', minWidth: '150px' }}>
                 <Typography variant="body2" color="text.secondary">
                   Date & Time
@@ -645,14 +606,21 @@ const SmartSchedulingDialog: React.FC<SmartSchedulingDialogProps> = ({
           </CardContent>
         </Card>
       )}
+    </Box>
+  );
+
+  const renderConfirmation = () => (
+    <Box>
+      <Typography variant="h6" gutterBottom>
+        Schedule Confirmation
+      </Typography>
       
-      <Card>
+      <Card sx={{ mb: 3 }}>
         <CardContent>
-          <Typography variant="h6" gutterBottom>
+          <Typography variant="subtitle1" gutterBottom>
             Lead Information
           </Typography>
-          
-          <Grid container spacing={2}>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
             <Box sx={{ flex: '1 1 200px', minWidth: '150px' }}>
               <Typography variant="body2" color="text.secondary">
                 Name
@@ -671,18 +639,18 @@ const SmartSchedulingDialog: React.FC<SmartSchedulingDialogProps> = ({
             </Box>
             <Box sx={{ flex: '1 1 200px', minWidth: '150px' }}>
               <Typography variant="body2" color="text.secondary">
-                Company
+                School
               </Typography>
               <Typography variant="body1">
-                {lead?.company || 'N/A'}
+                {lead?.school || 'N/A'}
               </Typography>
             </Box>
             <Box sx={{ flex: '1 1 200px', minWidth: '150px' }}>
               <Typography variant="body2" color="text.secondary">
-                Phone
+                Parent Phone
               </Typography>
               <Typography variant="body1">
-                {lead?.phone || 'N/A'}
+                {lead?.parentPhone || 'N/A'}
               </Typography>
             </Box>
           </Box>
@@ -691,72 +659,54 @@ const SmartSchedulingDialog: React.FC<SmartSchedulingDialogProps> = ({
     </Box>
   );
 
-  const renderSendInvitations = () => (
-    <Box>
-      <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-        <SendIcon color="primary" />
-        Send Invitations
-      </Typography>
-      
-      <Alert severity="success" sx={{ mb: 3 }}>
-        <Typography variant="body1">
-          Ready to send calendar invitations and confirmations!
-        </Typography>
-      </Alert>
-      
-      <Card>
-        <CardContent>
-          <Typography variant="subtitle1" gutterBottom>
-            What will be sent:
-          </Typography>
-          
-          <List>
-            <ListItem>
-              <ListItemIcon>
-                <CalendarIcon color="primary" />
-              </ListItemIcon>
-              <ListItemText 
-                primary="Calendar Invitation"
-                secondary="ICS file with meeting details"
-              />
-            </ListItem>
-            <ListItem>
-              <ListItemIcon>
-                <EmailIcon color="primary" />
-              </ListItemIcon>
-              <ListItemText 
-                primary="Email Confirmation"
-                secondary="Detailed meeting information and preparation materials"
-              />
-            </ListItem>
-            <ListItem>
-              <ListItemIcon>
-                <NotificationsIcon color="primary" />
-              </ListItemIcon>
-              <ListItemText 
-                primary="Reminder Notifications"
-                secondary="24 hours and 1 hour before the meeting"
-              />
-            </ListItem>
-          </List>
-        </CardContent>
-      </Card>
-    </Box>
-  );
+  const renderStepContent = () => {
+    console.log('Rendering step content for step:', currentStep);
+    switch (currentStep) {
+      case 0:
+        return renderDemoPreferences();
+      case 1:
+        return renderAISuggestions();
+      case 2:
+        return renderConfirmation();
+      default:
+        return <Typography>Step {currentStep} not implemented</Typography>;
+    }
+  };
+
+  const handleNext = () => {
+    if (currentStep === 0) {
+      generateAISuggestions();
+    }
+    setCurrentStep(prev => prev + 1);
+  };
+
+  const handleBack = () => {
+    setCurrentStep(prev => prev - 1);
+  };
+
+  const handleSchedule = () => {
+    const finalScheduleData = {
+      leadId: lead?.id,
+      selectedTimeSlot,
+      demoType,
+      duration,
+      subjects: scheduleData.subjects || []
+    };
+    onSchedule(finalScheduleData);
+    onClose();
+  };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth sx={{ '& .MuiDialog-paper': { maxHeight: '90vh' } }}>
       <DialogTitle>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Typography variant="h5" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <ScheduleIcon color="primary" />
+          <Typography variant="h6">
             Smart Demo Scheduling
           </Typography>
-          <IconButton onClick={onClose}>
+          <IconButton onClick={onClose} size="small">
             <CloseIcon />
           </IconButton>
         </Box>
-        
         <Stepper activeStep={currentStep} sx={{ mt: 2 }}>
           {steps.map((label) => (
             <Step key={label}>
@@ -766,14 +716,13 @@ const SmartSchedulingDialog: React.FC<SmartSchedulingDialogProps> = ({
         </Stepper>
       </DialogTitle>
       
-      <DialogContent>
-        {currentStep === 0 && renderDemoPreferences()}
-        {currentStep === 1 && renderAISuggestions()}
-        {currentStep === 2 && renderScheduleConfirmation()}
-        {currentStep === 3 && renderSendInvitations()}
+      <DialogContent sx={{ maxHeight: '70vh', overflow: 'auto' }}>
+        <Box sx={{ py: 2 }}>
+          {renderStepContent()}
+        </Box>
       </DialogContent>
       
-      <DialogActions>
+      <DialogActions sx={{ px: 3, pb: 2 }}>
         <Button onClick={onClose}>
           Cancel
         </Button>
@@ -783,12 +732,20 @@ const SmartSchedulingDialog: React.FC<SmartSchedulingDialogProps> = ({
           </Button>
         )}
         {currentStep < steps.length - 1 ? (
-          <Button variant="contained" onClick={handleNext}>
+          <Button 
+            variant="contained" 
+            onClick={handleNext}
+            disabled={currentStep === 1 && !selectedTimeSlot}
+          >
             Next
           </Button>
         ) : (
-          <Button variant="contained" onClick={handleSchedule} startIcon={<SendIcon />}>
-            Schedule & Send Invitations
+          <Button 
+            variant="contained" 
+            onClick={handleSchedule}
+            disabled={!selectedTimeSlot}
+          >
+            Schedule Demo
           </Button>
         )}
       </DialogActions>

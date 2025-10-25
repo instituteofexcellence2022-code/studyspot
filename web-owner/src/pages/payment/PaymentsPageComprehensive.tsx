@@ -22,7 +22,6 @@ import InvoiceDialog from '../../components/invoices/InvoiceDialog';
 import OfflinePaymentDialog from '../../components/payments/OfflinePaymentDialog';
 import PaymentVerificationDialog from '../../components/payments/PaymentVerificationDialog';
 import { generatePaymentInvoice, generateReceipt, InvoiceData } from '../../utils/invoiceGenerator';
-import { useNavigate } from 'react-router-dom';
 
 interface Payment {
   id: string;
@@ -124,7 +123,6 @@ const MOCK_PAYMENTS: Payment[] = [
 
 const PaymentsPageComprehensive: React.FC = () => {
   const theme = useTheme();
-  const navigate = useNavigate();
   const [payments, setPayments] = useState<Payment[]>(MOCK_PAYMENTS);
   const [filteredPayments, setFilteredPayments] = useState<Payment[]>(MOCK_PAYMENTS);
   const [searchTerm, setSearchTerm] = useState('');
@@ -245,7 +243,7 @@ const PaymentsPageComprehensive: React.FC = () => {
       );
       setSnackbar({
         open: true,
-        message: `✅ Payment verified successfully! ${data.generateReceipt ? 'Receipt generated.' : ''} ${data.sendEmail ? 'Email sent.' : ''}`,
+        message: `✅ Revenue verified successfully! ${data.generateReceipt ? 'Receipt generated.' : ''} ${data.sendEmail ? 'Email sent.' : ''}`,
         severity: 'success',
       });
       setVerificationPayment(null);
@@ -263,14 +261,14 @@ const PaymentsPageComprehensive: React.FC = () => {
       );
       setSnackbar({
         open: true,
-        message: `❌ Payment rejected: ${reason}`,
+        message: `❌ Revenue rejected: ${reason}`,
         severity: 'error',
       });
       setVerificationPayment(null);
     }
   };
 
-  const handleAddOfflinePayment = (data: any) => {
+  const handleAddOfflineRevenue = (data: any) => {
     const newPayment: Payment = {
       id: `${payments.length + 1}`,
       studentName: data.studentName,
@@ -293,7 +291,7 @@ const PaymentsPageComprehensive: React.FC = () => {
     setPayments((prev) => [newPayment, ...prev]);
     setSnackbar({
       open: true,
-      message: `✅ Offline payment recorded successfully! ${data.requiresVerification ? 'Pending verification.' : ''}`,
+      message: `✅ Offline revenue recorded successfully! ${data.requiresVerification ? 'Pending verification.' : ''}`,
       severity: 'success',
     });
   };
@@ -335,10 +333,10 @@ const PaymentsPageComprehensive: React.FC = () => {
       <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Box>
           <Typography variant="h4" fontWeight={700} gutterBottom>
-            💰 Payment Management
+            💰 Revenue Management
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Comprehensive payment tracking and analytics
+            Comprehensive revenue tracking and analytics
           </Typography>
         </Box>
         <Box sx={{ display: 'flex', gap: 2 }}>
@@ -349,18 +347,8 @@ const PaymentsPageComprehensive: React.FC = () => {
           >
             Show QR Code
           </Button>
-          <Button 
-            variant="contained" 
-            startIcon={<AddIcon />} 
-            onClick={() => navigate('/offline-payments')}
-            sx={{ 
-              background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
-              '&:hover': {
-                background: 'linear-gradient(45deg, #1976D2 30%, #1CB5E0 90%)',
-              }
-            }}
-          >
-            Add Offline Payment
+          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setOfflinePaymentOpen(true)}>
+            Add Offline Revenue
           </Button>
         </Box>
       </Box>
@@ -443,7 +431,7 @@ const PaymentsPageComprehensive: React.FC = () => {
       {/* Tabs */}
       <Card sx={{ mb: 3 }}>
         <Tabs value={tabValue} onChange={(e, v) => setTabValue(v)} sx={{ borderBottom: 1, borderColor: 'divider' }}>
-          <Tab label="All Payments" />
+          <Tab label="All Revenue" />
           <Tab label={`Online (${analytics.onlinePayments})`} />
           <Tab label={`Offline (${analytics.offlinePayments})`} />
           <Tab label="Verification Queue" />
@@ -460,7 +448,7 @@ const PaymentsPageComprehensive: React.FC = () => {
                 <TextField
                   fullWidth
                   size="small"
-                  placeholder="Search by student, ID, transaction..."
+                  placeholder="Search by student, ID, revenue..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   InputProps={{
@@ -521,7 +509,7 @@ const PaymentsPageComprehensive: React.FC = () => {
         </Card>
       )}
 
-      {/* Payments Table */}
+      {/* Revenue Table */}
       {tabValue < 4 && (
         <Card>
           <TableContainer>
@@ -604,7 +592,7 @@ const PaymentsPageComprehensive: React.FC = () => {
                   <TableRow>
                     <TableCell colSpan={8} align="center">
                       <Typography variant="body2" color="text.secondary" sx={{ py: 4 }}>
-                        No payments found
+                        No revenue found
                       </Typography>
                     </TableCell>
                   </TableRow>
@@ -633,10 +621,10 @@ const PaymentsPageComprehensive: React.FC = () => {
             <Card>
               <CardContent>
                 <Typography variant="h6" gutterBottom>
-                  📊 Payment Analytics Dashboard
+                  📊 Revenue Analytics Dashboard
                 </Typography>
                 <Alert severity="info" sx={{ mt: 2 }}>
-                  Advanced analytics charts coming soon! This will include revenue trends, payment method breakdown,
+                  Advanced analytics charts coming soon! This will include revenue trends, revenue method breakdown,
                   collection efficiency, and forecasting.
                 </Alert>
               </CardContent>
@@ -648,14 +636,14 @@ const PaymentsPageComprehensive: React.FC = () => {
       {/* Invoice Dialog */}
       <InvoiceDialog open={invoiceOpen} onClose={() => setInvoiceOpen(false)} invoice={invoiceData} />
 
-      {/* Offline Payment Dialog */}
+      {/* Offline Revenue Dialog */}
       <OfflinePaymentDialog
         open={offlinePaymentOpen}
         onClose={() => setOfflinePaymentOpen(false)}
-        onSubmit={handleAddOfflinePayment}
+        onSubmit={handleAddOfflineRevenue}
       />
 
-      {/* Payment Verification Dialog */}
+      {/* Revenue Verification Dialog */}
       <PaymentVerificationDialog
         open={!!verificationPayment}
         onClose={() => setVerificationPayment(null)}
@@ -666,7 +654,7 @@ const PaymentsPageComprehensive: React.FC = () => {
 
       {/* QR Code Dialog */}
       <Dialog open={qrDialogOpen} onClose={() => setQrDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>QR Code Payment</DialogTitle>
+        <DialogTitle>QR Code Revenue</DialogTitle>
         <DialogContent>
           <Box sx={{ textAlign: 'center', py: 3 }}>
             <QrCodeIcon sx={{ fontSize: 200, color: 'primary.main' }} />
@@ -677,7 +665,7 @@ const PaymentsPageComprehensive: React.FC = () => {
               Use any UPI app to scan and pay
             </Typography>
             <Alert severity="info" sx={{ mt: 3 }}>
-              This is a demo QR code. In production, integrate with your payment gateway to generate dynamic QR codes.
+              This is a demo QR code. In production, integrate with your revenue gateway to generate dynamic QR codes.
             </Alert>
           </Box>
         </DialogContent>

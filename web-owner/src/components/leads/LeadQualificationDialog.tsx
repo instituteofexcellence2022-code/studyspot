@@ -139,7 +139,7 @@ interface LeadQualificationDialogProps {
 interface QualificationQuestion {
   id: string;
   question: string;
-  type: 'text' | 'select' | 'rating' | 'slider' | 'boolean';
+  type: 'text' | 'select' | 'rating' | 'slider' | 'boolean' | 'multiselect';
   options?: string[];
   weight: number;
   category: 'academic' | 'behavioral' | 'budget' | 'timeline';

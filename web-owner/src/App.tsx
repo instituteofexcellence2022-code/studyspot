@@ -54,6 +54,7 @@ const LibraryEditPage = lazy(() => import('./pages/library/LibraryEditPage'));
 const SeatsPage = lazy(() => import('./pages/library/SeatsPage'));
 const FeePlansPage = lazy(() => import('./pages/subscription/FeePlansPageAdvanced'));
 const PaymentsPage = lazy(() => import('./pages/payment/PaymentsPageComprehensive'));
+
 const PaymentAnalyticsPage = lazy(() => import('./pages/analytics/PaymentAnalyticsPage'));
 const SubscriptionCreditsPage = lazy(() => import('./pages/subscription/SubscriptionCreditsPage'));
 const SeatManagementPage = lazy(() => import('./pages/seats/SeatManagementPage'));
@@ -115,6 +116,10 @@ const NotFoundPage = lazy(() => import('./pages/common/NotFoundPage'));
 // Organization Management
 const OrganizationOnboardingDashboard = lazy(() => import('./pages/onboarding/OrganizationOnboardingDashboard'));
 const FeatureControlDashboard = lazy(() => import('./pages/features/FeatureControlDashboard'));
+
+// Invoice & Billing Management
+const InvoiceManagementPage = lazy(() => import('./pages/invoice/InvoiceManagementPage'));
+const BillingTemplatesPage = lazy(() => import('./pages/billing/BillingTemplatesPage'));
 
 // ============================================
 // THEME CONFIGURATION - Library Owner Theme
@@ -285,6 +290,7 @@ const AppContent: React.FC = () => {
               <Route path={ROUTES.BARCODE_QR} element={<BarcodeQRPage />} />
               <Route path={ROUTES.LEAD_CAPTURE} element={<LeadCapturePage />} />
               <Route path={ROUTES.PAYMENTS} element={<PaymentsPage />} />
+
               <Route path={ROUTES.PAYMENT_ANALYTICS} element={<PaymentAnalyticsPage />} />
               <Route path={ROUTES.SUBSCRIPTION_CREDITS} element={<SubscriptionCreditsPage />} />
               <Route path={ROUTES.SEAT_MANAGEMENT} element={<SeatManagementPage />} />
@@ -354,6 +360,12 @@ const AppContent: React.FC = () => {
               {/* Help & Support */}
               <Route path={ROUTES.HELP} element={<HelpPage />} />
               
+              {/* ============================================ */}
+              {/* INVOICE & BILLING MANAGEMENT */}
+              {/* ============================================ */}
+            <Route path={ROUTES.INVOICE_MANAGEMENT} element={<InvoiceManagementPage />} />
+            <Route path={ROUTES.BILLING_TEMPLATES} element={<BillingTemplatesPage />} />
+
               {/* ============================================ */}
               {/* ORGANIZATION MANAGEMENT */}
               {/* ============================================ */}
