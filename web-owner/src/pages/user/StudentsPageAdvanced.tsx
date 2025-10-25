@@ -24,6 +24,7 @@ import StudentBulkOperationsDialog from '../../components/students/StudentBulkOp
 import StudentAnalyticsDashboard from '../../components/students/StudentAnalyticsDashboard';
 import EnhancedStudentProfile from '../../components/students/EnhancedStudentProfile';
 import StudentCommunicationDialog from '../../components/students/StudentCommunicationDialog';
+import AttendanceTrackingSystem from '../../components/students/AttendanceTrackingSystem';
 
 // Enhanced Student interface
 interface Student {
@@ -558,11 +559,12 @@ const StudentsPageAdvanced: React.FC = () => {
 
       {/* Main Content Tabs */}
       <Paper sx={{ mb: 3 }}>
-        <Tabs value={activeTab} onChange={(e, newValue) => setActiveTab(newValue)}>
-          <Tab label="Student List" icon={<PersonIcon />} />
-          <Tab label="Analytics" icon={<AssessmentIcon />} />
-          <Tab label="Bulk Operations" icon={<GroupIcon />} />
-        </Tabs>
+            <Tabs value={activeTab} onChange={(e, newValue) => setActiveTab(newValue)}>
+              <Tab label="Student List" icon={<PersonIcon />} />
+              <Tab label="Analytics" icon={<AssessmentIcon />} />
+              <Tab label="Attendance" icon={<CalendarToday />} />
+              <Tab label="Bulk Operations" icon={<GroupIcon />} />
+            </Tabs>
       </Paper>
 
       {/* Tab Content */}
@@ -883,6 +885,16 @@ const StudentsPageAdvanced: React.FC = () => {
       )}
 
       {activeTab === 2 && (
+        <AttendanceTrackingSystem
+          students={students}
+          onAttendanceUpdate={(record) => {
+            console.log('Attendance updated:', record);
+            setSnackbar({ open: true, message: '✅ Attendance record updated successfully!', severity: 'success' });
+          }}
+        />
+      )}
+
+      {activeTab === 3 && (
         <Box>
           <Card sx={{ mb: 3 }}>
             <CardContent>
