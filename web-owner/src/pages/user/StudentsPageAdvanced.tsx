@@ -7,7 +7,7 @@ import {
   Tooltip, Tabs, Tab, Divider, List, ListItem, ListItemIcon, Badge, Menu, Stepper, Step,
   StepLabel, FormControlLabel, Switch, alpha, LinearProgress,
 } from '@mui/material';
-import { GridLegacy as Grid } from '@mui/material';
+// import { GridLegacy as Grid } from '@mui/material';
 import {
   Add as AddIcon, Person as PersonIcon, Edit as EditIcon, Delete as DeleteIcon,
   Search as SearchIcon, FileDownload as ExportIcon, FilterList as FilterIcon,
@@ -16,7 +16,7 @@ import {
   Email, Phone, LocationOn, School, CreditCard, Badge as BadgeIcon,
   Assignment, CheckCircle, Warning, Close, MoreVert,
   CloudUpload, PersonAdd, Description, CalendarToday, History,
-  Delete, Print, Assessment as AssessmentIcon,
+  Delete, Print, Assessment as AssessmentIcon, Payment as PaymentIcon,
 } from '@mui/icons-material';
 import studentsService, { Student as APIStudent, StudentsFilters } from '../../services/studentsService';
 import StudentFormDialog from '../../components/students/StudentFormDialog';
@@ -27,6 +27,7 @@ import StudentCommunicationDialog from '../../components/students/StudentCommuni
 import AttendanceTrackingSystem from '../../components/students/AttendanceTrackingSystem';
 import StudentDocumentManagement from '../../components/students/StudentDocumentManagement';
 import KYCVerificationSystem from '../../components/students/KYCVerificationSystem';
+import StudentFeeManagement from '../../components/students/StudentFeeManagement';
 
 // Enhanced Student interface
 interface Student {
@@ -567,6 +568,7 @@ const StudentsPageAdvanced: React.FC = () => {
               <Tab label="Attendance" icon={<CalendarToday />} />
               <Tab label="Documents" icon={<Description />} />
               <Tab label="KYC Verification" icon={<VerifiedIcon />} />
+              <Tab label="Fee Management" icon={<PaymentIcon />} />
               <Tab label="Bulk Operations" icon={<GroupIcon />} />
             </Tabs>
       </Paper>
@@ -577,8 +579,8 @@ const StudentsPageAdvanced: React.FC = () => {
           {/* Action Buttons */}
       <Card sx={{ mb: 3 }}>
         <CardContent>
-          <Grid container spacing={2}>
-            <Grid item xs={12} sm={6} md={3}>
+          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+            <Box sx={{ flex: '1 1 200px', minWidth: '200px' }}>
               <Button
                 fullWidth
                 variant="contained"
@@ -587,8 +589,8 @@ const StudentsPageAdvanced: React.FC = () => {
               >
                 Add Student
               </Button>
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            </Box>
+            <Box sx={{ flex: '1 1 200px', minWidth: '200px' }}>
               <Button
                 fullWidth
                 variant="outlined"
@@ -597,8 +599,8 @@ const StudentsPageAdvanced: React.FC = () => {
               >
                 Bulk Import
               </Button>
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            </Box>
+            <Box sx={{ flex: '1 1 200px', minWidth: '200px' }}>
               <Button
                 fullWidth
                 variant="outlined"
@@ -608,8 +610,8 @@ const StudentsPageAdvanced: React.FC = () => {
               >
                 Generate ID Cards ({selectedStudents.length})
               </Button>
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            </Box>
+            <Box sx={{ flex: '1 1 200px', minWidth: '200px' }}>
               <Button
                 fullWidth
                 variant="outlined"
@@ -618,8 +620,8 @@ const StudentsPageAdvanced: React.FC = () => {
               >
                 Export All
               </Button>
-            </Grid>
-          </Grid>
+            </Box>
+          </Box>
         </CardContent>
       </Card>
 
@@ -919,6 +921,16 @@ const StudentsPageAdvanced: React.FC = () => {
       )}
 
       {activeTab === 5 && (
+        <StudentFeeManagement
+          students={students}
+          onPaymentUpdate={(payment) => {
+            console.log('Payment updated:', payment);
+            setSnackbar({ open: true, message: '✅ Payment updated successfully!', severity: 'success' });
+          }}
+        />
+      )}
+
+      {activeTab === 6 && (
         <Box>
           <Card sx={{ mb: 3 }}>
             <CardContent>
@@ -1154,13 +1166,13 @@ const StudentsPageAdvanced: React.FC = () => {
           </Box>
         </DialogTitle>
         <DialogContent>
-          <Grid container spacing={2}>
-            <Grid item xs={12}>
+          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+            <Box sx={{ flex: '1 1 auto' }} >
               <Alert severity={currentStudent?.kycVerified ? 'success' : 'warning'}>
                 KYC Status: {currentStudent?.kycVerified ? 'Verified' : 'Pending Verification'}
               </Alert>
-            </Grid>
-            <Grid item xs={12} md={6}>
+            </Box>
+            <Box sx={{ flex: '1 1 auto' }}  >
               <Typography variant="subtitle2" gutterBottom>Required Documents:</Typography>
               <List dense>
                 <ListItem>
@@ -1179,15 +1191,15 @@ const StudentsPageAdvanced: React.FC = () => {
                   <Chip label="Pending" color="warning" size="small" />
                 </ListItem>
               </List>
-            </Grid>
-            <Grid item xs={12} md={6}>
+            </Box>
+            <Box sx={{ flex: '1 1 auto' }}  >
               <Typography variant="subtitle2" gutterBottom>Verification Checklist:</Typography>
               <FormControlLabel control={<Checkbox defaultChecked />} label="Photo verified" />
               <FormControlLabel control={<Checkbox defaultChecked />} label="ID number verified" />
               <FormControlLabel control={<Checkbox />} label="Address verified" />
               <FormControlLabel control={<Checkbox defaultChecked />} label="Contact verified" />
-            </Grid>
-            <Grid item xs={12}>
+            </Box>
+            <Box sx={{ flex: '1 1 auto' }} >
               <TextField
                 fullWidth
                 multiline
@@ -1195,8 +1207,8 @@ const StudentsPageAdvanced: React.FC = () => {
                 label="Verification Notes"
                 placeholder="Add any notes about the verification process..."
               />
-            </Grid>
-          </Grid>
+            </Box>
+          </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setKycDialogOpen(false)} disabled={loading}>Close</Button>
@@ -1237,34 +1249,34 @@ const StudentsPageAdvanced: React.FC = () => {
             <Tab label="History" />
           </Tabs>
           
-          <Grid container spacing={2}>
-            <Grid item xs={12} md={6}>
+          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+            <Box sx={{ flex: '1 1 auto' }}  >
               <Typography variant="subtitle2" color="text.secondary">Email</Typography>
               <Typography variant="body1" gutterBottom>{currentStudent?.email}</Typography>
-            </Grid>
-            <Grid item xs={12} md={6}>
+            </Box>
+            <Box sx={{ flex: '1 1 auto' }}  >
               <Typography variant="subtitle2" color="text.secondary">Phone</Typography>
               <Typography variant="body1" gutterBottom>{currentStudent?.phone || 'N/A'}</Typography>
-            </Grid>
-            <Grid item xs={12} md={6}>
+            </Box>
+            <Box sx={{ flex: '1 1 auto' }}  >
               <Typography variant="subtitle2" color="text.secondary">Enrollment Date</Typography>
               <Typography variant="body1" gutterBottom>
                 {currentStudent?.enrollmentDate ? new Date(currentStudent.enrollmentDate).toLocaleDateString() : 'N/A'}
               </Typography>
-            </Grid>
-            <Grid item xs={12} md={6}>
+            </Box>
+            <Box sx={{ flex: '1 1 auto' }}  >
               <Typography variant="subtitle2" color="text.secondary">Current Plan</Typography>
               <Chip label={currentStudent?.currentPlan || 'None'} size="small" />
-            </Grid>
-            <Grid item xs={12} md={6}>
+            </Box>
+            <Box sx={{ flex: '1 1 auto' }}  >
               <Typography variant="subtitle2" color="text.secondary">Fee Status</Typography>
               <Chip 
                 label={currentStudent?.feeStatus || 'N/A'} 
                 color={currentStudent?.feeStatus === 'paid' ? 'success' : 'warning'} 
                 size="small" 
               />
-            </Grid>
-            <Grid item xs={12} md={6}>
+            </Box>
+            <Box sx={{ flex: '1 1 auto' }}  >
               <Typography variant="subtitle2" color="text.secondary">KYC Status</Typography>
               <Chip 
                 label={currentStudent?.kycVerified ? 'Verified' : 'Pending'} 
@@ -1272,8 +1284,8 @@ const StudentsPageAdvanced: React.FC = () => {
                 size="small"
                 icon={currentStudent?.kycVerified ? <CheckCircle /> : <Warning />}
               />
-            </Grid>
-          </Grid>
+            </Box>
+          </Box>
         </DialogContent>
       </Dialog>
 
