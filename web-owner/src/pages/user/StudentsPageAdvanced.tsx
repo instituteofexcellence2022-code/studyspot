@@ -26,6 +26,7 @@ import EnhancedStudentProfile from '../../components/students/EnhancedStudentPro
 import StudentCommunicationDialog from '../../components/students/StudentCommunicationDialog';
 import AttendanceTrackingSystem from '../../components/students/AttendanceTrackingSystem';
 import StudentDocumentManagement from '../../components/students/StudentDocumentManagement';
+import KYCVerificationSystem from '../../components/students/KYCVerificationSystem';
 
 // Enhanced Student interface
 interface Student {
@@ -565,6 +566,7 @@ const StudentsPageAdvanced: React.FC = () => {
               <Tab label="Analytics" icon={<AssessmentIcon />} />
               <Tab label="Attendance" icon={<CalendarToday />} />
               <Tab label="Documents" icon={<Description />} />
+              <Tab label="KYC Verification" icon={<VerifiedIcon />} />
               <Tab label="Bulk Operations" icon={<GroupIcon />} />
             </Tabs>
       </Paper>
@@ -907,6 +909,16 @@ const StudentsPageAdvanced: React.FC = () => {
       )}
 
       {activeTab === 4 && (
+        <KYCVerificationSystem
+          students={students}
+          onKYCUpdate={(studentId, kycData) => {
+            console.log('KYC updated:', studentId, kycData);
+            setSnackbar({ open: true, message: '✅ KYC verification updated successfully!', severity: 'success' });
+          }}
+        />
+      )}
+
+      {activeTab === 5 && (
         <Box>
           <Card sx={{ mb: 3 }}>
             <CardContent>
