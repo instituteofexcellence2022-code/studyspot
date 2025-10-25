@@ -25,6 +25,7 @@ import StudentAnalyticsDashboard from '../../components/students/StudentAnalytic
 import EnhancedStudentProfile from '../../components/students/EnhancedStudentProfile';
 import StudentCommunicationDialog from '../../components/students/StudentCommunicationDialog';
 import AttendanceTrackingSystem from '../../components/students/AttendanceTrackingSystem';
+import StudentDocumentManagement from '../../components/students/StudentDocumentManagement';
 
 // Enhanced Student interface
 interface Student {
@@ -563,6 +564,7 @@ const StudentsPageAdvanced: React.FC = () => {
               <Tab label="Student List" icon={<PersonIcon />} />
               <Tab label="Analytics" icon={<AssessmentIcon />} />
               <Tab label="Attendance" icon={<CalendarToday />} />
+              <Tab label="Documents" icon={<Description />} />
               <Tab label="Bulk Operations" icon={<GroupIcon />} />
             </Tabs>
       </Paper>
@@ -895,6 +897,16 @@ const StudentsPageAdvanced: React.FC = () => {
       )}
 
       {activeTab === 3 && (
+        <StudentDocumentManagement
+          students={students}
+          onDocumentUpdate={(document) => {
+            console.log('Document updated:', document);
+            setSnackbar({ open: true, message: '✅ Document updated successfully!', severity: 'success' });
+          }}
+        />
+      )}
+
+      {activeTab === 4 && (
         <Box>
           <Card sx={{ mb: 3 }}>
             <CardContent>
