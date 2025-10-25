@@ -47,13 +47,6 @@ import {
   Autocomplete,
   Slider,
   Rating,
-  Timeline,
-  TimelineItem,
-  TimelineSeparator,
-  TimelineConnector,
-  TimelineContent,
-  TimelineDot,
-  TimelineOppositeContent
 } from '@mui/material';
 import {
   AutoAwesome as AutoAwesomeIcon,
@@ -770,16 +763,13 @@ const ConversionAutomationDialog: React.FC<ConversionAutomationDialogProps> = ({
                 Automation Timeline
               </Typography>
               
-              <Timeline>
+              <Stack spacing={2}>
                 {selectedWorkflow?.actions.map((action, index) => (
-                  <TimelineItem key={action.id}>
-                    <TimelineSeparator>
-                      <TimelineDot color="primary">
-                        {index + 1}
-                      </TimelineDot>
-                      {index < selectedWorkflow.actions.length - 1 && <TimelineConnector />}
-                    </TimelineSeparator>
-                    <TimelineContent>
+                  <Box key={action.id} sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
+                    <Avatar sx={{ bgcolor: 'primary.main', width: 32, height: 32, fontSize: '0.875rem' }}>
+                      {index + 1}
+                    </Avatar>
+                    <Box sx={{ flex: 1 }}>
                       <Typography variant="subtitle2">
                         {action.type.toUpperCase()}
                       </Typography>
@@ -789,10 +779,10 @@ const ConversionAutomationDialog: React.FC<ConversionAutomationDialogProps> = ({
                       <Typography variant="body2">
                         {action.content}
                       </Typography>
-                    </TimelineContent>
-                  </TimelineItem>
+                    </Box>
+                  </Box>
                 ))}
-              </Timeline>
+              </Stack>
             </CardContent>
           </Card>
         </Grid>
