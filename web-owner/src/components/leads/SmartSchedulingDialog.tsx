@@ -322,15 +322,45 @@ const SmartSchedulingDialog: React.FC<SmartSchedulingDialogProps> = ({
                 onChange={(e) => setDemoType(e.target.value as any)}
               >
                 <FormControlLabel 
+                  value="individual_demo" 
+                  control={<Radio />} 
+                  label={
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <PersonIcon />
+                      <Box>
+                        <Typography>Individual Demo Class</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          One-on-one personalized demo session
+                        </Typography>
+                      </Box>
+                    </Box>
+                  }
+                />
+                <FormControlLabel 
+                  value="group_demo" 
+                  control={<Radio />} 
+                  label={
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <GroupIcon />
+                      <Box>
+                        <Typography>Group Demo Class</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Small group demo with other students
+                        </Typography>
+                      </Box>
+                    </Box>
+                  }
+                />
+                <FormControlLabel 
                   value="online" 
                   control={<Radio />} 
                   label={
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                       <VideoCallIcon />
                       <Box>
-                        <Typography>Online Demo</Typography>
+                        <Typography>Online Demo Class</Typography>
                         <Typography variant="caption" color="text.secondary">
-                          Video call with screen sharing
+                          Virtual demo session via video call
                         </Typography>
                       </Box>
                     </Box>
@@ -343,24 +373,9 @@ const SmartSchedulingDialog: React.FC<SmartSchedulingDialogProps> = ({
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                       <LocationIcon />
                       <Box>
-                        <Typography>In-Person Demo</Typography>
+                        <Typography>Library Demo Class</Typography>
                         <Typography variant="caption" color="text.secondary">
-                          On-site demonstration
-                        </Typography>
-                      </Box>
-                    </Box>
-                  }
-                />
-                <FormControlLabel 
-                  value="phone" 
-                  control={<Radio />} 
-                  label={
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <TimeIcon />
-                      <Box>
-                        <Typography>Phone Call</Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          Audio-only discussion
+                          In-person demo at library location
                         </Typography>
                       </Box>
                     </Box>
@@ -401,6 +416,44 @@ const SmartSchedulingDialog: React.FC<SmartSchedulingDialogProps> = ({
           <Card>
             <CardContent>
               <Typography variant="subtitle1" gutterBottom>
+                Demo Subjects
+              </Typography>
+              <Autocomplete
+                multiple
+                options={['Mathematics', 'Physics', 'Chemistry', 'Biology', 'English', 'History', 'Geography', 'Computer Science', 'Economics']}
+                value={scheduleData.subjects || []}
+                onChange={(event, newValue) => {
+                  setScheduleData(prev => ({ ...prev, subjects: newValue }));
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    placeholder="Select subjects for demo"
+                    variant="outlined"
+                  />
+                )}
+                renderTags={(value, getTagProps) =>
+                  value.map((option, index) => (
+                    <Chip
+                      variant="outlined"
+                      label={option}
+                      {...getTagProps({ index })}
+                      key={option}
+                    />
+                  ))
+                }
+              />
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                Select the subjects you'd like to demonstrate
+              </Typography>
+            </CardContent>
+          </Card>
+        </Box>
+        
+        <Box sx={{ width: '100%' }}>
+          <Card>
+            <CardContent>
+              <Typography variant="subtitle1" gutterBottom>
                 Additional Preferences
               </Typography>
               <FormGroup>
@@ -419,6 +472,14 @@ const SmartSchedulingDialog: React.FC<SmartSchedulingDialogProps> = ({
                 <FormControlLabel 
                   control={<Switch defaultChecked />} 
                   label="Send follow-up materials after demo" 
+                />
+                <FormControlLabel 
+                  control={<Switch defaultChecked />} 
+                  label="Include parent in demo session" 
+                />
+                <FormControlLabel 
+                  control={<Switch defaultChecked />} 
+                  label="Send parent summary after demo" 
                 />
               </FormGroup>
             </CardContent>

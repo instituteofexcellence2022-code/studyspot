@@ -179,6 +179,12 @@ interface Lead {
   name: string;
   email: string;
   phone: string;
+  age: number;
+  grade: string;
+  school: string;
+  parentName: string;
+  parentEmail: string;
+  parentPhone: string;
   source: string;
   status: 'new' | 'qualified' | 'contacted' | 'demo_scheduled' | 'demo_completed' | 'converted' | 'lost';
   score: number;
@@ -189,8 +195,11 @@ interface Lead {
   lastContact: Date;
   nextAction: string;
   assignedTo: string;
-  company?: string;
-  position?: string;
+  subjects: string[];
+  learningGoals: string[];
+  preferredSubjects: string[];
+  studySchedule: string;
+  parentInvolvement: 'high' | 'medium' | 'low';
   budget?: number;
   timeline?: string;
   interests: string[];
@@ -202,55 +211,64 @@ interface Lead {
 
 interface CommunicationRecord {
   id: string;
-  type: 'email' | 'call' | 'sms' | 'whatsapp' | 'meeting';
+  type: 'email' | 'call' | 'sms' | 'whatsapp' | 'meeting' | 'parent_call' | 'student_call';
   content: string;
   timestamp: Date;
   outcome: 'positive' | 'neutral' | 'negative';
   aiGenerated: boolean;
   sentiment: number; // -1 to 1
+  recipient: 'student' | 'parent' | 'both';
 }
 
 interface DemoRecord {
   id: string;
   scheduledDate: Date;
   completedDate?: Date;
-  type: 'online' | 'in_person' | 'recorded';
+  type: 'online' | 'in_person' | 'group_demo' | 'individual_demo';
   attendees: string[];
+  subjects: string[];
   duration: number; // minutes
   engagement: number; // 0-100
   feedback: string;
   conversion: boolean;
   nextSteps: string;
+  parentAttended: boolean;
+  studentEngagement: number;
+  subjectInterest: { [subject: string]: number };
 }
 
 interface AIInsight {
   id: string;
-  type: 'scoring' | 'timing' | 'content' | 'conversion';
+  type: 'scoring' | 'timing' | 'content' | 'conversion' | 'academic' | 'behavioral' | 'engagement';
   title: string;
   description: string;
   confidence: number;
   actionable: boolean;
   timestamp: Date;
+  category: 'academic' | 'behavioral' | 'engagement' | 'conversion';
 }
 
 interface LeadSource {
   id: string;
   name: string;
-  type: 'website' | 'social' | 'referral' | 'advertisement' | 'event' | 'cold_outreach';
+  type: 'school_visit' | 'parent_referral' | 'social_media' | 'website' | 'advertisement' | 'event' | 'teacher_referral' | 'other';
   cost: number;
   conversionRate: number;
   quality: number;
+  schoolAffiliation?: string;
 }
 
 interface AICampaign {
   id: string;
   name: string;
-  type: 'email' | 'sms' | 'whatsapp' | 'social';
+  type: 'email' | 'sms' | 'whatsapp' | 'parent_call' | 'student_call' | 'social';
   status: 'draft' | 'active' | 'paused' | 'completed';
   targetAudience: string[];
   message: string;
   schedule: Date;
   performance: CampaignPerformance;
+  targetGrade?: string;
+  targetSubjects?: string[];
 }
 
 interface CampaignPerformance {
@@ -293,52 +311,70 @@ const LeadCapturePage: React.FC = () => {
     const mockLeads: Lead[] = [
       {
         id: '1',
-        name: 'Sarah Johnson',
-        email: 'sarah.johnson@email.com',
+        name: 'Emma Rodriguez',
+        email: 'emma.rodriguez@student.com',
         phone: '+1-555-0123',
-        source: 'Website',
+        age: 14,
+        grade: '9th Grade',
+        school: 'Lincoln High School',
+        parentName: 'Maria Rodriguez',
+        parentEmail: 'maria.rodriguez@email.com',
+        parentPhone: '+1-555-0124',
+        source: 'School Visit',
         status: 'qualified',
-        score: 85,
+        score: 88,
         priority: 'high',
-        tags: ['Enterprise', 'Decision Maker'],
-        notes: 'Interested in AI-powered learning solutions. Has budget approved.',
+        tags: ['Math', 'Science', 'High Achiever'],
+        notes: 'Excellent student interested in advanced math and science programs. Parent very supportive.',
         createdAt: new Date('2024-01-15'),
         lastContact: new Date('2024-01-20'),
         nextAction: 'Schedule demo class',
         assignedTo: 'John Smith',
-        company: 'TechCorp Inc.',
-        position: 'CTO',
-        budget: 50000,
-        timeline: 'Q1 2024',
-        interests: ['AI', 'Machine Learning', 'Automation'],
+        subjects: ['Mathematics', 'Physics', 'Chemistry'],
+        learningGoals: ['Improve problem-solving skills', 'Prepare for competitive exams'],
+        preferredSubjects: ['Mathematics', 'Physics'],
+        studySchedule: 'Evenings and weekends',
+        parentInvolvement: 'high',
+        budget: 2000,
+        timeline: 'Immediate',
+        interests: ['STEM', 'Competitive Exams', 'Problem Solving'],
         communicationHistory: [],
         demoHistory: [],
-        conversionProbability: 0.75,
+        conversionProbability: 0.85,
         aiInsights: []
       },
       {
         id: '2',
-        name: 'Michael Chen',
-        email: 'michael.chen@startup.com',
+        name: 'Alex Thompson',
+        email: 'alex.thompson@student.com',
         phone: '+1-555-0456',
-        source: 'LinkedIn',
+        age: 16,
+        grade: '11th Grade',
+        school: 'Roosevelt High School',
+        parentName: 'David Thompson',
+        parentEmail: 'david.thompson@email.com',
+        parentPhone: '+1-555-0457',
+        source: 'Parent Referral',
         status: 'demo_scheduled',
-        score: 72,
+        score: 75,
         priority: 'medium',
-        tags: ['Startup', 'Tech'],
-        notes: 'Looking for scalable learning platform for growing team.',
+        tags: ['English', 'History', 'College Prep'],
+        notes: 'Strong in humanities, needs help with standardized test preparation.',
         createdAt: new Date('2024-01-18'),
         lastContact: new Date('2024-01-22'),
         nextAction: 'Prepare demo materials',
         assignedTo: 'Jane Doe',
-        company: 'StartupXYZ',
-        position: 'CEO',
-        budget: 25000,
+        subjects: ['English Literature', 'History', 'SAT Prep'],
+        learningGoals: ['Improve SAT scores', 'Enhance writing skills'],
+        preferredSubjects: ['English Literature', 'History'],
+        studySchedule: 'Weekends',
+        parentInvolvement: 'medium',
+        budget: 1500,
         timeline: 'Q2 2024',
-        interests: ['Scalability', 'Cost-effective', 'User-friendly'],
+        interests: ['College Prep', 'Writing', 'Literature'],
         communicationHistory: [],
         demoHistory: [],
-        conversionProbability: 0.65,
+        conversionProbability: 0.70,
         aiInsights: []
       }
     ];
@@ -347,21 +383,33 @@ const LeadCapturePage: React.FC = () => {
     const mockInsights: AIInsight[] = [
       {
         id: '1',
-        type: 'scoring',
-        title: 'High Conversion Probability',
-        description: 'Lead shows strong buying signals with approved budget and decision-making authority.',
-        confidence: 0.85,
+        type: 'academic',
+        title: 'High Academic Potential',
+        description: 'Student shows strong academic performance and high motivation for advanced learning.',
+        confidence: 0.88,
         actionable: true,
-        timestamp: new Date()
+        timestamp: new Date(),
+        category: 'academic'
       },
       {
         id: '2',
-        type: 'timing',
+        type: 'engagement',
         title: 'Optimal Contact Time',
-        description: 'Best time to contact is Tuesday-Thursday between 10-11 AM based on engagement patterns.',
-        confidence: 0.72,
+        description: 'Best time to contact parents is weekday evenings 6-8 PM. Student prefers weekend mornings.',
+        confidence: 0.75,
         actionable: true,
-        timestamp: new Date()
+        timestamp: new Date(),
+        category: 'engagement'
+      },
+      {
+        id: '3',
+        type: 'behavioral',
+        title: 'Parent Involvement Level',
+        description: 'High parent involvement detected. Include parent in all communication and decision-making.',
+        confidence: 0.82,
+        actionable: true,
+        timestamp: new Date(),
+        category: 'behavioral'
       }
     ];
 
@@ -369,12 +417,14 @@ const LeadCapturePage: React.FC = () => {
     const mockCampaigns: AICampaign[] = [
       {
         id: '1',
-        name: 'Q1 Enterprise Outreach',
+        name: 'High School Math Demo Campaign',
         type: 'email',
         status: 'active',
-        targetAudience: ['Enterprise', 'Decision Maker'],
-        message: 'Transform your learning with AI-powered solutions...',
+        targetAudience: ['9th-12th Grade Students', 'Parents'],
+        message: 'Join our advanced mathematics demo class and discover your potential...',
         schedule: new Date('2024-01-25'),
+        targetGrade: '9th-12th Grade',
+        targetSubjects: ['Mathematics', 'Physics', 'Chemistry'],
         performance: {
           sent: 150,
           delivered: 145,
@@ -385,6 +435,27 @@ const LeadCapturePage: React.FC = () => {
           cost: 500,
           roi: 2.4
         }
+      },
+      {
+        id: '2',
+        name: 'Parent Information Session',
+        type: 'parent_call',
+        status: 'active',
+        targetAudience: ['Parents of High School Students'],
+        message: 'Learn about our comprehensive learning programs for your child...',
+        schedule: new Date('2024-01-28'),
+        targetGrade: '9th-12th Grade',
+        targetSubjects: ['All Subjects'],
+        performance: {
+          sent: 80,
+          delivered: 78,
+          opened: 65,
+          clicked: 32,
+          replied: 18,
+          converted: 8,
+          cost: 200,
+          roi: 3.2
+        }
       }
     ];
 
@@ -392,19 +463,44 @@ const LeadCapturePage: React.FC = () => {
     const mockSources: LeadSource[] = [
       {
         id: '1',
+        name: 'School Visit - Lincoln High',
+        type: 'school_visit',
+        cost: 500,
+        conversionRate: 0.25,
+        quality: 0.9,
+        schoolAffiliation: 'Lincoln High School'
+      },
+      {
+        id: '2',
+        name: 'Parent Referral Program',
+        type: 'parent_referral',
+        cost: 0,
+        conversionRate: 0.35,
+        quality: 0.95
+      },
+      {
+        id: '3',
+        name: 'Teacher Referral Network',
+        type: 'teacher_referral',
+        cost: 200,
+        conversionRate: 0.30,
+        quality: 0.85
+      },
+      {
+        id: '4',
+        name: 'Social Media Campaign',
+        type: 'social_media',
+        cost: 800,
+        conversionRate: 0.12,
+        quality: 0.6
+      },
+      {
+        id: '5',
         name: 'Website Contact Form',
         type: 'website',
         cost: 0,
         conversionRate: 0.15,
         quality: 0.8
-      },
-      {
-        id: '2',
-        name: 'LinkedIn Ads',
-        type: 'advertisement',
-        cost: 2500,
-        conversionRate: 0.08,
-        quality: 0.7
       }
     ];
 
@@ -682,7 +778,10 @@ const LeadCapturePage: React.FC = () => {
                     <Box>
                       <Typography variant="h6">{lead.name}</Typography>
                       <Typography variant="body2" color="text.secondary">
-                        {lead.company || lead.email}
+                        {lead.grade} • {lead.school}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Parent: {lead.parentName}
                       </Typography>
                     </Box>
                   </Box>
@@ -739,8 +838,13 @@ const LeadCapturePage: React.FC = () => {
                     />
                   </Box>
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                    Source: {lead.source}
+                    Source: {lead.source} • Age: {lead.age}
                   </Typography>
+                  <Box sx={{ display: 'flex', gap: 0.5, mb: 1, flexWrap: 'wrap' }}>
+                    {lead.subjects.slice(0, 3).map((subject, index) => (
+                      <Chip key={index} label={subject} size="small" variant="outlined" />
+                    ))}
+                  </Box>
                   <Typography variant="body2" sx={{ mb: 1 }}>
                     {lead.notes}
                   </Typography>
@@ -953,10 +1057,65 @@ const LeadCapturePage: React.FC = () => {
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
-                  label="Company"
-                  defaultValue={selectedLead?.company || ''}
+                  label="Age"
+                  type="number"
+                  defaultValue={selectedLead?.age || ''}
                   variant="outlined"
                 />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Grade"
+                  defaultValue={selectedLead?.grade || ''}
+                  variant="outlined"
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="School"
+                  defaultValue={selectedLead?.school || ''}
+                  variant="outlined"
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Parent Name"
+                  defaultValue={selectedLead?.parentName || ''}
+                  variant="outlined"
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Parent Email"
+                  type="email"
+                  defaultValue={selectedLead?.parentEmail || ''}
+                  variant="outlined"
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Parent Phone"
+                  defaultValue={selectedLead?.parentPhone || ''}
+                  variant="outlined"
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <FormControl fullWidth>
+                  <InputLabel>Parent Involvement</InputLabel>
+                  <Select
+                    defaultValue={selectedLead?.parentInvolvement || 'medium'}
+                    label="Parent Involvement"
+                  >
+                    <MenuItem value="high">High</MenuItem>
+                    <MenuItem value="medium">Medium</MenuItem>
+                    <MenuItem value="low">Low</MenuItem>
+                  </Select>
+                </FormControl>
               </Grid>
               <Grid item xs={12}>
                 <TextField

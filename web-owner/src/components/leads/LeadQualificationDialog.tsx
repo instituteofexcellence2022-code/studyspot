@@ -142,17 +142,16 @@ interface QualificationQuestion {
   type: 'text' | 'select' | 'rating' | 'slider' | 'boolean';
   options?: string[];
   weight: number;
-  category: 'budget' | 'authority' | 'need' | 'timeline' | 'fit';
+  category: 'academic' | 'behavioral' | 'budget' | 'timeline';
   required: boolean;
 }
 
 interface AIScore {
   overall: number;
+  academic: number;
+  behavioral: number;
   budget: number;
-  authority: number;
-  need: number;
   timeline: number;
-  fit: number;
   confidence: number;
   recommendations: string[];
   nextSteps: string[];
@@ -173,74 +172,66 @@ const LeadQualificationDialog: React.FC<LeadQualificationDialogProps> = ({
   // Qualification Questions
   const qualificationQuestions: QualificationQuestion[] = [
     {
-      id: 'budget_range',
-      question: 'What is your approximate budget for this solution?',
+      id: 'academic_level',
+      question: 'What is the student\'s current academic performance level?',
       type: 'select',
-      options: ['Under $10K', '$10K - $25K', '$25K - $50K', '$50K - $100K', 'Over $100K'],
+      options: ['Excellent (A+ grades)', 'Good (A-B grades)', 'Average (B-C grades)', 'Below Average (C-D grades)', 'Struggling (D-F grades)'],
       weight: 25,
+      category: 'academic',
+      required: true
+    },
+    {
+      id: 'parent_involvement',
+      question: 'How involved are the parents in the student\'s education?',
+      type: 'select',
+      options: ['Very involved (daily monitoring)', 'Moderately involved (weekly check-ins)', 'Somewhat involved (monthly reviews)', 'Minimally involved (occasional interest)', 'Not involved'],
+      weight: 20,
+      category: 'behavioral',
+      required: true
+    },
+    {
+      id: 'learning_goals',
+      question: 'What are the primary learning goals?',
+      type: 'multiselect',
+      options: ['Improve grades', 'Prepare for competitive exams', 'Develop problem-solving skills', 'Build confidence', 'Catch up with peers', 'Advanced learning', 'College preparation'],
+      weight: 15,
+      category: 'academic',
+      required: true
+    },
+    {
+      id: 'subject_interest',
+      question: 'Which subjects is the student most interested in?',
+      type: 'multiselect',
+      options: ['Mathematics', 'Physics', 'Chemistry', 'Biology', 'English', 'History', 'Geography', 'Computer Science', 'Economics', 'All subjects'],
+      weight: 15,
+      category: 'academic',
+      required: true
+    },
+    {
+      id: 'study_schedule',
+      question: 'What is the student\'s preferred study schedule?',
+      type: 'select',
+      options: ['Early morning (6-8 AM)', 'Morning (8-12 PM)', 'Afternoon (12-5 PM)', 'Evening (5-8 PM)', 'Night (8-10 PM)', 'Weekends only', 'Flexible'],
+      weight: 10,
+      category: 'behavioral',
+      required: true
+    },
+    {
+      id: 'budget_range',
+      question: 'What is the family\'s budget range for tutoring?',
+      type: 'select',
+      options: ['Under $500/month', '$500-1000/month', '$1000-2000/month', '$2000-3000/month', 'Over $3000/month'],
+      weight: 10,
       category: 'budget',
       required: true
     },
     {
-      id: 'decision_authority',
-      question: 'Are you the primary decision maker for this purchase?',
-      type: 'select',
-      options: ['Yes, I make the final decision', 'I influence the decision', 'I provide recommendations', 'I have no decision authority'],
-      weight: 20,
-      category: 'authority',
-      required: true
-    },
-    {
       id: 'urgency_level',
-      question: 'How urgent is your need for this solution?',
+      question: 'How urgent is the need for academic support?',
       type: 'rating',
-      weight: 15,
+      weight: 5,
       category: 'timeline',
       required: true
-    },
-    {
-      id: 'current_solution',
-      question: 'What is your current solution for this need?',
-      type: 'select',
-      options: ['No current solution', 'Manual processes', 'Basic software', 'Competitor solution', 'Custom solution'],
-      weight: 10,
-      category: 'need',
-      required: true
-    },
-    {
-      id: 'team_size',
-      question: 'How many people will use this solution?',
-      type: 'select',
-      options: ['1-5', '6-20', '21-50', '51-100', '100+'],
-      weight: 10,
-      category: 'fit',
-      required: true
-    },
-    {
-      id: 'implementation_timeline',
-      question: 'When do you need this implemented?',
-      type: 'select',
-      options: ['ASAP', 'Within 1 month', 'Within 3 months', 'Within 6 months', 'No specific timeline'],
-      weight: 10,
-      category: 'timeline',
-      required: true
-    },
-    {
-      id: 'integration_needs',
-      question: 'Do you need integration with existing systems?',
-      type: 'boolean',
-      weight: 5,
-      category: 'fit',
-      required: false
-    },
-    {
-      id: 'training_requirements',
-      question: 'What level of training support do you need?',
-      type: 'select',
-      options: ['Self-service', 'Basic training', 'Comprehensive training', 'Ongoing support'],
-      weight: 5,
-      category: 'fit',
-      required: false
     }
   ];
 
@@ -268,16 +259,15 @@ const LeadQualificationDialog: React.FC<LeadQualificationDialogProps> = ({
     
     // Mock AI scoring algorithm
     const scores = {
+      academic: calculateCategoryScore(answers, 'academic'),
+      behavioral: calculateCategoryScore(answers, 'behavioral'),
       budget: calculateCategoryScore(answers, 'budget'),
-      authority: calculateCategoryScore(answers, 'authority'),
-      need: calculateCategoryScore(answers, 'need'),
-      timeline: calculateCategoryScore(answers, 'timeline'),
-      fit: calculateCategoryScore(answers, 'fit')
+      timeline: calculateCategoryScore(answers, 'timeline')
     };
     
     const overall = Math.round(
-      (scores.budget * 0.25 + scores.authority * 0.20 + scores.need * 0.15 + 
-       scores.timeline * 0.20 + scores.fit * 0.20)
+      (scores.academic * 0.40 + scores.behavioral * 0.30 + scores.budget * 0.20 + 
+       scores.timeline * 0.10)
     );
     
     const mockScore: AIScore = {
@@ -577,7 +567,7 @@ const LeadQualificationDialog: React.FC<LeadQualificationDialogProps> = ({
           {/* Category Scores */}
           <Box sx={{ mb: 3, display: 'flex', flexWrap: 'wrap', gap: 2 }}>
             {Object.entries(aiScore).filter(([key]) => 
-              ['budget', 'authority', 'need', 'timeline', 'fit'].includes(key)
+              ['academic', 'behavioral', 'budget', 'timeline'].includes(key)
             ).map(([category, score]) => (
               <Box key={category} sx={{ flex: '1 1 200px', minWidth: '200px' }}>
                 <Card>
