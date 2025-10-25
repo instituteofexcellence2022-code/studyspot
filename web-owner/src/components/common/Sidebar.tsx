@@ -729,6 +729,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
         flexGrow: 1, 
         overflowY: 'auto', 
         py: 1,
+        minHeight: 0, // Important: allows flex child to shrink
         '&::-webkit-scrollbar': {
           width: '4px',
         },
@@ -810,11 +811,15 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
       {/* Compact Footer Actions */}
       <Box 
         sx={{ 
-          p: 1.5, 
+          p: 2, // Increased from 1.5 to 2
+          pb: 2.5, // Extra bottom padding
           borderTop: 1, 
           borderColor: alpha(theme.palette.primary.main, 0.1),
           background: `linear-gradient(180deg, ${alpha(theme.palette.background.default, 0.8)} 0%, ${alpha(theme.palette.primary.main, 0.02)} 100%)`,
           backdropFilter: 'blur(10px)',
+          flexShrink: 0, // Prevent shrinking
+          position: 'relative', // Ensure proper positioning
+          zIndex: 1, // Ensure it stays above other content
         }}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>

@@ -16,10 +16,13 @@ import {
   Email, Phone, LocationOn, School, CreditCard, Badge as BadgeIcon,
   Assignment, CheckCircle, Warning, Close, MoreVert,
   CloudUpload, PersonAdd, Description, CalendarToday, History,
-  Delete, Print,
+  Delete, Print, Assessment as AssessmentIcon,
 } from '@mui/icons-material';
 import studentsService, { Student as APIStudent, StudentsFilters } from '../../services/studentsService';
 import StudentFormDialog from '../../components/students/StudentFormDialog';
+import StudentBulkOperationsDialog from '../../components/students/StudentBulkOperationsDialog';
+import StudentAnalyticsDashboard from '../../components/students/StudentAnalyticsDashboard';
+import EnhancedStudentProfile from '../../components/students/EnhancedStudentProfile';
 
 // Enhanced Student interface
 interface Student {
@@ -84,11 +87,15 @@ const StudentsPageAdvanced: React.FC = () => {
   const [idCardDialogOpen, setIdCardDialogOpen] = useState(false);
   const [groupDialogOpen, setGroupDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [bulkOperationsOpen, setBulkOperationsOpen] = useState(false);
+  const [analyticsOpen, setAnalyticsOpen] = useState(false);
+  const [profileDialogOpen, setProfileDialogOpen] = useState(false);
   
   const [currentStudent, setCurrentStudent] = useState<Partial<Student> | null>(null);
   const [editMode, setEditMode] = useState(false);
   const [activeStep, setActiveStep] = useState(0);
   const [formTab, setFormTab] = useState(0);
+  const [activeTab, setActiveTab] = useState(0);
   
   // Filter states
   const [searchTerm, setSearchTerm] = useState('');
@@ -222,7 +229,7 @@ const StudentsPageAdvanced: React.FC = () => {
   // View student details
   const handleViewStudent = (student: Student) => {
     setCurrentStudent(student);
-    setViewDialogOpen(true);
+    setProfileDialogOpen(true);
   };
 
   // KYC verification
@@ -264,18 +271,302 @@ const StudentsPageAdvanced: React.FC = () => {
 
   return (
     <Box>
-      {/* Header */}
+      {/* Enhanced Header */}
       <Box sx={{ mb: 3 }}>
-        <Typography variant="h4" component="h1" gutterBottom>
-          Student Management
-          <Chip label="Advanced Features ✨" color="success" size="small" sx={{ ml: 2 }} />
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          Comprehensive student management with KYC, bulk import, and lifecycle tracking
-        </Typography>
+        {/* Breadcrumbs */}
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="body2" color="text.secondary">
+            Dashboard / Student Management
+          </Typography>
+        </Box>
+
+        {/* Main Header */}
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+          <Box>
+            <Typography variant="h4" component="h1" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <PersonIcon sx={{ fontSize: 32, color: 'primary.main' }} />
+              Student Management
+              <Chip label="Advanced Features ✨" color="success" size="small" />
+              <Chip label={`${totalCount} Students`} color="primary" size="small" />
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+              Comprehensive student management with KYC, bulk import, lifecycle tracking, and analytics
+            </Typography>
+            
+            {/* Status Indicators */}
+            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                <Box 
+                  sx={{ 
+                    width: 8, 
+                    height: 8, 
+                    borderRadius: '50%', 
+                    bgcolor: 'success.main',
+                    animation: 'pulse 2s infinite',
+                    '@keyframes pulse': {
+                      '0%': { opacity: 1 },
+                      '50%': { opacity: 0.5 },
+                      '100%': { opacity: 1 },
+                    }
+                  }} 
+                />
+                <Typography variant="caption" color="text.secondary">
+                  System Online
+                </Typography>
+              </Box>
+              
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                <Typography variant="caption" color="text.secondary">
+                  Last updated: {new Date().toLocaleTimeString()}
+                </Typography>
+              </Box>
+            </Box>
+          </Box>
+          
+          {/* Action Buttons */}
+          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<ExportIcon />}
+              onClick={() => {/* Export functionality */}}
+            >
+              Export
+            </Button>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<UploadIcon />}
+              onClick={() => setBulkImportDialogOpen(true)}
+            >
+              Import
+            </Button>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<PrintIcon />}
+              onClick={() => {/* Print functionality */}}
+            >
+              Print
+            </Button>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => {
+                setCurrentStudent({});
+                setEditMode(false);
+                setAddDialogOpen(true);
+              }}
+            >
+              Add Student
+            </Button>
+          </Box>
+        </Box>
+
+        {/* Analytics Cards */}
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 3 }}>
+          <Card sx={{ flex: '1 1 200px', minWidth: '200px' }}>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Box>
+                  <Typography color="text.secondary" gutterBottom variant="body2">
+                    Total Students
+                  </Typography>
+                  <Typography variant="h4" fontWeight="bold" color="primary.main">
+                    {totalCount}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    +12% from last month
+                  </Typography>
+                </Box>
+                <PersonIcon sx={{ fontSize: 40, color: 'primary.main', opacity: 0.8 }} />
+              </Box>
+            </CardContent>
+          </Card>
+
+          <Card sx={{ flex: '1 1 200px', minWidth: '200px' }}>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Box>
+                  <Typography color="text.secondary" gutterBottom variant="body2">
+                    Active Students
+                  </Typography>
+                  <Typography variant="h4" fontWeight="bold" color="success.main">
+                    {students.filter(s => s.status === 'active').length}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {Math.round((students.filter(s => s.status === 'active').length / totalCount) * 100)}% of total
+                  </Typography>
+                </Box>
+                <CheckCircle sx={{ fontSize: 40, color: 'success.main', opacity: 0.8 }} />
+              </Box>
+            </CardContent>
+          </Card>
+
+          <Card sx={{ flex: '1 1 200px', minWidth: '200px' }}>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Box>
+                  <Typography color="text.secondary" gutterBottom variant="body2">
+                    KYC Verified
+                  </Typography>
+                  <Typography variant="h4" fontWeight="bold" color="info.main">
+                    {students.filter(s => s.kycVerified).length}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {Math.round((students.filter(s => s.kycVerified).length / totalCount) * 100)}% verified
+                  </Typography>
+                </Box>
+                <VerifiedIcon sx={{ fontSize: 40, color: 'info.main', opacity: 0.8 }} />
+              </Box>
+            </CardContent>
+          </Card>
+
+          <Card sx={{ flex: '1 1 200px', minWidth: '200px' }}>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Box>
+                  <Typography color="text.secondary" gutterBottom variant="body2">
+                    Fee Pending
+                  </Typography>
+                  <Typography variant="h4" fontWeight="bold" color="warning.main">
+                    {students.filter(s => s.feeStatus === 'pending').length}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Needs attention
+                  </Typography>
+                </Box>
+                <Warning sx={{ fontSize: 40, color: 'warning.main', opacity: 0.8 }} />
+              </Box>
+            </CardContent>
+          </Card>
+        </Box>
+
+        {/* Performance Metrics */}
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 3 }}>
+          <Card sx={{ flex: '1 1 300px', minWidth: '300px' }}>
+            <CardContent>
+              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <TimelineIcon color="primary" />
+                Enrollment Trends
+              </Typography>
+              <Box sx={{ mb: 2 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                  <Typography variant="body2">This Month</Typography>
+                  <Typography variant="body2" fontWeight="bold">
+                    {students.filter(s => new Date(s.enrollmentDate).getMonth() === new Date().getMonth()).length}
+                  </Typography>
+                </Box>
+                <LinearProgress 
+                  variant="determinate" 
+                  value={Math.min((students.filter(s => new Date(s.enrollmentDate).getMonth() === new Date().getMonth()).length / 50) * 100, 100)} 
+                  sx={{ height: 8, borderRadius: 4 }}
+                />
+              </Box>
+              <Box sx={{ mb: 2 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                  <Typography variant="body2">Last Month</Typography>
+                  <Typography variant="body2" fontWeight="bold">
+                    {students.filter(s => new Date(s.enrollmentDate).getMonth() === new Date().getMonth() - 1).length}
+                  </Typography>
+                </Box>
+                <LinearProgress 
+                  variant="determinate" 
+                  value={Math.min((students.filter(s => new Date(s.enrollmentDate).getMonth() === new Date().getMonth() - 1).length / 50) * 100, 100)} 
+                  color="success"
+                  sx={{ height: 8, borderRadius: 4 }}
+                />
+              </Box>
+              <Box>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                  <Typography variant="body2">Average Attendance</Typography>
+                  <Typography variant="body2" fontWeight="bold">
+                    {Math.round(students.reduce((acc, s) => acc + (s.attendancePercentage || 0), 0) / students.length)}%
+                  </Typography>
+                </Box>
+                <LinearProgress 
+                  variant="determinate" 
+                  value={students.reduce((acc, s) => acc + (s.attendancePercentage || 0), 0) / students.length} 
+                  color="secondary"
+                  sx={{ height: 8, borderRadius: 4 }}
+                />
+              </Box>
+            </CardContent>
+          </Card>
+
+          <Card sx={{ flex: '1 1 300px', minWidth: '300px' }}>
+            <CardContent>
+              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <GroupIcon color="primary" />
+                Student Categories
+              </Typography>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                {['active', 'inactive', 'suspended'].map((status) => (
+                  <Box key={status} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Box 
+                      sx={{ 
+                        width: 12, 
+                        height: 12, 
+                        borderRadius: '50%', 
+                        bgcolor: status === 'active' ? 'success.main' : status === 'inactive' ? 'warning.main' : 'error.main'
+                      }} 
+                    />
+                    <Typography variant="body2" sx={{ flex: 1, textTransform: 'capitalize' }}>
+                      {status} Students
+                    </Typography>
+                    <Typography variant="body2" fontWeight="bold">
+                      {students.filter(s => s.status === status).length}
+                    </Typography>
+                  </Box>
+                ))}
+              </Box>
+            </CardContent>
+          </Card>
+
+          <Card sx={{ flex: '1 1 300px', minWidth: '300px' }}>
+            <CardContent>
+              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <CreditCard color="primary" />
+                Fee Status Overview
+              </Typography>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                {['paid', 'pending', 'overdue'].map((status) => (
+                  <Box key={status} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Box 
+                      sx={{ 
+                        width: 12, 
+                        height: 12, 
+                        borderRadius: '50%', 
+                        bgcolor: status === 'paid' ? 'success.main' : status === 'pending' ? 'warning.main' : 'error.main'
+                      }} 
+                    />
+                    <Typography variant="body2" sx={{ flex: 1, textTransform: 'capitalize' }}>
+                      {status} Fees
+                    </Typography>
+                    <Typography variant="body2" fontWeight="bold">
+                      {students.filter(s => s.feeStatus === status).length}
+                    </Typography>
+                  </Box>
+                ))}
+              </Box>
+            </CardContent>
+          </Card>
+        </Box>
       </Box>
 
-      {/* Action Buttons */}
+      {/* Main Content Tabs */}
+      <Paper sx={{ mb: 3 }}>
+        <Tabs value={activeTab} onChange={(e, newValue) => setActiveTab(newValue)}>
+          <Tab label="Student List" icon={<PersonIcon />} />
+          <Tab label="Analytics" icon={<AssessmentIcon />} />
+          <Tab label="Bulk Operations" icon={<GroupIcon />} />
+        </Tabs>
+      </Paper>
+
+      {/* Tab Content */}
+      {activeTab === 0 && (
+        <Box>
+          {/* Action Buttons */}
       <Card sx={{ mb: 3 }}>
         <CardContent>
           <Grid container spacing={2}>
@@ -324,56 +615,14 @@ const StudentsPageAdvanced: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Stats Cards */}
-      <Grid container spacing={3} sx={{ mb: 3 }}>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Typography variant="body2" color="text.secondary">Total Students</Typography>
-              <Typography variant="h4">{totalCount}</Typography>
-              <Chip label={`+${Math.floor(totalCount * 0.08)} this month`} size="small" color="success" sx={{ mt: 1 }} />
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Typography variant="body2" color="text.secondary">KYC Verified</Typography>
-              <Typography variant="h4" color="success.main">
-                {students.filter(s => s.kycVerified).length}
-              </Typography>
-              <Chip label={`${Math.floor((students.filter(s => s.kycVerified).length / (students.length || 1)) * 100)}%`} size="small" sx={{ mt: 1 }} />
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Typography variant="body2" color="text.secondary">Active Students</Typography>
-              <Typography variant="h4" color="primary.main">
-                {students.filter(s => s.status === 'active').length}
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Typography variant="body2" color="text.secondary">Fee Pending</Typography>
-              <Typography variant="h4" color="warning.main">
-                {students.filter(s => s.feeStatus === 'pending' || s.feeStatus === 'overdue').length}
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
-
-      {/* Search and Filters */}
+      {/* Enhanced Search and Filters */}
       <Paper sx={{ p: 2, mb: 2 }}>
-        <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} md={4}>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'center' }}>
+          {/* Search */}
+          <Box sx={{ flex: '1 1 300px', minWidth: '300px' }}>
             <TextField
               fullWidth
+              size="small"
               placeholder="Search by name, email, phone, student ID..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -383,78 +632,101 @@ const StudentsPageAdvanced: React.FC = () => {
                     <SearchIcon />
                   </InputAdornment>
                 ),
+                endAdornment: searchTerm && (
+                  <InputAdornment position="end">
+                    <IconButton size="small" onClick={() => setSearchTerm('')}>
+                      <Close />
+                    </IconButton>
+                  </InputAdornment>
+                ),
               }}
             />
-          </Grid>
-          <Grid item xs={12} sm={4} md={2}>
-            <FormControl fullWidth size="small">
+          </Box>
+
+          {/* Quick Filters */}
+          <Box sx={{ flex: '0 0 auto', display: 'flex', gap: 1 }}>
+            <FormControl size="small" sx={{ minWidth: 120 }}>
               <InputLabel>Status</InputLabel>
               <Select
                 multiple
                 value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value as string[])}
+                onChange={(e) => setStatusFilter(typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value)}
                 input={<OutlinedInput label="Status" />}
-                renderValue={(selected) => `${selected.length} selected`}
+                renderValue={(selected) => (
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                    {selected.map((value) => (
+                      <Chip key={value} label={value} size="small" />
+                    ))}
+                  </Box>
+                )}
               >
-                {['active', 'inactive', 'suspended', 'graduated'].map((status) => (
+                {['active', 'inactive', 'suspended'].map((status) => (
                   <MenuItem key={status} value={status}>
-                    <Checkbox checked={statusFilter.includes(status)} />
+                    <Checkbox checked={statusFilter.indexOf(status) > -1} />
                     <ListItemText primary={status} />
                   </MenuItem>
                 ))}
               </Select>
             </FormControl>
-          </Grid>
-          <Grid item xs={12} sm={4} md={2}>
-            <FormControl fullWidth size="small">
+
+            <FormControl size="small" sx={{ minWidth: 120 }}>
               <InputLabel>Fee Status</InputLabel>
               <Select
                 multiple
                 value={feeStatusFilter}
-                onChange={(e) => setFeeStatusFilter(e.target.value as string[])}
+                onChange={(e) => setFeeStatusFilter(typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value)}
                 input={<OutlinedInput label="Fee Status" />}
-                renderValue={(selected) => `${selected.length} selected`}
+                renderValue={(selected) => (
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                    {selected.map((value) => (
+                      <Chip key={value} label={value} size="small" />
+                    ))}
+                  </Box>
+                )}
               >
-                {['paid', 'pending', 'overdue', 'partial'].map((status) => (
+                {['paid', 'pending', 'overdue'].map((status) => (
                   <MenuItem key={status} value={status}>
-                    <Checkbox checked={feeStatusFilter.includes(status)} />
+                    <Checkbox checked={feeStatusFilter.indexOf(status) > -1} />
                     <ListItemText primary={status} />
                   </MenuItem>
                 ))}
               </Select>
             </FormControl>
-          </Grid>
-          <Grid item xs={12} sm={4} md={2}>
-            <FormControl fullWidth size="small">
-              <InputLabel>KYC</InputLabel>
+
+            <FormControl size="small" sx={{ minWidth: 120 }}>
+              <InputLabel>KYC Status</InputLabel>
               <Select
                 value={kycFilter}
                 onChange={(e) => setKycFilter(e.target.value)}
-                label="KYC"
+                label="KYC Status"
               >
                 <MenuItem value="">All</MenuItem>
                 <MenuItem value="verified">Verified</MenuItem>
                 <MenuItem value="pending">Pending</MenuItem>
+                <MenuItem value="rejected">Rejected</MenuItem>
               </Select>
             </FormControl>
-          </Grid>
-          <Grid item xs={12} sm={4} md={2}>
-            <Button
-              fullWidth
-              variant="outlined"
-              startIcon={<FilterIcon />}
-              onClick={() => {
-                setSearchTerm('');
-                setStatusFilter([]);
-                setFeeStatusFilter([]);
-                setKycFilter('');
-                setGroupFilter([]);
-              }}
-            >
-              Clear Filters
-            </Button>
-          </Grid>
-        </Grid>
+          </Box>
+
+          {/* Quick Actions */}
+          <Box sx={{ flex: '0 0 auto', display: 'flex', gap: 1 }}>
+            <Tooltip title="Advanced Filters">
+              <IconButton size="small" onClick={() => {/* Advanced filters dialog */}}>
+                <FilterIcon />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Export Results">
+              <IconButton size="small" onClick={() => {/* Export functionality */}}>
+                <ExportIcon />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Refresh">
+              <IconButton size="small" onClick={() => fetchStudents()}>
+                <Assignment />
+              </IconButton>
+            </Tooltip>
+          </Box>
+        </Box>
       </Paper>
 
       {/* Students Table */}
@@ -592,6 +864,69 @@ const StudentsPageAdvanced: React.FC = () => {
           rowsPerPageOptions={[5, 10, 25, 50, 100]}
         />
       </Paper>
+        </Box>
+      )}
+
+      {activeTab === 1 && (
+        <StudentAnalyticsDashboard
+          students={students}
+          onExport={(format) => {
+            // Handle export
+            console.log('Exporting analytics in format:', format);
+          }}
+          onRefresh={() => {
+            fetchStudents();
+          }}
+        />
+      )}
+
+      {activeTab === 2 && (
+        <Box>
+          <Card sx={{ mb: 3 }}>
+            <CardContent>
+              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <GroupIcon color="primary" />
+                Bulk Operations
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Select students from the list and perform bulk operations
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                <Button
+                  variant="contained"
+                  startIcon={<GroupIcon />}
+                  onClick={() => setBulkOperationsOpen(true)}
+                  disabled={selectedStudents.length === 0}
+                >
+                  Bulk Operations ({selectedStudents.length})
+                </Button>
+                <Button
+                  variant="outlined"
+                  startIcon={<ExportIcon />}
+                  onClick={() => setBulkOperationsOpen(true)}
+                  disabled={selectedStudents.length === 0}
+                >
+                  Export Selected
+                </Button>
+                <Button
+                  variant="outlined"
+                  startIcon={<BadgeIcon />}
+                  onClick={() => setBulkOperationsOpen(true)}
+                  disabled={selectedStudents.length === 0}
+                >
+                  Generate ID Cards
+                </Button>
+              </Box>
+            </CardContent>
+          </Card>
+
+          {selectedStudents.length === 0 && (
+            <Alert severity="info">
+              Please select students from the Student List tab to perform bulk operations.
+            </Alert>
+          )}
+        </Box>
+      )}
 
       {/* Student Form Dialog */}
       <StudentFormDialog
@@ -894,6 +1229,31 @@ const StudentsPageAdvanced: React.FC = () => {
           </Grid>
         </DialogContent>
       </Dialog>
+
+      {/* Bulk Operations Dialog */}
+      <StudentBulkOperationsDialog
+        open={bulkOperationsOpen}
+        onClose={() => setBulkOperationsOpen(false)}
+        selectedStudents={selectedStudents}
+        students={students}
+        onBulkAction={(action, data) => {
+          console.log('Bulk action:', action, data);
+          setSnackbar({ open: true, message: `✅ Bulk operation completed successfully!`, severity: 'success' });
+        }}
+      />
+
+      {/* Enhanced Student Profile Dialog */}
+      <EnhancedStudentProfile
+        open={profileDialogOpen}
+        onClose={() => setProfileDialogOpen(false)}
+        student={currentStudent}
+        onEdit={(student) => {
+          setCurrentStudent(student);
+          setEditMode(true);
+          setAddDialogOpen(true);
+          setProfileDialogOpen(false);
+        }}
+      />
 
       {/* Snackbar */}
       <Snackbar

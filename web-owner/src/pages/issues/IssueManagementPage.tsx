@@ -35,6 +35,42 @@ import {
   Avatar,
   LinearProgress,
   Divider,
+  Grid,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemIcon,
+  ListItemSecondaryAction,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  Stepper,
+  Step,
+  StepLabel,
+  StepContent,
+  Rating,
+  CircularProgress,
+  Fade,
+  Slide,
+  Zoom,
+  Collapse,
+  Switch,
+  FormControlLabel,
+  RadioGroup,
+  Radio,
+  Checkbox,
+  FormGroup,
+  Slider,
+  Autocomplete,
+  ToggleButton,
+  ToggleButtonGroup,
+  Breadcrumbs,
+  Link,
+  Skeleton,
+  Backdrop,
+  SpeedDial,
+  SpeedDialAction,
+  SpeedDialIcon,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -57,6 +93,134 @@ import {
   Error as ErrorIcon,
   Info as InfoIcon,
   SmartToy as SmartToyIcon,
+  ExpandMore as ExpandMoreIcon,
+  ExpandLess as ExpandLessIcon,
+  Timeline as TimelineIcon,
+  History as HistoryIcon,
+  Person as PersonIcon,
+  Group as GroupIcon,
+  School as SchoolIcon,
+  LibraryBooks as LibraryBooksIcon,
+  Computer as ComputerIcon,
+  Wifi as WifiIcon,
+  Security as SecurityIcon,
+  Payment as PaymentIcon,
+  Event as EventIcon,
+  AccessTime as AccessTimeIcon,
+  Star as StarIcon,
+  StarBorder as StarBorderIcon,
+  ThumbUp as ThumbUpIcon,
+  ThumbDown as ThumbDownIcon,
+  Comment as CommentIcon,
+  AttachFile as AttachFileIcon,
+  Download as DownloadIcon,
+  Upload as UploadIcon,
+  Share as ShareIcon,
+  Print as PrintIcon,
+  Email as EmailIcon,
+  Phone as PhoneIcon,
+  LocationOn as LocationOnIcon,
+  CalendarToday as CalendarTodayIcon,
+  AccessAlarm as AccessAlarmIcon,
+  Speed as SpeedIcon,
+  TrendingDown as TrendingDownIcon,
+  Assessment as AssessmentIcon,
+  BarChart as BarChartIcon,
+  PieChart as PieChartIcon,
+  ShowChart as ShowChartIcon,
+  Dashboard as DashboardIcon,
+  Settings as SettingsIcon,
+  Help as HelpIcon,
+  Support as SupportIcon,
+  Feedback as FeedbackIcon,
+  RateReview as RateReviewIcon,
+  Flag as FlagIcon,
+  PriorityHigh as PriorityHighIcon,
+  LowPriority as LowPriorityIcon,
+  Block as BlockIcon,
+  Check as CheckIcon,
+  Close as CloseIcon,
+  Delete as DeleteIcon,
+  Archive as ArchiveIcon,
+  Restore as RestoreIcon,
+  ContentCopy as CopyIcon,
+  Link as LinkIcon,
+  OpenInNew as OpenInNewIcon,
+  Launch as LaunchIcon,
+  GetApp as GetAppIcon,
+  CloudDownload as CloudDownloadIcon,
+  CloudUpload as CloudUploadIcon,
+  Sync as SyncIcon,
+  Autorenew as AutorenewIcon,
+  Cached as CachedIcon,
+  Update as UpdateIcon,
+  Build as BuildIcon,
+  Construction as ConstructionIcon,
+  Engineering as EngineeringIcon,
+  Science as ScienceIcon,
+  Psychology as PsychologyIcon,
+  Biotech as BiotechIcon,
+  Memory as MemoryIcon,
+  Storage as StorageIcon,
+  Cloud as CloudIcon,
+  CloudQueue as CloudQueueIcon,
+  CloudDone as CloudDoneIcon,
+  CloudOff as CloudOffIcon,
+  WifiOff as WifiOffIcon,
+  SignalWifiOff as SignalWifiOffIcon,
+  SignalWifi4Bar as SignalWifi4BarIcon,
+  NetworkCheck as NetworkCheckIcon,
+  Router as RouterIcon,
+  DeviceHub as DeviceHubIcon,
+  Devices as DevicesIcon,
+  DeviceUnknown as DeviceUnknownIcon,
+  Laptop as LaptopIcon,
+  DesktopMac as DesktopMacIcon,
+  Monitor as MonitorIcon,
+  Tv as TvIcon,
+  Tablet as TabletIcon,
+  PhoneAndroid as PhoneAndroidIcon,
+  PhoneIphone as PhoneIphoneIcon,
+  Watch as WatchIcon,
+  Headset as HeadsetIcon,
+  Keyboard as KeyboardIcon,
+  Mouse as MouseIcon,
+  Gamepad as GamepadIcon,
+  CameraAlt as CameraAltIcon,
+  Videocam as VideocamIcon,
+  Mic as MicIcon,
+  VolumeUp as VolumeUpIcon,
+  VolumeOff as VolumeOffIcon,
+  VolumeDown as VolumeDownIcon,
+  Speaker as SpeakerIcon,
+  Headphones as HeadphonesIcon,
+  Bluetooth as BluetoothIcon,
+  BluetoothConnected as BluetoothConnectedIcon,
+  BluetoothDisabled as BluetoothDisabledIcon,
+  Usb as UsbIcon,
+  SdCard as SdCardIcon,
+  SimCard as SimCardIcon,
+  BatteryFull as BatteryFullIcon,
+  BatteryStd as BatteryStdIcon,
+  BatteryAlert as BatteryAlertIcon,
+  BatteryUnknown as BatteryUnknownIcon,
+  Power as PowerIcon,
+  PowerOff as PowerOffIcon,
+  PowerSettingsNew as PowerSettingsNewIcon,
+  BatteryChargingFull as BatteryChargingFullIcon,
+  BatteryCharging20 as BatteryCharging20Icon,
+  BatteryCharging30 as BatteryCharging30Icon,
+  BatteryCharging50 as BatteryCharging50Icon,
+  BatteryCharging60 as BatteryCharging60Icon,
+  BatteryCharging80 as BatteryCharging80Icon,
+  BatteryCharging90 as BatteryCharging90Icon,
+  Battery20 as Battery20Icon,
+  Battery30 as Battery30Icon,
+  Battery50 as Battery50Icon,
+  Battery60 as Battery60Icon,
+  Battery80 as Battery80Icon,
+  Battery90 as Battery90Icon,
+  ViewModule as ViewModuleIcon,
 } from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
 
@@ -160,6 +324,46 @@ const IssueManagementPage: React.FC = () => {
   const [aiAssistantOpen, setAiAssistantOpen] = useState(false);
   const [templatesDialogOpen, setTemplatesDialogOpen] = useState(false);
   const [filtersDialogOpen, setFiltersDialogOpen] = useState(false);
+  
+  // Enhanced UI state
+  const [timelineDialogOpen, setTimelineDialogOpen] = useState(false);
+  const [bulkActionsOpen, setBulkActionsOpen] = useState(false);
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
+  const [helpDialogOpen, setHelpDialogOpen] = useState(false);
+  const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false);
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
+  const [workflowDialogOpen, setWorkflowDialogOpen] = useState(false);
+  const [automationDialogOpen, setAutomationDialogOpen] = useState(false);
+  const [integrationDialogOpen, setIntegrationDialogOpen] = useState(false);
+  const [backupDialogOpen, setBackupDialogOpen] = useState(false);
+  const [restoreDialogOpen, setRestoreDialogOpen] = useState(false);
+  const [auditDialogOpen, setAuditDialogOpen] = useState(false);
+  const [performanceDialogOpen, setPerformanceDialogOpen] = useState(false);
+  
+  // View and layout state
+  const [viewMode, setViewMode] = useState<'table' | 'card' | 'timeline' | 'kanban'>('table');
+  const [sortBy, setSortBy] = useState('reported_at');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [groupBy, setGroupBy] = useState('status');
+  const [showArchived, setShowArchived] = useState(false);
+  const [showResolved, setShowResolved] = useState(true);
+  const [compactMode, setCompactMode] = useState(false);
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [refreshInterval, setRefreshInterval] = useState(30); // seconds
+  
+  // Selection and bulk operations
+  const [selectedIssues, setSelectedIssues] = useState<string[]>([]);
+  const [bulkAction, setBulkAction] = useState('');
+  const [bulkAssignee, setBulkAssignee] = useState('');
+  const [bulkStatus, setBulkStatus] = useState('');
+  const [bulkPriority, setBulkPriority] = useState('');
+  
+  // Real-time updates
+  const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+  const [isOnline, setIsOnline] = useState(true);
+  const [syncStatus, setSyncStatus] = useState<'synced' | 'syncing' | 'error'>('synced');
   
   // Pagination and filtering
   const [page, setPage] = useState(0);
@@ -316,137 +520,429 @@ const IssueManagementPage: React.FC = () => {
   
   return (
     <Box sx={{ p: 3 }}>
-      {/* Header */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Box>
-          <Typography variant="h4" fontWeight="bold" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <BugReportIcon sx={{ fontSize: 32, color: 'primary.main' }} />
-            Issue Management
-          </Typography>
-          <Typography variant="subtitle1" color="text.secondary">
-            Track, manage, and resolve library issues efficiently
-          </Typography>
+      {/* Enhanced Header */}
+      <Box sx={{ mb: 3 }}>
+        {/* Breadcrumbs */}
+        <Breadcrumbs sx={{ mb: 2 }}>
+          <Link color="inherit" href="/dashboard">
+            Dashboard
+          </Link>
+          <Typography color="text.primary">Issue Management</Typography>
+        </Breadcrumbs>
+
+        {/* Main Header */}
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+          <Box>
+            <Typography variant="h4" fontWeight="bold" sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+              <BugReportIcon sx={{ fontSize: 32, color: 'primary.main' }} />
+              Issue Management
+              <Chip 
+                label={`${totalCount} Issues`} 
+                color="primary" 
+                size="small" 
+                sx={{ ml: 1 }}
+              />
+            </Typography>
+            <Typography variant="subtitle1" color="text.secondary" sx={{ mb: 1 }}>
+              Track, manage, and resolve library issues efficiently with AI-powered insights
+            </Typography>
+            
+            {/* Status Indicators */}
+            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                <Box 
+                  sx={{ 
+                    width: 8, 
+                    height: 8, 
+                    borderRadius: '50%', 
+                    bgcolor: isOnline ? 'success.main' : 'error.main',
+                    animation: isOnline ? 'pulse 2s infinite' : 'none',
+                    '@keyframes pulse': {
+                      '0%': { opacity: 1 },
+                      '50%': { opacity: 0.5 },
+                      '100%': { opacity: 1 },
+                    }
+                  }} 
+                />
+                <Typography variant="caption" color="text.secondary">
+                  {isOnline ? 'Online' : 'Offline'}
+                </Typography>
+              </Box>
+              
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                <SyncIcon 
+                  sx={{ 
+                    fontSize: 14, 
+                    color: syncStatus === 'syncing' ? 'primary.main' : 
+                           syncStatus === 'error' ? 'error.main' : 'success.main',
+                    animation: syncStatus === 'syncing' ? 'spin 1s linear infinite' : 'none',
+                    '@keyframes spin': {
+                      '0%': { transform: 'rotate(0deg)' },
+                      '100%': { transform: 'rotate(360deg)' },
+                    }
+                  }} 
+                />
+                <Typography variant="caption" color="text.secondary">
+                  Last updated: {lastUpdate.toLocaleTimeString()}
+                </Typography>
+              </Box>
+            </Box>
+          </Box>
+          
+          {/* Action Buttons */}
+          <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<SettingsIcon />}
+              onClick={() => setSettingsDialogOpen(true)}
+            >
+              Settings
+            </Button>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<HelpIcon />}
+              onClick={() => setHelpDialogOpen(true)}
+            >
+              Help
+            </Button>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<FeedbackIcon />}
+              onClick={() => setFeedbackDialogOpen(true)}
+            >
+              Feedback
+            </Button>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<AnalyticsIcon />}
+              onClick={() => setAnalyticsDialogOpen(true)}
+            >
+              Analytics
+            </Button>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<SmartToyIcon />}
+              onClick={() => setAiAssistantOpen(true)}
+            >
+              AI Assistant
+            </Button>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => setCreateDialogOpen(true)}
+            >
+              Report Issue
+            </Button>
+          </Stack>
         </Box>
-        
-        <Stack direction="row" spacing={2}>
-          <Button
-            variant="outlined"
-            startIcon={<AnalyticsIcon />}
-            onClick={() => setAnalyticsDialogOpen(true)}
-          >
-            Analytics
-          </Button>
-          <Button
-            variant="outlined"
-            startIcon={<TrendingUpIcon />}
-            onClick={() => setAdvancedAnalyticsOpen(true)}
-          >
-            Advanced Analytics
-          </Button>
-          <Button
-            variant="outlined"
-            startIcon={<NotificationsIcon />}
-            onClick={() => setNotificationCenterOpen(true)}
-          >
-            Notifications
-          </Button>
-          <Button
-            variant="outlined"
-            startIcon={<SmartToyIcon />}
-            onClick={() => setAiAssistantOpen(true)}
-          >
-            AI Assistant
-          </Button>
-          <Button
-            variant="outlined"
-            startIcon={<TemplateIcon />}
-            onClick={() => setTemplatesDialogOpen(true)}
-          >
-            Templates
-          </Button>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => setCreateDialogOpen(true)}
-          >
-            Report Issue
-          </Button>
-        </Stack>
+
+        {/* Enhanced Controls Bar */}
+        <Paper sx={{ p: 2, mb: 2 }}>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'center' }}>
+            {/* Search and Filters */}
+            <Box sx={{ flex: '1 1 300px', minWidth: '300px' }}>
+              <TextField
+                fullWidth
+                size="small"
+                placeholder="Search issues..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon />
+                    </InputAdornment>
+                  ),
+                  endAdornment: searchQuery && (
+                    <InputAdornment position="end">
+                      <IconButton size="small" onClick={() => setSearchQuery('')}>
+                        <CloseIcon />
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            </Box>
+
+            {/* View Mode Toggle */}
+            <Box sx={{ flex: '0 0 auto' }}>
+              <ToggleButtonGroup
+                value={viewMode}
+                exclusive
+                onChange={(e, newMode) => newMode && setViewMode(newMode)}
+                size="small"
+              >
+                <ToggleButton value="table">
+                  <Tooltip title="Table View">
+                    <AssessmentIcon />
+                  </Tooltip>
+                </ToggleButton>
+                <ToggleButton value="card">
+                  <Tooltip title="Card View">
+                    <DashboardIcon />
+                  </Tooltip>
+                </ToggleButton>
+                <ToggleButton value="timeline">
+                  <Tooltip title="Timeline View">
+                    <TimelineIcon />
+                  </Tooltip>
+                </ToggleButton>
+                <ToggleButton value="kanban">
+                  <Tooltip title="Kanban View">
+                    <ViewModuleIcon />
+                  </Tooltip>
+                </ToggleButton>
+              </ToggleButtonGroup>
+            </Box>
+
+            {/* Sort and Group */}
+            <Box sx={{ flex: '0 0 auto', display: 'flex', gap: 1 }}>
+              <FormControl size="small" sx={{ minWidth: 120 }}>
+                <InputLabel>Sort By</InputLabel>
+                <Select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  label="Sort By"
+                >
+                  <MenuItem value="reported_at">Reported Date</MenuItem>
+                  <MenuItem value="priority_level">Priority</MenuItem>
+                  <MenuItem value="title">Title</MenuItem>
+                  <MenuItem value="assigned_to">Assignee</MenuItem>
+                  <MenuItem value="status">Status</MenuItem>
+                </Select>
+              </FormControl>
+              <IconButton 
+                size="small" 
+                onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+              >
+                {sortOrder === 'asc' ? <TrendingUpIcon /> : <TrendingDownIcon />}
+              </IconButton>
+            </Box>
+
+            {/* Quick Actions */}
+            <Box sx={{ flex: '0 0 auto', display: 'flex', gap: 1 }}>
+              <Tooltip title="Refresh">
+                <IconButton size="small" onClick={() => loadIssues()}>
+                  <RefreshIcon />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Filter">
+                <IconButton size="small" onClick={() => setFiltersDialogOpen(true)}>
+                  <FilterIcon />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Export">
+                <IconButton size="small" onClick={() => setExportDialogOpen(true)}>
+                  <DownloadIcon />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Bulk Actions">
+                <IconButton 
+                  size="small" 
+                  onClick={() => setBulkActionsOpen(true)}
+                  disabled={selectedIssues.length === 0}
+                >
+                  <Badge badgeContent={selectedIssues.length} color="primary">
+                    <AssignmentIcon />
+                  </Badge>
+                </IconButton>
+              </Tooltip>
+            </Box>
+          </Box>
+        </Paper>
       </Box>
       
-      {/* Analytics Cards */}
+      {/* Enhanced Analytics Cards */}
       {analyticsData && (
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3, mb: 3 }}>
-          <Box sx={{ flex: '1 1 250px', minWidth: '250px' }}>
-            <Card>
+        <Box sx={{ mb: 3 }}>
+          {/* Overview Cards */}
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 3 }}>
+            <Card sx={{ flex: '1 1 200px', minWidth: '200px' }}>
               <CardContent>
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <Box>
-                    <Typography color="text.secondary" gutterBottom>
+                    <Typography color="text.secondary" gutterBottom variant="body2">
                       Total Issues
                     </Typography>
-                    <Typography variant="h4" fontWeight="bold">
+                    <Typography variant="h4" fontWeight="bold" color="primary.main">
                       {analyticsData.overview.total_issues}
                     </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      +12% from last month
+                    </Typography>
                   </Box>
-                  <BugReportIcon sx={{ fontSize: 40, color: 'primary.main' }} />
+                  <BugReportIcon sx={{ fontSize: 40, color: 'primary.main', opacity: 0.8 }} />
                 </Box>
               </CardContent>
             </Card>
-          </Box>
-          
-          <Box sx={{ flex: '1 1 250px', minWidth: '250px' }}>
-            <Card>
+
+            <Card sx={{ flex: '1 1 200px', minWidth: '200px' }}>
               <CardContent>
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <Box>
-                    <Typography color="text.secondary" gutterBottom>
+                    <Typography color="text.secondary" gutterBottom variant="body2">
                       Open Issues
                     </Typography>
                     <Typography variant="h4" fontWeight="bold" color="warning.main">
                       {analyticsData.overview.open_issues}
                     </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {Math.round((analyticsData.overview.open_issues / analyticsData.overview.total_issues) * 100)}% of total
+                    </Typography>
                   </Box>
-                  <AssignmentIcon sx={{ fontSize: 40, color: 'warning.main' }} />
+                  <WarningIcon sx={{ fontSize: 40, color: 'warning.main', opacity: 0.8 }} />
                 </Box>
               </CardContent>
             </Card>
-          </Box>
-          
-          <Box sx={{ flex: '1 1 250px', minWidth: '250px' }}>
-            <Card>
+
+            <Card sx={{ flex: '1 1 200px', minWidth: '200px' }}>
               <CardContent>
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <Box>
-                    <Typography color="text.secondary" gutterBottom>
+                    <Typography color="text.secondary" gutterBottom variant="body2">
+                      Resolved Today
+                    </Typography>
+                    <Typography variant="h4" fontWeight="bold" color="success.main">
+                      {analyticsData.overview.resolved_today}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Avg: {analyticsData.overview.avg_resolution_time}h
+                    </Typography>
+                  </Box>
+                  <CheckCircleIcon sx={{ fontSize: 40, color: 'success.main', opacity: 0.8 }} />
+                </Box>
+              </CardContent>
+            </Card>
+
+            <Card sx={{ flex: '1 1 200px', minWidth: '200px' }}>
+              <CardContent>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Box>
+                    <Typography color="text.secondary" gutterBottom variant="body2">
                       Overdue Issues
                     </Typography>
                     <Typography variant="h4" fontWeight="bold" color="error.main">
                       {analyticsData.overview.overdue_issues}
                     </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {analyticsData.overview.overdue_issues > 0 ? 'Needs attention' : 'All on track'}
+                    </Typography>
                   </Box>
-                  <WarningIcon sx={{ fontSize: 40, color: 'error.main' }} />
+                  <AccessAlarmIcon sx={{ fontSize: 40, color: 'error.main', opacity: 0.8 }} />
                 </Box>
               </CardContent>
             </Card>
           </Box>
-          
-          <Box sx={{ flex: '1 1 250px', minWidth: '250px' }}>
-            <Card>
+
+          {/* Performance Metrics */}
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 3 }}>
+            <Card sx={{ flex: '1 1 300px', minWidth: '300px' }}>
               <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <Box>
-                    <Typography color="text.secondary" gutterBottom>
-                      Avg. Resolution
-                    </Typography>
-                    <Typography variant="h4" fontWeight="bold" color="success.main">
-                      {analyticsData.overview.avg_resolution_time_hours 
-                        ? `${Math.round(analyticsData.overview.avg_resolution_time_hours)}h`
-                        : 'N/A'
-                      }
+                <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <TrendingUpIcon color="primary" />
+                  Resolution Performance
+                </Typography>
+                <Box sx={{ mb: 2 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                    <Typography variant="body2">First Response Time</Typography>
+                    <Typography variant="body2" fontWeight="bold">
+                      {analyticsData.performance.avg_first_response_time}h
                     </Typography>
                   </Box>
-                  <ScheduleIcon sx={{ fontSize: 40, color: 'success.main' }} />
+                  <LinearProgress 
+                    variant="determinate" 
+                    value={Math.min((analyticsData.performance.avg_first_response_time / 24) * 100, 100)} 
+                    sx={{ height: 8, borderRadius: 4 }}
+                  />
+                </Box>
+                <Box sx={{ mb: 2 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                    <Typography variant="body2">Resolution Time</Typography>
+                    <Typography variant="body2" fontWeight="bold">
+                      {analyticsData.performance.avg_resolution_time}h
+                    </Typography>
+                  </Box>
+                  <LinearProgress 
+                    variant="determinate" 
+                    value={Math.min((analyticsData.performance.avg_resolution_time / 72) * 100, 100)} 
+                    color="success"
+                    sx={{ height: 8, borderRadius: 4 }}
+                  />
+                </Box>
+                <Box>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                    <Typography variant="body2">Customer Satisfaction</Typography>
+                    <Typography variant="body2" fontWeight="bold">
+                      {analyticsData.performance.avg_satisfaction_rating}/5
+                    </Typography>
+                  </Box>
+                  <LinearProgress 
+                    variant="determinate" 
+                    value={(analyticsData.performance.avg_satisfaction_rating / 5) * 100} 
+                    color="secondary"
+                    sx={{ height: 8, borderRadius: 4 }}
+                  />
+                </Box>
+              </CardContent>
+            </Card>
+
+            <Card sx={{ flex: '1 1 300px', minWidth: '300px' }}>
+              <CardContent>
+                <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <AssessmentIcon color="primary" />
+                  Issue Categories
+                </Typography>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                  {analyticsData.categories.slice(0, 5).map((category: any, index: number) => (
+                    <Box key={category.id} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Box 
+                        sx={{ 
+                          width: 12, 
+                          height: 12, 
+                          borderRadius: '50%', 
+                          bgcolor: category.color || 'primary.main' 
+                        }} 
+                      />
+                      <Typography variant="body2" sx={{ flex: 1 }}>
+                        {category.name}
+                      </Typography>
+                      <Typography variant="body2" fontWeight="bold">
+                        {category.count}
+                      </Typography>
+                    </Box>
+                  ))}
+                </Box>
+              </CardContent>
+            </Card>
+
+            <Card sx={{ flex: '1 1 300px', minWidth: '300px' }}>
+              <CardContent>
+                <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <PersonIcon color="primary" />
+                  Team Performance
+                </Typography>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                  {analyticsData.team_performance.slice(0, 4).map((member: any, index: number) => (
+                    <Box key={member.id} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Avatar sx={{ width: 24, height: 24, fontSize: 12 }}>
+                        {member.name.charAt(0)}
+                      </Avatar>
+                      <Typography variant="body2" sx={{ flex: 1 }}>
+                        {member.name}
+                      </Typography>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <Typography variant="caption" color="text.secondary">
+                          {member.resolved_count}
+                        </Typography>
+                        <CheckCircleIcon sx={{ fontSize: 14, color: 'success.main' }} />
+                      </Box>
+                    </Box>
+                  ))}
                 </Box>
               </CardContent>
             </Card>
@@ -454,10 +950,58 @@ const IssueManagementPage: React.FC = () => {
         </Box>
       )}
       
-      {/* Main Content */}
-      <Paper sx={{ p: 3 }}>
-        {/* Search and Filters */}
-        <Box sx={{ display: 'flex', gap: 2, mb: 3, alignItems: 'center' }}>
+      {/* Enhanced Tabs System */}
+      <Paper sx={{ mb: 3 }}>
+        <Tabs 
+          value={activeTab} 
+          onChange={(e, newValue) => setActiveTab(newValue)}
+          variant="scrollable"
+          scrollButtons="auto"
+          sx={{ borderBottom: 1, borderColor: 'divider' }}
+        >
+          <Tab 
+            label="All Issues" 
+            icon={<BugReportIcon />} 
+            iconPosition="start"
+          />
+          <Tab 
+            label="My Issues" 
+            icon={<PersonIcon />} 
+            iconPosition="start"
+          />
+          <Tab 
+            label="High Priority" 
+            icon={<PriorityHighIcon />} 
+            iconPosition="start"
+          />
+          <Tab 
+            label="Overdue" 
+            icon={<AccessAlarmIcon />} 
+            iconPosition="start"
+          />
+          <Tab 
+            label="Recently Resolved" 
+            icon={<CheckCircleIcon />} 
+            iconPosition="start"
+          />
+          <Tab 
+            label="Analytics" 
+            icon={<AnalyticsIcon />} 
+            iconPosition="start"
+          />
+          <Tab 
+            label="Reports" 
+            icon={<AssessmentIcon />} 
+            iconPosition="start"
+          />
+        </Tabs>
+      </Paper>
+
+      {/* Tab Content */}
+      {activeTab === 0 && (
+        <Paper sx={{ p: 3 }}>
+          {/* Search and Filters */}
+          <Box sx={{ display: 'flex', gap: 2, mb: 3, alignItems: 'center' }}>
           <TextField
             placeholder="Search issues..."
             value={searchQuery}
@@ -621,7 +1165,145 @@ const IssueManagementPage: React.FC = () => {
           }}
           rowsPerPageOptions={[10, 25, 50, 100]}
         />
-      </Paper>
+        </Paper>
+      )}
+
+      {/* My Issues Tab */}
+      {activeTab === 1 && (
+        <Paper sx={{ p: 3 }}>
+          <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <PersonIcon color="primary" />
+            Issues Assigned to Me
+          </Typography>
+          <Box sx={{ textAlign: 'center', py: 4 }}>
+            <PersonIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
+            <Typography variant="h6" color="text.secondary" gutterBottom>
+              My Issues View
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              This view will show issues assigned to you with personalized filters and quick actions.
+            </Typography>
+          </Box>
+        </Paper>
+      )}
+
+      {/* High Priority Tab */}
+      {activeTab === 2 && (
+        <Paper sx={{ p: 3 }}>
+          <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <PriorityHighIcon color="error" />
+            High Priority Issues
+          </Typography>
+          <Box sx={{ textAlign: 'center', py: 4 }}>
+            <PriorityHighIcon sx={{ fontSize: 64, color: 'error.main', mb: 2 }} />
+            <Typography variant="h6" color="text.secondary" gutterBottom>
+              High Priority Issues
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Critical issues that require immediate attention and have strict SLA requirements.
+            </Typography>
+          </Box>
+        </Paper>
+      )}
+
+      {/* Overdue Tab */}
+      {activeTab === 3 && (
+        <Paper sx={{ p: 3 }}>
+          <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <AccessAlarmIcon color="warning" />
+            Overdue Issues
+          </Typography>
+          <Box sx={{ textAlign: 'center', py: 4 }}>
+            <AccessAlarmIcon sx={{ fontSize: 64, color: 'warning.main', mb: 2 }} />
+            <Typography variant="h6" color="text.secondary" gutterBottom>
+              Overdue Issues
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Issues that have exceeded their SLA deadlines and need immediate escalation.
+            </Typography>
+          </Box>
+        </Paper>
+      )}
+
+      {/* Recently Resolved Tab */}
+      {activeTab === 4 && (
+        <Paper sx={{ p: 3 }}>
+          <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <CheckCircleIcon color="success" />
+            Recently Resolved Issues
+          </Typography>
+          <Box sx={{ textAlign: 'center', py: 4 }}>
+            <CheckCircleIcon sx={{ fontSize: 64, color: 'success.main', mb: 2 }} />
+            <Typography variant="h6" color="text.secondary" gutterBottom>
+              Recently Resolved
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Issues that have been resolved in the last 7 days with resolution details and feedback.
+            </Typography>
+          </Box>
+        </Paper>
+      )}
+
+      {/* Analytics Tab */}
+      {activeTab === 5 && (
+        <Paper sx={{ p: 3 }}>
+          <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <AnalyticsIcon color="primary" />
+            Advanced Analytics
+          </Typography>
+          <Box sx={{ textAlign: 'center', py: 4 }}>
+            <AnalyticsIcon sx={{ fontSize: 64, color: 'primary.main', mb: 2 }} />
+            <Typography variant="h6" color="text.secondary" gutterBottom>
+              Advanced Analytics
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+              Comprehensive analytics dashboard with charts, trends, and performance metrics.
+            </Typography>
+            <Button 
+              variant="contained" 
+              startIcon={<TrendingUpIcon />}
+              onClick={() => setAdvancedAnalyticsOpen(true)}
+            >
+              Open Advanced Analytics
+            </Button>
+          </Box>
+        </Paper>
+      )}
+
+      {/* Reports Tab */}
+      {activeTab === 6 && (
+        <Paper sx={{ p: 3 }}>
+          <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <AssessmentIcon color="primary" />
+            Reports & Exports
+          </Typography>
+          <Box sx={{ textAlign: 'center', py: 4 }}>
+            <AssessmentIcon sx={{ fontSize: 64, color: 'primary.main', mb: 2 }} />
+            <Typography variant="h6" color="text.secondary" gutterBottom>
+              Reports & Exports
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+              Generate detailed reports, export data, and create custom analytics dashboards.
+            </Typography>
+            <Stack direction="row" spacing={2} justifyContent="center">
+              <Button 
+                variant="outlined" 
+                startIcon={<DownloadIcon />}
+                onClick={() => setExportDialogOpen(true)}
+              >
+                Export Data
+              </Button>
+              <Button 
+                variant="outlined" 
+                startIcon={<PrintIcon />}
+                onClick={() => setReportDialogOpen(true)}
+              >
+                Generate Report
+              </Button>
+            </Stack>
+          </Box>
+        </Paper>
+      )}
       
       {/* Dialogs */}
       <IssueCreateDialog
