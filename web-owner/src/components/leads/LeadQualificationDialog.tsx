@@ -463,7 +463,7 @@ const LeadQualificationDialog: React.FC<LeadQualificationDialogProps> = ({
             variant="outlined"
           />
         </Box>
-      </Grid>
+        </Box>
     </Box>
   );
 

@@ -440,7 +440,7 @@ const LeadAnalyticsDashboard: React.FC<LeadAnalyticsDashboardProps> = ({
             </CardContent>
           </Card>
         </Box>
-      </Grid>
+      </Box>
 
       {/* AI Insights */}
       <Card sx={{ mb: 3 }}>
@@ -536,7 +536,7 @@ const LeadAnalyticsDashboard: React.FC<LeadAnalyticsDashboardProps> = ({
             </CardContent>
           </Card>
         </Box>
-      </Grid>
+      </Box>
     </Box>
   );
 
