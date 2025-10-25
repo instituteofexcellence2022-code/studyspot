@@ -13,7 +13,6 @@ import {
   LinearProgress,
   Alert,
   Paper,
-  Grid,
   Avatar,
   Divider,
   List,
@@ -49,7 +48,7 @@ import {
   BarChart as BarChartIcon,
   PieChart as PieChartIcon,
   Timeline as TimelineIcon,
-  Analytics as AnalyticsIcon,
+  Assessment as AnalyticsIcon,
 } from '@mui/icons-material';
 
 interface Student {
