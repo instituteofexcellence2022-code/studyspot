@@ -492,7 +492,7 @@ Best,
               </Typography>
             </CardContent>
           </Card>
-        </Grid>
+        </Box>
         <Box sx={{ flex: '1 1 200px', minWidth: '200px' }}>
           <Card 
             sx={{ 
@@ -511,7 +511,7 @@ Best,
               </Typography>
             </CardContent>
           </Card>
-        </Grid>
+        </Box>
         <Box sx={{ flex: '1 1 200px', minWidth: '200px' }}>
           <Card 
             sx={{ 
@@ -530,7 +530,7 @@ Best,
               </Typography>
             </CardContent>
           </Card>
-        </Grid>
+        </Box>
         <Box sx={{ flex: '1 1 200px', minWidth: '200px' }}>
           <Card 
             sx={{ 
@@ -549,8 +549,8 @@ Best,
               </Typography>
             </CardContent>
           </Card>
-        </Grid>
-      </Grid>
+        </Box>
+      </Box>
       
       <Typography variant="h6" gutterBottom>
         Message Templates
@@ -773,7 +773,7 @@ Best,
                 {lead?.position || 'N/A'}
               </Typography>
             </Box>
-          </Grid>
+          </Box>
         </CardContent>
       </Card>
     </Box>

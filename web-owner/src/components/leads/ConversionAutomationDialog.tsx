@@ -579,7 +579,7 @@ const ConversionAutomationDialog: React.FC<ConversionAutomationDialogProps> = ({
                       </Typography>
                       <Typography variant="caption">Leads Processed</Typography>
                     </Box>
-                  </Grid>
+                  </Box>
                   <Box sx={{ flex: '1 1 200px', minWidth: '200px' }}>
                     <Box sx={{ textAlign: 'center', p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
                       <Typography variant="h6" color="success.main">
@@ -587,8 +587,8 @@ const ConversionAutomationDialog: React.FC<ConversionAutomationDialogProps> = ({
                       </Typography>
                       <Typography variant="caption">Conversions</Typography>
                     </Box>
-                  </Grid>
-                </Grid>
+                  </Box>
+                </Box>
               </Box>
               
               <Typography variant="body2" color="text.secondary">
@@ -742,7 +742,7 @@ const ConversionAutomationDialog: React.FC<ConversionAutomationDialogProps> = ({
               </FormGroup>
             </CardContent>
           </Card>
-        </Grid>
+        </Box>
         
         <Box sx={{ flex: '1 1 300px', minWidth: '300px' }}>
           <Card>
@@ -773,8 +773,8 @@ const ConversionAutomationDialog: React.FC<ConversionAutomationDialogProps> = ({
               </Stack>
             </CardContent>
           </Card>
-        </Grid>
-      </Grid>
+        </Box>
+      </Box>
     </Box>
   );
 
@@ -833,7 +833,7 @@ const ConversionAutomationDialog: React.FC<ConversionAutomationDialogProps> = ({
               </List>
             </CardContent>
           </Card>
-        </Grid>
+        </Box>
         
         <Box sx={{ flex: '1 1 300px', minWidth: '300px' }}>
           <Card>
@@ -867,8 +867,8 @@ const ConversionAutomationDialog: React.FC<ConversionAutomationDialogProps> = ({
               </Alert>
             </CardContent>
           </Card>
-        </Grid>
-      </Grid>
+        </Box>
+      </Box>
     </Box>
   );
 
