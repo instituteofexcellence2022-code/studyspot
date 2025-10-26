@@ -161,6 +161,7 @@ export const USER_ROLES = {
   
   // Library-level roles (8 granular roles)
   LIBRARY_OWNER: 'library_owner',          // Full access to library
+  LIBRARY_ADMIN: 'library_admin',          // Library administration
   LIBRARY_STAFF: 'library_staff',          // General staff role
   BRANCH_MANAGER: 'branch_manager',        // Branch-level management
   FRONT_DESK_STAFF: 'front_desk_staff',    // Daily operations

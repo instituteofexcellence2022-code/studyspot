@@ -17,6 +17,7 @@ export interface User {
 export type UserRole = 
   | 'student' 
   | 'library_staff' 
+  | 'library_admin'
   | 'library_owner'
   | 'branch_manager'
   | 'front_desk_staff'

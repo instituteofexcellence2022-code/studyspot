@@ -5,15 +5,33 @@ const morgan = require('morgan');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 require('dotenv').config();
-
-const { errorHandler, notFound } = require('./middleware/errorHandler');
-const { logger } = require('./utils/logger');
-const { connectDatabase, checkHealth: checkDatabaseHealth } = require('./config/database');
-const { connectRedis } = require('./config/redis');
-const { securityHeaders } = require('./middleware/securityHeaders');
-const { requestId } = require('./middleware/requestId');
-const { httpsRedirect } = require('./middleware/httpsRedirect');
-const { router: metricsRouter, metricsMiddleware } = require('./routes/metrics');
+const {
+  errorHandler,
+  notFound
+} = require('./middleware/errorHandler');
+const {
+  logger
+} = require('./utils/logger');
+const {
+  connectDatabase,
+  checkHealth: checkDatabaseHealth
+} = require('./config/database');
+const {
+  connectRedis
+} = require('./config/redis');
+const {
+  securityHeaders
+} = require('./middleware/securityHeaders');
+const {
+  requestId
+} = require('./middleware/requestId');
+const {
+  httpsRedirect
+} = require('./middleware/httpsRedirect');
+const {
+  router: metricsRouter,
+  metricsMiddleware
+} = require('./routes/metrics');
 
 // ========================================
 // UNIFIED STUDYSPOT API SERVER
@@ -50,12 +68,6 @@ const dashboardRoutes = require('./routes/dashboard');
 const studentRoutes = require('./routes/students');
 const invoiceRoutes = require('./routes/invoices');
 const auditRoutes = require('./routes/audit');
-
-// API Consolidation: Unified Routes
-const unifiedUserRoutes = require('./routes/unified-users');
-const unifiedBookingRoutes = require('./routes/unified-bookings');
-const unifiedSeatRoutes = require('./routes/unified-seats');
-
 const app = express();
 const PORT = process.env.PORT || 3001;
 
@@ -74,7 +86,8 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      styleSrc: ["'self'"],  // ✅ Removed unsafe-inline for security
+      styleSrc: ["'self'"],
+      // ✅ Removed unsafe-inline for security
       scriptSrc: ["'self'"],
       imgSrc: ["'self'", "data:", "https:"],
       connectSrc: ["'self'"],
@@ -82,10 +95,12 @@ app.use(helmet({
       objectSrc: ["'none'"],
       mediaSrc: ["'self'"],
       frameSrc: ["'none'"]
-    },
+    }
   },
   crossOriginEmbedderPolicy: false,
-  crossOriginResourcePolicy: { policy: "cross-origin" }
+  crossOriginResourcePolicy: {
+    policy: "cross-origin"
+  }
 }));
 
 // ✅ Additional Security Headers
@@ -107,8 +122,10 @@ app.use(cors({
 // ========================================
 
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+  windowMs: 15 * 60 * 1000,
+  // 15 minutes
+  max: 100,
+  // limit each IP to 100 requests per windowMs
   message: {
     success: false,
     errors: [{
@@ -117,9 +134,8 @@ const limiter = rateLimit({
     }]
   },
   standardHeaders: true,
-  legacyHeaders: false,
+  legacyHeaders: false
 });
-
 app.use(limiter);
 
 // ========================================
@@ -127,12 +143,21 @@ app.use(limiter);
 // ========================================
 
 // ✅ Issue #3 Fixed: Reduced request size limits for security
-app.use(express.json({ limit: '100kb' }));  // ✅ Reduced from 10mb
-app.use(express.urlencoded({ extended: true, limit: '100kb' }));
+app.use(express.json({
+  limit: '100kb'
+})); // ✅ Reduced from 10mb
+app.use(express.urlencoded({
+  extended: true,
+  limit: '100kb'
+}));
 
 // Special routes with larger limits
-app.use('/api/webhooks', express.json({ limit: '1mb' }));  // Stripe webhooks
-app.use('/api/upload', express.json({ limit: '10mb' }));   // File uploads
+app.use('/api/webhooks', express.json({
+  limit: '1mb'
+})); // Stripe webhooks
+app.use('/api/upload', express.json({
+  limit: '10mb'
+})); // File uploads
 
 app.use(compression());
 
@@ -148,7 +173,7 @@ app.use(metricsMiddleware);
 
 app.use(morgan('combined', {
   stream: {
-    write: (message) => logger.info(message.trim())
+    write: message => logger.info(message.trim())
   }
 }));
 
@@ -168,27 +193,7 @@ app.get('/', (req, res) => {
     message: '🎓 STUDYSPOT - Unified API Server',
     version: '3.0.0',
     environment: process.env.NODE_ENV || 'development',
-    features: [
-      'Real Database Integration',
-      'Complete Authentication System',
-      'All Phases 1-4 Features',
-      'Enhanced Booking System',
-      'Payment Gateway Integration',
-      'Review System',
-      'AI Recommendations',
-      'Gamification',
-      'Chatbot',
-      'Predictive Analytics',
-      'IoT Integration',
-      'Maps Integration',
-      'Study Tools',
-      'Real-time Monitoring',
-      '🆕 Subscription Management (Stripe)',
-      '🆕 Credit System (SMS/WhatsApp)',
-      '🆕 RBAC (Roles & Permissions)',
-      '🆕 Enhanced Multi-tenancy',
-      '🆕 Audit Logging'
-    ],
+    features: ['Real Database Integration', 'Complete Authentication System', 'All Phases 1-4 Features', 'Enhanced Booking System', 'Payment Gateway Integration', 'Review System', 'AI Recommendations', 'Gamification', 'Chatbot', 'Predictive Analytics', 'IoT Integration', 'Maps Integration', 'Study Tools', 'Real-time Monitoring', '🆕 Subscription Management (Stripe)', '🆕 Credit System (SMS/WhatsApp)', '🆕 RBAC (Roles & Permissions)', '🆕 Enhanced Multi-tenancy', '🆕 Audit Logging'],
     status: 'operational',
     timestamp: new Date().toISOString()
   });
@@ -199,41 +204,38 @@ app.get('/', (req, res) => {
 // ========================================
 
 // Core Features (Phases 1-4)
-app.use('/api/auth', authRoutes);           // Real authentication (rate limiting applied inside routes)
-app.use('/api/users', userRoutes);          // User management (LEGACY - use /api/v2/users)
-app.use('/api/v2/users', unifiedUserRoutes); // Unified user/student/staff management
-app.use('/api/v2/seats', unifiedSeatRoutes); // Unified seat management
-app.use('/api/libraries', libraryRoutes);   // Library CRUD + Seats
-app.use('/api/bookings', bookingRoutes);    // Booking management (LEGACY - use /api/v2/bookings)
-app.use('/api/v2/bookings', unifiedBookingRoutes); // Unified booking management
-app.use('/api/payments', paymentRoutes);    // Payment processing + Razorpay
+app.use('/api/auth', authRoutes); // Real authentication (rate limiting applied inside routes)
+app.use('/api/users', userRoutes); // User management
+app.use('/api/libraries', libraryRoutes); // Library CRUD + Seats
+app.use('/api/bookings', bookingRoutes); // Booking management
+app.use('/api/payments', paymentRoutes); // Payment processing + Razorpay
 app.use('/api/payment-analytics', paymentAnalyticsRoutes); // Payment analytics & insights
 app.use('/api/seat-management', seatManagementRoutes); // Seat & space management
 app.use('/api/notifications', notificationRoutes); // Notifications
-app.use('/api/maps', mapsRoutes);           // Google Maps integration
+app.use('/api/maps', mapsRoutes); // Google Maps integration
 app.use('/api/analytics', analyticsRoutes); // Analytics & reporting
 app.use('/api/monitoring', monitoringRoutes); // System monitoring
 
 // Advanced Features (Phase 5 + Option C)
-app.use('/api/ai', aiRoutes);               // AI recommendations & insights
+app.use('/api/ai', aiRoutes); // AI recommendations & insights
 app.use('/api/study-tools', studyToolsRoutes); // Study sessions & timers
-app.use('/api/iot', iotRoutes);             // IoT device management
+app.use('/api/iot', iotRoutes); // IoT device management
 
 // Phase 6: SaaS Foundation Features
 app.use('/api/subscriptions', subscriptionRoutes); // Subscription management (Stripe)
-app.use('/api/credits', creditRoutes);      // Credit management (SMS/WhatsApp/Email)
-app.use('/api/roles', roleRoutes);          // RBAC - Roles & Permissions
-app.use('/api/tenants', tenantRoutes);      // Enhanced tenant management
-app.use('/api/webhooks', webhookRoutes);    // Stripe webhooks
+app.use('/api/credits', creditRoutes); // Credit management (SMS/WhatsApp/Email)
+app.use('/api/roles', roleRoutes); // RBAC - Roles & Permissions
+app.use('/api/tenants', tenantRoutes); // Enhanced tenant management
+app.use('/api/webhooks', webhookRoutes); // Stripe webhooks
 
 // Phase 7: Enhanced Features
-app.use('/api/dashboard', dashboardRoutes);  // Enhanced dashboard with real-time metrics
-app.use('/api/students', studentRoutes);      // Enhanced student management
-app.use('/api/invoices', invoiceRoutes);      // GST-compliant invoicing & financial management
-app.use('/api/audit', auditRoutes);           // Audit trail & security monitoring
+app.use('/api/dashboard', dashboardRoutes); // Enhanced dashboard with real-time metrics
+app.use('/api/students', studentRoutes); // Enhanced student management
+app.use('/api/invoices', invoiceRoutes); // GST-compliant invoicing & financial management
+app.use('/api/audit', auditRoutes); // Audit trail & security monitoring
 
 // Monitoring & Metrics (New)
-app.use('/api/metrics', metricsRouter);       // Application metrics and monitoring
+app.use('/api/metrics', metricsRouter); // Application metrics and monitoring
 
 // ========================================
 // API DOCUMENTATION (SWAGGER)
@@ -243,7 +245,6 @@ if (process.env.NODE_ENV !== 'production') {
   const swaggerUi = require('swagger-ui-express');
   const swaggerSpec = require('./config/swagger');
   app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-  
   logger.info('📚 API Documentation available at /api-docs');
 }
 
@@ -262,7 +263,6 @@ process.on('SIGTERM', () => {
   logger.info('SIGTERM received, shutting down gracefully');
   process.exit(0);
 });
-
 process.on('SIGINT', () => {
   logger.info('SIGINT received, shutting down gracefully');
   process.exit(0);
@@ -285,7 +285,7 @@ async function startServer() {
     try {
       logger.info('Connecting to PostgreSQL database...');
       await connectDatabase();
-      
+
       // Verify database health
       const dbHealth = await checkDatabaseHealth();
       if (dbHealth.status === 'healthy') {
@@ -368,7 +368,7 @@ async function startServer() {
     });
 
     // Handle server errors
-    server.on('error', (error) => {
+    server.on('error', error => {
       if (error.code === 'EADDRINUSE') {
         logger.error(`❌ Port ${PORT} is already in use`);
         logger.error('   Kill the process using: taskkill /F /IM node.exe');
@@ -378,7 +378,6 @@ async function startServer() {
       }
       process.exit(1);
     });
-
   } catch (error) {
     logger.error('❌ Failed to start server:', error);
     logger.error('Stack trace:', error.stack);
@@ -391,6 +390,4 @@ async function startServer() {
 // ========================================
 
 startServer();
-
 module.exports = app;
-
