@@ -187,7 +187,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
       badge: { text: 'NEW', color: 'success' }
     },
     {
-      label: 'Lead Capture & Demo Classes',
+      label: 'Lead Capture',
       path: ROUTES.LEAD_CAPTURE,
       icon: <PersonAddIcon />,
       roles: ['library_staff', 'library_owner', 'branch_manager', 'super_admin'],
@@ -207,7 +207,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
     
     // Student Revenue (Library → Student)
     {
-      label: 'Revenue',
+      label: 'Payments',
       path: ROUTES.REVENUE_MANAGEMENT,
       icon: <PaymentIcon />,
       roles: ['library_staff', 'library_owner', 'branch_manager', 'finance_manager', 'super_admin'],
@@ -220,15 +220,15 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
       path: ROUTES.REVENUE_ANALYTICS,
       icon: <AnalyticsIcon />,
       roles: ['library_owner', 'branch_manager', 'finance_manager', 'super_admin'],
-      description: 'Revenue insights & forecasts',
+      description: 'Revenue trends, insights & forecasts',
       section: 'student_revenue',
     },
     {
-      label: 'Pending Payments Tracking',
+      label: 'Pending Payments',
       path: ROUTES.INVOICE_MANAGEMENT,
       icon: <Receipt />,
       roles: ['library_staff', 'library_owner', 'branch_manager', 'finance_manager', 'super_admin'],
-      description: 'Track payments, send reminders, and manage outstanding dues',
+      description: 'Track and manage outstanding student payments',
       section: 'student_revenue',
       badge: { text: 'NEW', color: 'success' }
     },
