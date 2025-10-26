@@ -130,11 +130,11 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
       badge: { count: 350, color: 'success' }
     },
     {
-      label: 'Pricing Plans',
+      label: 'Fee Plans',
       path: ROUTES.FEE_PLANS,
       icon: <FeePlanIcon />,
       roles: ['library_staff', 'library_owner', 'branch_manager', 'finance_manager', 'super_admin'],
-      description: 'Pricing & subscriptions',
+      description: 'Student fee plans & pricing',
       section: 'management',
       badge: { count: 4, color: 'warning' }
     },
@@ -150,7 +150,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
       badge: { count: 234, color: 'info' }
     },
     {
-      label: 'Staff Members',
+      label: 'Staff',
       path: ROUTES.STAFF,
       icon: <StaffIcon />,
       roles: ['library_owner', 'branch_manager', 'super_admin'],
