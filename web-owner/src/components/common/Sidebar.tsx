@@ -95,7 +95,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
   
   const { user } = useAppSelector((state) => state.auth);
   
-  const [expandedSections, setExpandedSections] = useState<string[]>(['quick', 'management', 'users', 'operations', 'ai', 'student_revenue', 'platform_billing', 'marketing', 'admin']); // All sections expanded by default
+  const [expandedSections, setExpandedSections] = useState<string[]>(['quick', 'management', 'users', 'operations', 'ai', 'smart_integrations', 'student_revenue', 'platform_billing', 'marketing', 'admin']); // All sections expanded by default
 
   const drawerWidth = 280;
 
@@ -252,14 +252,14 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
       section: 'platform_billing',
     },
     
-    // IoT & Smart Controls
+    // IoT & Smart Integrations
     {
       label: 'Smart IoT Control',
       path: '/iot-dashboard',
       icon: <SmartIcon />,
       roles: ['library_owner', 'super_admin'],
       description: 'WiFi-controlled electrical appliance management',
-      section: 'operations',
+      section: 'smart_integrations',
       badge: { text: 'NEW', color: 'success' }
     },
     {
@@ -268,7 +268,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
       icon: <FaceIcon />,
       roles: ['library_owner', 'super_admin'],
       description: 'Biometric attendance with face recognition',
-      section: 'operations',
+      section: 'smart_integrations',
       badge: { text: 'AI', color: 'info' }
     },
     {
@@ -277,7 +277,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
       icon: <CameraIcon />,
       roles: ['library_owner', 'super_admin'],
       description: 'Manage CP Plus, Hikvision, and other IP cameras',
-      section: 'operations',
+      section: 'smart_integrations',
       badge: { text: 'NEW', color: 'success' }
     },
     
@@ -392,6 +392,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
     users: filteredNavigationItems.filter(item => item.section === 'users'),
     operations: filteredNavigationItems.filter(item => item.section === 'operations'),
     ai: filteredNavigationItems.filter(item => item.section === 'ai'),
+    smart_integrations: filteredNavigationItems.filter(item => item.section === 'smart_integrations'),
     student_revenue: filteredNavigationItems.filter(item => item.section === 'student_revenue'),
     platform_billing: filteredNavigationItems.filter(item => item.section === 'platform_billing'),
     marketing: filteredNavigationItems.filter(item => item.section === 'marketing'),
@@ -404,6 +405,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
     users: 'Users',
     operations: 'Operations',
     ai: 'AI Features',
+    smart_integrations: 'Smart Integrations',
     student_revenue: 'Student Revenue',
     platform_billing: 'Platform Billing',
     marketing: 'Marketing',
@@ -827,6 +829,16 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
               borderColor: alpha(theme.palette.primary.main, 0.1),
             }} />
             {renderSection('ai', sections.ai)}
+          </>
+        )}
+        {sections.smart_integrations.length > 0 && (
+          <>
+            <Divider sx={{ 
+              my: 1.5, 
+              mx: 2,
+              borderColor: alpha(theme.palette.primary.main, 0.1),
+            }} />
+            {renderSection('smart_integrations', sections.smart_integrations)}
           </>
         )}
         {sections.student_revenue.length > 0 && (
