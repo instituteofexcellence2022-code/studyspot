@@ -4,8 +4,8 @@ import {
   TableContainer, TableHead, TableRow, Paper, Dialog, DialogTitle, DialogContent, DialogActions,
   TextField, MenuItem, IconButton, TablePagination, TableSortLabel, InputAdornment, FormControl,
   InputLabel, Select, Checkbox, ListItemText, OutlinedInput, CircularProgress, Alert, Snackbar,
-  Tooltip, Tabs, Tab, Divider, List, ListItem, ListItemIcon, Badge, Menu, Stepper, Step,
-  StepLabel, FormControlLabel, Switch, alpha, LinearProgress,
+  Tooltip, Tabs, Tab, Divider, List, ListItem, ListItemIcon, Badge, Menu,
+  FormControlLabel, Switch, LinearProgress,
 } from '@mui/material';
 // import { GridLegacy as Grid } from '@mui/material';
 import {
@@ -13,12 +13,12 @@ import {
   Search as SearchIcon, FileDownload as ExportIcon, FilterList as FilterIcon,
   Upload as UploadIcon, Visibility as ViewIcon, Print as PrintIcon,
   Verified as VerifiedIcon, Group as GroupIcon, Timeline as TimelineIcon,
-  Email, Phone, LocationOn, School, CreditCard, Badge as BadgeIcon,
+  CreditCard, Badge as BadgeIcon,
   Assignment, CheckCircle, Warning, Close, MoreVert,
-  CloudUpload, PersonAdd, Description, CalendarToday, History,
-  Delete, Print, Assessment as AssessmentIcon, Payment as PaymentIcon,
+  CloudUpload, Description, CalendarToday, Print,
+  Assessment as AssessmentIcon, Payment as PaymentIcon,
 } from '@mui/icons-material';
-import studentsService, { Student as APIStudent, StudentsFilters } from '../../services/studentsService';
+import studentsService, { StudentsFilters } from '../../services/studentsService';
 import StudentFormDialog from '../../components/students/StudentFormDialog';
 import UnifiedBulkOperations from '../../components/students/UnifiedBulkOperations';
 import UnifiedStudentAnalytics from '../../components/students/UnifiedStudentAnalytics';
@@ -89,15 +89,12 @@ const StudentsPageAdvanced: React.FC = () => {
   const [bulkImportDialogOpen, setBulkImportDialogOpen] = useState(false);
   const [kycDialogOpen, setKycDialogOpen] = useState(false);
   const [idCardDialogOpen, setIdCardDialogOpen] = useState(false);
-  const [groupDialogOpen, setGroupDialogOpen] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [bulkOperationsOpen, setBulkOperationsOpen] = useState(false);
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   
   const [currentStudent, setCurrentStudent] = useState<Partial<Student> | null>(null);
   const [editMode, setEditMode] = useState(false);
-  const [activeStep, setActiveStep] = useState(0);
-  const [formTab, setFormTab] = useState(0);
   const [activeTab, setActiveTab] = useState(0);
   
   // Filter states
@@ -105,7 +102,6 @@ const StudentsPageAdvanced: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [feeStatusFilter, setFeeStatusFilter] = useState<string[]>([]);
   const [kycFilter, setKycFilter] = useState<string>('');
-  const [groupFilter, setGroupFilter] = useState<string[]>([]);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [sortField, setSortField] = useState('firstName');
@@ -116,13 +112,6 @@ const StudentsPageAdvanced: React.FC = () => {
   const [importPreview, setImportPreview] = useState<any[]>([]);
   const [importProgress, setImportProgress] = useState(0);
   
-  // Groups and tags
-  const [availableGroups, setAvailableGroups] = useState<string[]>([
-    'Morning Batch', 'Evening Batch', 'Weekend Batch', 'Competitive Exams', 'Regular Students'
-  ]);
-  const [availableTags, setAvailableTags] = useState<string[]>([
-    'VIP', 'Scholarship', 'Long-term', 'New', 'Overdue'
-  ]);
   
   const [loading, setLoading] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
@@ -160,10 +149,8 @@ const StudentsPageAdvanced: React.FC = () => {
 
   useEffect(() => {
     fetchStudents();
-  }, [searchTerm, statusFilter, feeStatusFilter, page, rowsPerPage, sortField, sortOrder]);
+  }, [searchTerm, statusFilter, feeStatusFilter, page, rowsPerPage, sortField, sortOrder, fetchStudents]);
 
-  // Student creation steps
-  const formSteps = ['Personal Info', 'Contact Details', 'Fee & Plan', 'KYC & Documents'];
 
   // Handle bulk import
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -876,11 +863,6 @@ const StudentsPageAdvanced: React.FC = () => {
       {activeTab === 1 && (
         <UnifiedStudentAnalytics
           students={students}
-          activeTab={0}
-          onTabChange={(tab) => {
-            // Handle tab change within analytics
-            console.log('Analytics tab changed to:', tab);
-          }}
           onExport={(format) => {
             // Handle export
             console.log('Exporting analytics in format:', format);
@@ -974,7 +956,7 @@ const StudentsPageAdvanced: React.FC = () => {
         </MenuItem>
         <Divider />
         <MenuItem onClick={() => { setDeleteDialogOpen(true); handleMenuClose(); }}>
-          <ListItemIcon><Delete fontSize="small" color="error" /></ListItemIcon>
+          <ListItemIcon><DeleteIcon fontSize="small" color="error" /></ListItemIcon>
           <ListItemText>Delete</ListItemText>
         </MenuItem>
       </Menu>

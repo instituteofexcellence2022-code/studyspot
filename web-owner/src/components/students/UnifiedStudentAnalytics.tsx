@@ -67,21 +67,19 @@ interface Student {
 
 interface UnifiedAnalyticsProps {
   students: Student[];
-  activeTab: number;
-  onTabChange: (tab: number) => void;
   onExport: (format: string) => void;
   onRefresh: () => void;
 }
 
 const UnifiedStudentAnalytics: React.FC<UnifiedAnalyticsProps> = ({
   students,
-  activeTab,
-  onTabChange,
   onExport,
   onRefresh,
 }) => {
+  const [activeTab, setActiveTab] = useState(0);
   const [dateRange, setDateRange] = useState('30d');
   const [filterStatus, setFilterStatus] = useState('all');
+
 
   // Calculate comprehensive analytics
   const getAnalytics = () => {
@@ -548,7 +546,7 @@ const UnifiedStudentAnalytics: React.FC<UnifiedAnalyticsProps> = ({
 
       {/* Tabs */}
       <Paper sx={{ mb: 3 }}>
-        <Tabs value={activeTab} onChange={(e, newValue) => onTabChange(newValue)}>
+        <Tabs value={activeTab} onChange={(e, newValue) => setActiveTab(newValue)}>
           <Tab label="Overview" icon={<AssessmentIcon />} />
           <Tab label="Enrollment" icon={<TrendingUpIcon />} />
           <Tab label="Fees" icon={<PaymentIcon />} />
