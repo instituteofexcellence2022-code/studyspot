@@ -45,6 +45,9 @@ import {
   MenuBook,
   Brightness4 as DarkModeIcon,
   Brightness7 as LightModeIcon,
+  Lightbulb,
+  Event,
+  Psychology,
   EditLocationAlt,
   Star,
   Receipt,
@@ -92,7 +95,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
   
   const { user } = useAppSelector((state) => state.auth);
   
-  const [expandedSections, setExpandedSections] = useState<string[]>(['quick', 'management', 'users', 'operations', 'finance', 'marketing', 'admin']); // All sections expanded by default
+  const [expandedSections, setExpandedSections] = useState<string[]>(['quick', 'management', 'users', 'operations', 'ai', 'finance', 'marketing', 'admin']); // All sections expanded by default
 
   const drawerWidth = 280;
 
@@ -277,6 +280,41 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
       badge: { text: 'NEW', color: 'success' }
     },
     
+    // AI Features
+    {
+      label: 'AI Assistant',
+      path: '/ai/assistant',
+      icon: <Psychology />,
+      roles: ['library_owner', 'super_admin'],
+      description: 'AI-powered assistant for library management',
+      section: 'ai',
+      badge: { text: 'NEW', color: 'info' }
+    },
+    {
+      label: 'AI Recommendations',
+      path: '/ai/recommendations',
+      icon: <Lightbulb />,
+      roles: ['library_owner', 'super_admin'],
+      description: 'Smart recommendations for operations',
+      section: 'ai',
+    },
+    {
+      label: 'AI Analytics',
+      path: '/ai/analytics',
+      icon: <AnalyticsIcon />,
+      roles: ['library_owner', 'super_admin'],
+      description: 'Predictive analytics and insights',
+      section: 'ai',
+    },
+    {
+      label: 'AI Scheduler',
+      path: '/ai/scheduler',
+      icon: <Event />,
+      roles: ['library_owner', 'super_admin'],
+      description: 'Smart scheduling recommendations',
+      section: 'ai',
+    },
+    
     // Marketing & Growth
     {
       label: 'Referral Program',
@@ -352,6 +390,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
     management: filteredNavigationItems.filter(item => item.section === 'management'),
     users: filteredNavigationItems.filter(item => item.section === 'users'),
     operations: filteredNavigationItems.filter(item => item.section === 'operations'),
+    ai: filteredNavigationItems.filter(item => item.section === 'ai'),
     finance: filteredNavigationItems.filter(item => item.section === 'finance'),
     marketing: filteredNavigationItems.filter(item => item.section === 'marketing'),
     admin: filteredNavigationItems.filter(item => item.section === 'admin'),
@@ -362,6 +401,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
     management: 'Library',
     users: 'Users',
     operations: 'Operations',
+    ai: 'AI Features',
     finance: 'Finance',
     marketing: 'Marketing',
     admin: 'Administration',
@@ -774,6 +814,16 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
                   borderColor: alpha(theme.palette.primary.main, 0.1),
                 }} />
             {renderSection('operations', sections.operations)}
+          </>
+        )}
+        {sections.ai.length > 0 && (
+          <>
+            <Divider sx={{ 
+              my: 1.5, 
+              mx: 2,
+              borderColor: alpha(theme.palette.primary.main, 0.1),
+            }} />
+            {renderSection('ai', sections.ai)}
           </>
         )}
             {sections.finance.length > 0 && (
