@@ -95,7 +95,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
   
   const { user } = useAppSelector((state) => state.auth);
   
-  const [expandedSections, setExpandedSections] = useState<string[]>(['quick', 'management', 'users', 'operations', 'ai', 'finance', 'marketing', 'admin']); // All sections expanded by default
+  const [expandedSections, setExpandedSections] = useState<string[]>(['quick', 'management', 'users', 'operations', 'ai', 'student_revenue', 'platform_billing', 'marketing', 'admin']); // All sections expanded by default
 
   const drawerWidth = 280;
 
@@ -205,41 +205,23 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
       badge: { count: 5, color: 'warning' }
     },
     
-    // Financial Management
+    // Student Revenue (Library → Student)
     {
       label: 'Revenue',
-        path: ROUTES.REVENUE_MANAGEMENT,
+      path: ROUTES.REVENUE_MANAGEMENT,
       icon: <PaymentIcon />,
       roles: ['library_staff', 'library_owner', 'branch_manager', 'finance_manager', 'super_admin'],
-      description: 'Transactions & billing',
-      section: 'finance',
+      description: 'Student payments & transactions',
+      section: 'student_revenue',
       badge: { text: '₹12K', color: 'success' }
     },
-
     {
       label: 'Revenue Analytics',
-        path: ROUTES.REVENUE_ANALYTICS,
+      path: ROUTES.REVENUE_ANALYTICS,
       icon: <AnalyticsIcon />,
       roles: ['library_owner', 'branch_manager', 'finance_manager', 'super_admin'],
       description: 'Revenue insights & forecasts',
-      section: 'finance',
-    },
-    {
-      label: 'Subscription & Credits',
-      path: ROUTES.SUBSCRIPTION_CREDITS,
-      icon: <CreditCard />,
-      roles: ['library_owner', 'super_admin'],
-      description: 'Plans, credits & billing management',
-      section: 'finance',
-      badge: { text: 'NEW', color: 'success' }
-    },
-    {
-      label: 'Billing & Invoices',
-      path: ROUTES.SUBSCRIPTION_BILLING,
-      icon: <Receipt />,
-      roles: ['library_owner', 'super_admin'],
-      description: 'Payment history and invoice management',
-      section: 'finance',
+      section: 'student_revenue',
     },
     {
       label: 'Pending Payments Tracking',
@@ -247,8 +229,27 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
       icon: <Receipt />,
       roles: ['library_staff', 'library_owner', 'branch_manager', 'finance_manager', 'super_admin'],
       description: 'Track payments, send reminders, and manage outstanding dues',
-      section: 'finance',
+      section: 'student_revenue',
       badge: { text: 'NEW', color: 'success' }
+    },
+    
+    // Platform Billing (Platform → Library)
+    {
+      label: 'Subscription & Credits',
+      path: ROUTES.SUBSCRIPTION_CREDITS,
+      icon: <CreditCard />,
+      roles: ['library_owner', 'super_admin'],
+      description: 'Platform plans & communication credits',
+      section: 'platform_billing',
+      badge: { text: 'NEW', color: 'success' }
+    },
+    {
+      label: 'Billing & Invoices',
+      path: ROUTES.SUBSCRIPTION_BILLING,
+      icon: <Receipt />,
+      roles: ['library_owner', 'super_admin'],
+      description: 'Platform invoice management',
+      section: 'platform_billing',
     },
     
     // IoT & Smart Controls
@@ -391,7 +392,8 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
     users: filteredNavigationItems.filter(item => item.section === 'users'),
     operations: filteredNavigationItems.filter(item => item.section === 'operations'),
     ai: filteredNavigationItems.filter(item => item.section === 'ai'),
-    finance: filteredNavigationItems.filter(item => item.section === 'finance'),
+    student_revenue: filteredNavigationItems.filter(item => item.section === 'student_revenue'),
+    platform_billing: filteredNavigationItems.filter(item => item.section === 'platform_billing'),
     marketing: filteredNavigationItems.filter(item => item.section === 'marketing'),
     admin: filteredNavigationItems.filter(item => item.section === 'admin'),
   };
@@ -402,7 +404,8 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
     users: 'Users',
     operations: 'Operations',
     ai: 'AI Features',
-    finance: 'Finance',
+    student_revenue: 'Student Revenue',
+    platform_billing: 'Platform Billing',
     marketing: 'Marketing',
     admin: 'Administration',
   };
@@ -826,16 +829,26 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
             {renderSection('ai', sections.ai)}
           </>
         )}
-            {sections.finance.length > 0 && (
-              <>
-                <Divider sx={{ 
-                  my: 1.5, 
-                  mx: 2,
-                  borderColor: alpha(theme.palette.primary.main, 0.1),
-                }} />
-                {renderSection('finance', sections.finance)}
-              </>
-            )}
+        {sections.student_revenue.length > 0 && (
+          <>
+            <Divider sx={{ 
+              my: 1.5, 
+              mx: 2,
+              borderColor: alpha(theme.palette.primary.main, 0.1),
+            }} />
+            {renderSection('student_revenue', sections.student_revenue)}
+          </>
+        )}
+        {sections.platform_billing.length > 0 && (
+          <>
+            <Divider sx={{ 
+              my: 1.5, 
+              mx: 2,
+              borderColor: alpha(theme.palette.primary.main, 0.1),
+            }} />
+            {renderSection('platform_billing', sections.platform_billing)}
+          </>
+        )}
             {sections.marketing.length > 0 && (
               <>
                 <Divider sx={{ 
