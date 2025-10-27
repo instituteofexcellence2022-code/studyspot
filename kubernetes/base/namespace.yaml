@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: studyspot
+  labels:
+    name: studyspot
+    app.kubernetes.io/name: studyspot-enterprise
+    app.kubernetes.io/version: "1.0.0"
+  annotations:
+    studyspot.com/description: "StudySpot Enterprise Platform Namespace"
+    studyspot.com/created-by: "StudySpot Enterprise Platform"

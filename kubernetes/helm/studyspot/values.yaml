@@ -1,0 +1,382 @@
+# StudySpot Enterprise Platform Helm Values
+# This file contains the default values for the StudySpot Enterprise Platform Helm chart.
+
+# Global configuration
+global:
+  imageRegistry: "ghcr.io"
+  imagePullSecrets: []
+  storageClass: ""
+
+# Image configuration
+image:
+  registry: "ghcr.io"
+  repository: "studyspot/enterprise"
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+# Environment configuration
+environment: "production"  # production, staging, development
+
+# Ingress configuration
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  hosts:
+    - host: studyspot.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: studyspot-tls
+      hosts:
+        - studyspot.com
+
+# Service configuration
+services:
+  apiGateway:
+    enabled: true
+    port: 3000
+    targetPort: 3000
+    type: ClusterIP
+  crmService:
+    enabled: true
+    port: 3005
+    targetPort: 3005
+    type: ClusterIP
+  communicationService:
+    enabled: true
+    port: 3006
+    targetPort: 3006
+    type: ClusterIP
+  mlService:
+    enabled: true
+    port: 3007
+    targetPort: 3007
+    type: ClusterIP
+  analyticsService:
+    enabled: true
+    port: 3008
+    targetPort: 3008
+    type: ClusterIP
+  aiService:
+    enabled: true
+    port: 3009
+    targetPort: 3009
+    type: ClusterIP
+  dataPipeline:
+    enabled: true
+    port: 3014
+    targetPort: 3014
+    type: ClusterIP
+  webOwner:
+    enabled: true
+    port: 3001
+    targetPort: 3001
+    type: ClusterIP
+  webAdmin:
+    enabled: true
+    port: 3002
+    targetPort: 3002
+    type: ClusterIP
+
+# Replica configuration
+replicas:
+  apiGateway: 3
+  crmService: 2
+  communicationService: 2
+  mlService: 2
+  analyticsService: 2
+  aiService: 2
+  dataPipeline: 1
+  webOwner: 2
+  webAdmin: 2
+
+# Resource configuration
+resources:
+  apiGateway:
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+  crmService:
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+  communicationService:
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+  mlService:
+    requests:
+      memory: "512Mi"
+      cpu: "500m"
+    limits:
+      memory: "1Gi"
+      cpu: "1000m"
+  analyticsService:
+    requests:
+      memory: "512Mi"
+      cpu: "500m"
+    limits:
+      memory: "1Gi"
+      cpu: "1000m"
+  aiService:
+    requests:
+      memory: "512Mi"
+      cpu: "500m"
+    limits:
+      memory: "1Gi"
+      cpu: "1000m"
+  dataPipeline:
+    requests:
+      memory: "1Gi"
+      cpu: "500m"
+    limits:
+      memory: "2Gi"
+      cpu: "1000m"
+  webOwner:
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+  webAdmin:
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+
+# Autoscaling configuration
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+# Database configuration
+postgresql:
+  enabled: true
+  auth:
+    postgresPassword: "studyspot-postgres-password"
+    database: "studyspot"
+  primary:
+    persistence:
+      enabled: true
+      size: "20Gi"
+    resources:
+      requests:
+        memory: "512Mi"
+        cpu: "250m"
+      limits:
+        memory: "1Gi"
+        cpu: "500m"
+
+# Redis configuration
+redis:
+  enabled: true
+  auth:
+    enabled: true
+    password: "studyspot-redis-password"
+  master:
+    persistence:
+      enabled: true
+      size: "8Gi"
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "250m"
+      limits:
+        memory: "512Mi"
+        cpu: "500m"
+
+# Kafka configuration
+kafka:
+  enabled: true
+  auth:
+    clientProtocol: "sasl"
+    interBrokerProtocol: "sasl"
+    jaas:
+      clientUsers: "admin"
+      clientPasswords: "studyspot-kafka-password"
+      interBrokerUser: "admin"
+      interBrokerPassword: "studyspot-kafka-password"
+  persistence:
+    enabled: true
+    size: "10Gi"
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "250m"
+    limits:
+      memory: "1Gi"
+      cpu: "500m"
+
+# Elasticsearch configuration
+elasticsearch:
+  enabled: true
+  auth:
+    enabled: true
+    elasticsearchPassword: "studyspot-elasticsearch-password"
+  master:
+    persistence:
+      enabled: true
+      size: "10Gi"
+    resources:
+      requests:
+        memory: "1Gi"
+        cpu: "500m"
+      limits:
+        memory: "2Gi"
+        cpu: "1000m"
+
+# MongoDB configuration
+mongodb:
+  enabled: true
+  auth:
+    enabled: true
+    rootPassword: "studyspot-mongodb-password"
+    username: "studyspot"
+    password: "studyspot-mongodb-password"
+    database: "studyspot"
+  persistence:
+    enabled: true
+    size: "10Gi"
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "250m"
+    limits:
+      memory: "1Gi"
+      cpu: "500m"
+
+# InfluxDB configuration
+influxdb:
+  enabled: true
+  auth:
+    enabled: true
+    adminPassword: "studyspot-influxdb-password"
+  persistence:
+    enabled: true
+    size: "10Gi"
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "250m"
+    limits:
+      memory: "1Gi"
+      cpu: "500m"
+
+# RabbitMQ configuration
+rabbitmq:
+  enabled: true
+    auth:
+      username: "studyspot"
+      password: "studyspot-rabbitmq-password"
+    persistence:
+      enabled: true
+      size: "8Gi"
+    resources:
+      requests:
+        memory: "512Mi"
+        cpu: "250m"
+      limits:
+        memory: "1Gi"
+        cpu: "500m"
+
+# Monitoring configuration
+monitoring:
+  prometheus:
+    enabled: true
+    server:
+      persistentVolume:
+        enabled: true
+        size: "20Gi"
+      resources:
+        requests:
+          memory: "1Gi"
+          cpu: "500m"
+        limits:
+          memory: "2Gi"
+          cpu: "1000m"
+  grafana:
+    enabled: true
+    adminPassword: "studyspot-grafana-password"
+    persistence:
+      enabled: true
+      size: "10Gi"
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "250m"
+      limits:
+        memory: "512Mi"
+        cpu: "500m"
+  jaeger:
+    enabled: true
+    collector:
+      resources:
+        requests:
+          memory: "256Mi"
+          cpu: "250m"
+        limits:
+          memory: "512Mi"
+          cpu: "500m"
+
+# Service Mesh configuration
+serviceMesh:
+  enabled: false
+  istio:
+    enabled: false
+
+# Security configuration
+security:
+  podSecurityPolicy:
+    enabled: true
+  networkPolicy:
+    enabled: true
+  rbac:
+    enabled: true
+  serviceAccount:
+    create: true
+    name: "studyspot-sa"
+
+# Backup configuration
+backup:
+  enabled: true
+  schedule: "0 2 * * *"  # Daily at 2 AM
+  retention: "30d"
+  storage:
+    size: "50Gi"
+
+# Logging configuration
+logging:
+  level: "info"
+  format: "json"
+  output: "stdout"
+
+# Feature flags
+features:
+  ai: true
+  analytics: true
+  dataPipeline: true
+  monitoring: true
+  backup: true
+  autoscaling: true
+  serviceMesh: false
