@@ -207,6 +207,7 @@ main() {
     install_dependencies "Ticket Management Service" "apps/ticket-management-service"
     install_dependencies "Lead Conversion Service" "apps/lead-conversion-service"
     install_dependencies "Tenant Management Service" "apps/tenant-management-service"
+    install_dependencies "User Analytics Service" "apps/user-analytics-service"
     install_dependencies "Web Owner" "web-owner"
     install_dependencies "Web Admin" "web-admin"
     install_dependencies "Mobile App" "mobile"
@@ -238,6 +239,7 @@ main() {
     start_service "Ticket Management Service" "apps/ticket-management-service" "3024" "dev"
     start_service "Lead Conversion Service" "apps/lead-conversion-service" "3025" "dev"
     start_service "Tenant Management Service" "apps/tenant-management-service" "3026" "dev"
+    start_service "User Analytics Service" "apps/user-analytics-service" "3027" "dev"
     start_service "Web Owner" "web-owner" "3001" "start"
     start_service "Web Admin" "web-admin" "3002" "start"
     
@@ -268,6 +270,7 @@ main() {
     wait_for_service "Ticket Management Service" "3024"
     wait_for_service "Lead Conversion Service" "3025"
     wait_for_service "Tenant Management Service" "3026"
+    wait_for_service "User Analytics Service" "3027"
     wait_for_service "Web Owner" "3001"
     wait_for_service "Web Admin" "3002"
     
@@ -304,6 +307,7 @@ main() {
     echo "  • Ticket Management:   http://localhost:3024"
     echo "  • Lead Conversion:     http://localhost:3025"
     echo "  • Tenant Management:   http://localhost:3026"
+    echo "  • User Analytics:      http://localhost:3027"
     echo ""
     echo "📊 Health Checks:"
     echo "  • API Gateway:         http://localhost:3004/health"
@@ -329,6 +333,7 @@ main() {
     echo "  • Ticket Management:  http://localhost:3024/health"
     echo "  • Lead Conversion:    http://localhost:3025/health"
     echo "  • Tenant Management:  http://localhost:3026/health"
+    echo "  • User Analytics:     http://localhost:3027/health"
     echo ""
     echo "📝 Logs:"
     echo "  • View logs:           tail -f logs/*.log"
@@ -336,7 +341,7 @@ main() {
     echo ""
     echo "🔍 Monitoring:"
     echo "  • Service status:      ps aux | grep node"
-    echo "  • Port usage:          lsof -i :3001-3026"
+    echo "  • Port usage:          lsof -i :3001-3027"
     echo ""
     
     # Keep script running
