@@ -208,6 +208,8 @@ main() {
     install_dependencies "Lead Conversion Service" "apps/lead-conversion-service"
     install_dependencies "Tenant Management Service" "apps/tenant-management-service"
     install_dependencies "User Analytics Service" "apps/user-analytics-service"
+    install_dependencies "Encryption Service" "apps/encryption-service"
+    install_dependencies "i18n Service" "apps/i18n-service"
     install_dependencies "Web Owner" "web-owner"
     install_dependencies "Web Admin" "web-admin"
     install_dependencies "Mobile App" "mobile"
@@ -240,6 +242,8 @@ main() {
     start_service "Lead Conversion Service" "apps/lead-conversion-service" "3025" "dev"
     start_service "Tenant Management Service" "apps/tenant-management-service" "3026" "dev"
     start_service "User Analytics Service" "apps/user-analytics-service" "3027" "dev"
+    start_service "Encryption Service" "apps/encryption-service" "3028" "dev"
+    start_service "i18n Service" "apps/i18n-service" "3029" "dev"
     start_service "Web Owner" "web-owner" "3001" "start"
     start_service "Web Admin" "web-admin" "3002" "start"
     
@@ -271,6 +275,8 @@ main() {
     wait_for_service "Lead Conversion Service" "3025"
     wait_for_service "Tenant Management Service" "3026"
     wait_for_service "User Analytics Service" "3027"
+    wait_for_service "Encryption Service" "3028"
+    wait_for_service "i18n Service" "3029"
     wait_for_service "Web Owner" "3001"
     wait_for_service "Web Admin" "3002"
     
@@ -308,6 +314,8 @@ main() {
     echo "  • Lead Conversion:     http://localhost:3025"
     echo "  • Tenant Management:   http://localhost:3026"
     echo "  • User Analytics:      http://localhost:3027"
+    echo "  • Encryption Service:  http://localhost:3028"
+    echo "  • i18n Service:       http://localhost:3029"
     echo ""
     echo "📊 Health Checks:"
     echo "  • API Gateway:         http://localhost:3004/health"
@@ -334,6 +342,8 @@ main() {
     echo "  • Lead Conversion:    http://localhost:3025/health"
     echo "  • Tenant Management:  http://localhost:3026/health"
     echo "  • User Analytics:     http://localhost:3027/health"
+    echo "  • Encryption Service: http://localhost:3028/health"
+    echo "  • i18n Service:       http://localhost:3029/health"
     echo ""
     echo "📝 Logs:"
     echo "  • View logs:           tail -f logs/*.log"
@@ -341,7 +351,7 @@ main() {
     echo ""
     echo "🔍 Monitoring:"
     echo "  • Service status:      ps aux | grep node"
-    echo "  • Port usage:          lsof -i :3001-3027"
+    echo "  • Port usage:          lsof -i :3001-3029"
     echo ""
     
     # Keep script running
