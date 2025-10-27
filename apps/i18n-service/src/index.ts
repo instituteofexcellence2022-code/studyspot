@@ -2,6 +2,8 @@ import dotenv from 'dotenv';
 dotenv.config();
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import { logger } from './utils/logger';
 import mongoose from 'mongoose';
 import i18next from 'i18next';
@@ -19,22 +21,74 @@ import ExcelJS from 'exceljs';
 import { Parser } from 'json2csv';
 import cron from 'node-cron';
 import { Queue, Worker, Job } from 'bullmq';
+import Joi from 'joi';
+import natural from 'natural';
 
 const app = express();
 const PORT = process.env.PORT || 3029;
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/i18ndb';
 const REDIS_HOST = process.env.REDIS_HOST || 'localhost';
 const REDIS_PORT = parseInt(process.env.REDIS_PORT || '6379', 10);
+const GOOGLE_TRANSLATE_API_KEY = process.env.GOOGLE_TRANSLATE_API_KEY;
 
-app.use(express.json());
-app.use(cors());
+// Configuration
+const I18N_CONFIG = {
+  MAX_TRANSLATION_LENGTH: 10000,
+  MAX_BATCH_SIZE: 100,
+  TRANSLATION_TIMEOUT: 30000,
+  CACHE_TTL: 24 * 60 * 60 * 1000, // 24 hours
+  QUALITY_THRESHOLD: 0.8,
+  MAX_RETRY_ATTEMPTS: 3,
+  SUPPORTED_FORMATS: ['json', 'csv', 'excel', 'po', 'xlf'],
+  MAX_LANGUAGES_PER_TENANT: 50
+};
+
+app.use(express.json({ limit: '10mb' }));
+app.use(cors({
+  origin: process.env.ALLOWED_ORIGINS?.split(',') || '*',
+  credentials: true
+}));
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "https:"],
+    },
+  },
+}));
+
+// Enhanced rate limiting
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 1000,
+  message: "Too many requests from this IP, please try again later.",
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const translationLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 50, // More restrictive for translation operations
+  message: "Too many translation requests, please try again later.",
+});
+
+const batchLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000, // 5 minutes
+  max: 10, // Very restrictive for batch operations
+  message: "Too many batch translation requests, please try again later.",
+});
+
+app.use(generalLimiter);
 
 // Setup HTTP server for Socket.IO
 const server = http.createServer(app);
 const io = new SocketIOServer(server, {
   cors: {
-    origin: "*",
-    methods: ["GET", "POST"]
+    origin: process.env.ALLOWED_ORIGINS?.split(',') || "*",
+    methods: ["GET", "POST"],
+    credentials: true
   }
 });
 
@@ -45,12 +99,18 @@ const connection = {
 
 const translationQueue = new Queue('translationQueue', { connection });
 
-// Connect to MongoDB
-mongoose.connect(MONGODB_URI)
-  .then(() => logger.info('Connected to MongoDB'))
-  .catch(err => logger.error('MongoDB connection error:', err));
+// Connect to MongoDB with enhanced configuration
+mongoose.connect(MONGODB_URI, {
+  maxPoolSize: 10,
+  serverSelectionTimeoutMS: 5000,
+  socketTimeoutMS: 45000,
+  bufferCommands: false,
+  bufferMaxEntries: 0
+})
+.then(() => logger.info('Connected to MongoDB with enhanced configuration'))
+.catch(err => logger.error('MongoDB connection error:', err));
 
-// Initialize i18next
+// Initialize i18next with enhanced configuration
 i18next
   .use(Backend)
   .use(middleware.LanguageDetector)
@@ -64,403 +124,1087 @@ i18next
     detection: {
       order: ['header', 'querystring', 'cookie'],
       caches: ['cookie']
+    },
+    interpolation: {
+      escapeValue: false
+    },
+    saveMissing: true,
+    missingKeyHandler: (lng, ns, key, fallbackValue) => {
+      logger.warn(`Missing translation key: ${key} for language: ${lng} in namespace: ${ns}`);
     }
   });
 
-// Mongoose Schemas
+// Enhanced Mongoose Schemas with comprehensive validation
 const LanguageSchema = new mongoose.Schema({
-  languageId: { type: String, required: true, unique: true },
-  tenantId: { type: String, required: true },
-  code: { type: String, required: true }, // en, es, fr, de, etc.
-  name: { type: String, required: true }, // English, Spanish, French, German
-  nativeName: { type: String, required: true }, // English, Español, Français, Deutsch
-  isRTL: { type: Boolean, default: false }, // Right-to-left languages
+  languageId: { 
+    type: String, 
+    required: true, 
+    unique: true,
+    validate: {
+      validator: function(v: string) {
+        return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
+      },
+      message: 'Language ID must be a valid UUID'
+    }
+  },
+  tenantId: { 
+    type: String, 
+    required: true,
+    validate: {
+      validator: function(v: string) {
+        return v && v.length >= 3 && v.length <= 50;
+      },
+      message: 'Tenant ID must be between 3 and 50 characters'
+    }
+  },
+  code: { 
+    type: String, 
+    required: true,
+    validate: {
+      validator: function(v: string) {
+        return /^[a-z]{2}(-[A-Z]{2})?$/.test(v);
+      },
+      message: 'Language code must be in format: en, en-US, etc.'
+    }
+  },
+  name: { 
+    type: String, 
+    required: true,
+    validate: {
+      validator: function(v: string) {
+        return v && v.length >= 2 && v.length <= 100;
+      },
+      message: 'Language name must be between 2 and 100 characters'
+    }
+  },
+  nativeName: { 
+    type: String, 
+    required: true,
+    validate: {
+      validator: function(v: string) {
+        return v && v.length >= 2 && v.length <= 100;
+      },
+      message: 'Native name must be between 2 and 100 characters'
+    }
+  },
+  isRTL: { type: Boolean, default: false },
   isActive: { type: Boolean, default: true },
   isDefault: { type: Boolean, default: false },
+  quality: {
+    score: { type: Number, min: 0, max: 1, default: 1 },
+    lastValidated: Date,
+    validationCount: { type: Number, default: 0 },
+    issues: [{
+      type: { type: String, enum: ['missing', 'incomplete', 'inconsistent', 'grammar', 'context'] },
+      severity: { type: String, enum: ['low', 'medium', 'high'], default: 'medium' },
+      description: String,
+      count: { type: Number, default: 1 },
+      lastOccurrence: { type: Date, default: Date.now }
+    }]
+  },
   metadata: {
-    country: String,
+    country: { 
+      type: String,
+      validate: {
+        validator: function(v: string) {
+          return !v || /^[A-Z]{2}$/.test(v);
+        },
+        message: 'Country code must be 2 uppercase letters'
+      }
+    },
     region: String,
     script: String,
-    currency: String,
-    dateFormat: String,
-    timeFormat: String,
-    numberFormat: String
+    currency: { 
+      type: String,
+      validate: {
+        validator: function(v: string) {
+          return !v || /^[A-Z]{3}$/.test(v);
+        },
+        message: 'Currency code must be 3 uppercase letters'
+      }
+    },
+    dateFormat: { 
+      type: String,
+      validate: {
+        validator: function(v: string) {
+          return !v || /^[DMY\/\-\.\s]+$/.test(v);
+        },
+        message: 'Invalid date format'
+      }
+    },
+    timeFormat: { 
+      type: String,
+      enum: ['12h', '24h'],
+      default: '12h'
+    },
+    numberFormat: {
+      decimalSeparator: { type: String, default: '.' },
+      thousandsSeparator: { type: String, default: ',' },
+      currencySymbol: String,
+      currencyPosition: { type: String, enum: ['before', 'after'], default: 'before' }
+    },
+    pluralRules: {
+      zero: String,
+      one: String,
+      two: String,
+      few: String,
+      many: String,
+      other: String
+    }
+  },
+  statistics: {
+    totalTranslations: { type: Number, default: 0 },
+    completedTranslations: { type: Number, default: 0 },
+    missingTranslations: { type: Number, default: 0 },
+    lastUpdated: Date,
+    translationAccuracy: { type: Number, min: 0, max: 1, default: 1 }
   },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });
+
+// Add indexes
+LanguageSchema.index({ tenantId: 1, code: 1 }, { unique: true });
+LanguageSchema.index({ tenantId: 1, isActive: 1 });
+LanguageSchema.index({ code: 1 });
+
 const Language = mongoose.model('Language', LanguageSchema);
 
 const TranslationSchema = new mongoose.Schema({
-  translationId: { type: String, required: true, unique: true },
-  tenantId: { type: String, required: true },
-  namespace: { type: String, required: true }, // common, auth, dashboard, etc.
-  key: { type: String, required: true },
-  language: { type: String, required: true },
-  value: { type: String, required: true },
-  context: String, // Additional context for translators
+  translationId: { 
+    type: String, 
+    required: true, 
+    unique: true,
+    validate: {
+      validator: function(v: string) {
+        return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
+      },
+      message: 'Translation ID must be a valid UUID'
+    }
+  },
+  tenantId: { 
+    type: String, 
+    required: true,
+    validate: {
+      validator: function(v: string) {
+        return v && v.length >= 3 && v.length <= 50;
+      },
+      message: 'Tenant ID must be between 3 and 50 characters'
+    }
+  },
+  namespace: { 
+    type: String, 
+    required: true,
+    validate: {
+      validator: function(v: string) {
+        return v && v.length >= 1 && v.length <= 50;
+      },
+      message: 'Namespace must be between 1 and 50 characters'
+    }
+  },
+  key: { 
+    type: String, 
+    required: true,
+    validate: {
+      validator: function(v: string) {
+        return v && v.length >= 1 && v.length <= 200;
+      },
+      message: 'Key must be between 1 and 200 characters'
+    }
+  },
+  language: { 
+    type: String, 
+    required: true,
+    validate: {
+      validator: function(v: string) {
+        return /^[a-z]{2}(-[A-Z]{2})?$/.test(v);
+      },
+      message: 'Language code must be in format: en, en-US, etc.'
+    }
+  },
+  value: { 
+    type: String, 
+    required: true,
+    validate: {
+      validator: function(v: string) {
+        return v && v.length <= I18N_CONFIG.MAX_TRANSLATION_LENGTH;
+      },
+      message: `Translation value must not exceed ${I18N_CONFIG.MAX_TRANSLATION_LENGTH} characters`
+    }
+  },
+  context: { 
+    type: String,
+    validate: {
+      validator: function(v: string) {
+        return !v || v.length <= 500;
+      },
+      message: 'Context must not exceed 500 characters'
+    }
+  },
   isPlural: { type: Boolean, default: false },
-  pluralForms: [String], // For languages with multiple plural forms
-  isAutoTranslated: { type: Boolean, default: false },
-  translatorId: String,
-  lastModified: { type: Date, default: Date.now },
+  pluralForms: [{
+    form: { 
+      type: String,
+      enum: ['zero', 'one', 'two', 'few', 'many', 'other']
+    },
+    value: String
+  }],
+  quality: {
+    score: { type: Number, min: 0, max: 1, default: 1 },
+    confidence: { type: Number, min: 0, max: 1, default: 1 },
+    isReviewed: { type: Boolean, default: false },
+    reviewerId: String,
+    reviewDate: Date,
+    issues: [{
+      type: { type: String, enum: ['grammar', 'context', 'consistency', 'completeness', 'accuracy'] },
+      severity: { type: String, enum: ['low', 'medium', 'high'], default: 'medium' },
+      description: String,
+      suggestion: String,
+      resolved: { type: Boolean, default: false }
+    }]
+  },
+  metadata: {
+    isAutoTranslated: { type: Boolean, default: false },
+    translatorId: String,
+    translationProvider: { 
+      type: String,
+      enum: ['google', 'microsoft', 'deepl', 'manual', 'system'],
+      default: 'manual'
+    },
+    sourceLanguage: String,
+    translationTime: Number,
+    characterCount: Number,
+    wordCount: Number,
+    complexity: { type: String, enum: ['low', 'medium', 'high'], default: 'medium' },
+    tags: [String],
+    category: String,
+    priority: { type: String, enum: ['low', 'medium', 'high', 'critical'], default: 'medium' }
+  },
   version: { type: Number, default: 1 },
-  metadata: mongoose.Schema.Types.Mixed,
+  lastModified: { type: Date, default: Date.now },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });
+
+// Add indexes
+TranslationSchema.index({ tenantId: 1, namespace: 1, language: 1 });
+TranslationSchema.index({ tenantId: 1, key: 1, language: 1 }, { unique: true });
+TranslationSchema.index({ language: 1, isAutoTranslated: 1 });
+TranslationSchema.index({ 'quality.score': 1 });
+
 const Translation = mongoose.model('Translation', TranslationSchema);
 
 const TranslationRequestSchema = new mongoose.Schema({
-  requestId: { type: String, required: true, unique: true },
-  tenantId: { type: String, required: true },
-  userId: String,
-  sourceLanguage: { type: String, required: true },
-  targetLanguage: { type: String, required: true },
-  text: { type: String, required: true },
-  context: String,
+  requestId: { 
+    type: String, 
+    required: true, 
+    unique: true,
+    validate: {
+      validator: function(v: string) {
+        return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
+      },
+      message: 'Request ID must be a valid UUID'
+    }
+  },
+  tenantId: { 
+    type: String, 
+    required: true,
+    validate: {
+      validator: function(v: string) {
+        return v && v.length >= 3 && v.length <= 50;
+      },
+      message: 'Tenant ID must be between 3 and 50 characters'
+    }
+  },
+  userId: { 
+    type: String,
+    validate: {
+      validator: function(v: string) {
+        return !v || v.length >= 3 && v.length <= 50;
+      },
+      message: 'User ID must be between 3 and 50 characters'
+    }
+  },
+  sourceLanguage: { 
+    type: String, 
+    required: true,
+    validate: {
+      validator: function(v: string) {
+        return /^[a-z]{2}(-[A-Z]{2})?$/.test(v);
+      },
+      message: 'Source language code must be in format: en, en-US, etc.'
+    }
+  },
+  targetLanguage: { 
+    type: String, 
+    required: true,
+    validate: {
+      validator: function(v: string) {
+        return /^[a-z]{2}(-[A-Z]{2})?$/.test(v);
+      },
+      message: 'Target language code must be in format: en, en-US, etc.'
+    }
+  },
+  text: { 
+    type: String, 
+    required: true,
+    validate: {
+      validator: function(v: string) {
+        return v && v.length <= I18N_CONFIG.MAX_TRANSLATION_LENGTH;
+      },
+      message: `Text must not exceed ${I18N_CONFIG.MAX_TRANSLATION_LENGTH} characters`
+    }
+  },
+  context: { 
+    type: String,
+    validate: {
+      validator: function(v: string) {
+        return !v || v.length <= 500;
+      },
+      message: 'Context must not exceed 500 characters'
+    }
+  },
   status: { 
     type: String, 
-    enum: ['pending', 'processing', 'completed', 'failed'], 
+    enum: ['pending', 'processing', 'completed', 'failed', 'cancelled'], 
     default: 'pending' 
   },
-  translatedText: String,
-  confidence: Number, // Translation confidence score
-  provider: { type: String, default: 'google' }, // google, microsoft, deepl, etc.
-  errorMessage: String,
-  processingTime: Number, // milliseconds
-  metadata: mongoose.Schema.Types.Mixed,
+  translatedText: { 
+    type: String,
+    validate: {
+      validator: function(v: string) {
+        return !v || v.length <= I18N_CONFIG.MAX_TRANSLATION_LENGTH;
+      },
+      message: `Translated text must not exceed ${I18N_CONFIG.MAX_TRANSLATION_LENGTH} characters`
+    }
+  },
+  quality: {
+    confidence: { type: Number, min: 0, max: 1 },
+    accuracy: { type: Number, min: 0, max: 1 },
+    fluency: { type: Number, min: 0, max: 1 },
+    overall: { type: Number, min: 0, max: 1 }
+  },
+  provider: { 
+    type: String, 
+    enum: ['google', 'microsoft', 'deepl', 'manual'], 
+    default: 'google' 
+  },
+  errorMessage: { 
+    type: String,
+    validate: {
+      validator: function(v: string) {
+        return !this.status || this.status !== 'completed' || !v;
+      },
+      message: 'Error message should only be present when request failed'
+    }
+  },
+  retryCount: { type: Number, default: 0, max: I18N_CONFIG.MAX_RETRY_ATTEMPTS },
+  processingTime: { 
+    type: Number, 
+    min: 0,
+    validate: {
+      validator: function(v: number) {
+        return v <= I18N_CONFIG.TRANSLATION_TIMEOUT;
+      },
+      message: 'Processing time exceeds maximum allowed time'
+    }
+  },
+  metadata: {
+    ipAddress: String,
+    userAgent: String,
+    requestId: String,
+    sessionId: String,
+    batchId: String,
+    priority: { type: String, enum: ['low', 'medium', 'high'], default: 'medium' },
+    cost: Number,
+    characterCount: Number,
+    wordCount: Number
+  },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });
+
+// Add indexes
+TranslationRequestSchema.index({ tenantId: 1, status: 1 });
+TranslationRequestSchema.index({ createdAt: 1 }, { expireAfterSeconds: 7 * 24 * 60 * 60 }); // 7 days
+TranslationRequestSchema.index({ 'metadata.batchId': 1 });
+
 const TranslationRequest = mongoose.model('TranslationRequest', TranslationRequestSchema);
 
 const UserLanguagePreferenceSchema = new mongoose.Schema({
-  preferenceId: { type: String, required: true, unique: true },
-  tenantId: { type: String, required: true },
-  userId: { type: String, required: true },
-  preferredLanguage: { type: String, required: true },
-  fallbackLanguage: { type: String, default: 'en' },
+  preferenceId: { 
+    type: String, 
+    required: true, 
+    unique: true,
+    validate: {
+      validator: function(v: string) {
+        return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
+      },
+      message: 'Preference ID must be a valid UUID'
+    }
+  },
+  tenantId: { 
+    type: String, 
+    required: true,
+    validate: {
+      validator: function(v: string) {
+        return v && v.length >= 3 && v.length <= 50;
+      },
+      message: 'Tenant ID must be between 3 and 50 characters'
+    }
+  },
+  userId: { 
+    type: String, 
+    required: true,
+    validate: {
+      validator: function(v: string) {
+        return v && v.length >= 3 && v.length <= 50;
+      },
+      message: 'User ID must be between 3 and 50 characters'
+    }
+  },
+  preferredLanguage: { 
+    type: String, 
+    required: true,
+    validate: {
+      validator: function(v: string) {
+        return /^[a-z]{2}(-[A-Z]{2})?$/.test(v);
+      },
+      message: 'Preferred language code must be in format: en, en-US, etc.'
+    }
+  },
+  fallbackLanguage: { 
+    type: String, 
+    default: 'en',
+    validate: {
+      validator: function(v: string) {
+        return /^[a-z]{2}(-[A-Z]{2})?$/.test(v);
+      },
+      message: 'Fallback language code must be in format: en, en-US, etc.'
+    }
+  },
   autoDetect: { type: Boolean, default: true },
+  preferences: {
+    dateFormat: String,
+    timeFormat: { type: String, enum: ['12h', '24h'] },
+    numberFormat: {
+      decimalSeparator: String,
+      thousandsSeparator: String,
+      currencySymbol: String
+    },
+    pluralRules: [String],
+    customTranslations: mongoose.Schema.Types.Mixed
+  },
+  statistics: {
+    totalRequests: { type: Number, default: 0 },
+    successfulDetections: { type: Number, default: 0 },
+    lastDetectionAccuracy: { type: Number, min: 0, max: 1 },
+    mostUsedLanguages: [{
+      language: String,
+      count: Number,
+      lastUsed: Date
+    }]
+  },
   lastUsed: { type: Date, default: Date.now },
-  metadata: mongoose.Schema.Types.Mixed,
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });
+
+// Add indexes
+UserLanguagePreferenceSchema.index({ tenantId: 1, userId: 1 }, { unique: true });
+UserLanguagePreferenceSchema.index({ preferredLanguage: 1 });
+
 const UserLanguagePreference = mongoose.model('UserLanguagePreference', UserLanguagePreferenceSchema);
 
-// Supported languages
+// Enhanced supported languages with comprehensive metadata
 const SUPPORTED_LANGUAGES = [
-  { code: 'en', name: 'English', nativeName: 'English', isRTL: false, country: 'US' },
-  { code: 'es', name: 'Spanish', nativeName: 'Español', isRTL: false, country: 'ES' },
-  { code: 'fr', name: 'French', nativeName: 'Français', isRTL: false, country: 'FR' },
-  { code: 'de', name: 'German', nativeName: 'Deutsch', isRTL: false, country: 'DE' },
-  { code: 'it', name: 'Italian', nativeName: 'Italiano', isRTL: false, country: 'IT' },
-  { code: 'pt', name: 'Portuguese', nativeName: 'Português', isRTL: false, country: 'PT' },
-  { code: 'ru', name: 'Russian', nativeName: 'Русский', isRTL: false, country: 'RU' },
-  { code: 'ja', name: 'Japanese', nativeName: '日本語', isRTL: false, country: 'JP' },
-  { code: 'ko', name: 'Korean', nativeName: '한국어', isRTL: false, country: 'KR' },
-  { code: 'zh', name: 'Chinese', nativeName: '中文', isRTL: false, country: 'CN' },
-  { code: 'hi', name: 'Hindi', nativeName: 'हिन्दी', isRTL: false, country: 'IN' },
-  { code: 'ar', name: 'Arabic', nativeName: 'العربية', isRTL: true, country: 'SA' },
-  { code: 'ur', name: 'Urdu', nativeName: 'اردو', isRTL: true, country: 'PK' },
-  { code: 'bn', name: 'Bengali', nativeName: 'বাংলা', isRTL: false, country: 'BD' },
-  { code: 'ta', name: 'Tamil', nativeName: 'தமிழ்', isRTL: false, country: 'IN' },
-  { code: 'te', name: 'Telugu', nativeName: 'తెలుగు', isRTL: false, country: 'IN' },
-  { code: 'ml', name: 'Malayalam', nativeName: 'മലയാളം', isRTL: false, country: 'IN' },
-  { code: 'kn', name: 'Kannada', nativeName: 'ಕನ್ನಡ', isRTL: false, country: 'IN' },
-  { code: 'gu', name: 'Gujarati', nativeName: 'ગુજરાતી', isRTL: false, country: 'IN' },
-  { code: 'mr', name: 'Marathi', nativeName: 'मराठी', isRTL: false, country: 'IN' }
+  { 
+    code: 'en', 
+    name: 'English', 
+    nativeName: 'English', 
+    isRTL: false, 
+    country: 'US',
+    script: 'Latin',
+    currency: 'USD',
+    dateFormat: 'MM/DD/YYYY',
+    timeFormat: '12h',
+    pluralRules: { one: 'n == 1', other: 'n != 1' }
+  },
+  { 
+    code: 'es', 
+    name: 'Spanish', 
+    nativeName: 'Español', 
+    isRTL: false, 
+    country: 'ES',
+    script: 'Latin',
+    currency: 'EUR',
+    dateFormat: 'DD/MM/YYYY',
+    timeFormat: '24h',
+    pluralRules: { one: 'n == 1', other: 'n != 1' }
+  },
+  { 
+    code: 'fr', 
+    name: 'French', 
+    nativeName: 'Français', 
+    isRTL: false, 
+    country: 'FR',
+    script: 'Latin',
+    currency: 'EUR',
+    dateFormat: 'DD/MM/YYYY',
+    timeFormat: '24h',
+    pluralRules: { one: 'n == 1', other: 'n != 1' }
+  },
+  { 
+    code: 'de', 
+    name: 'German', 
+    nativeName: 'Deutsch', 
+    isRTL: false, 
+    country: 'DE',
+    script: 'Latin',
+    currency: 'EUR',
+    dateFormat: 'DD.MM.YYYY',
+    timeFormat: '24h',
+    pluralRules: { one: 'n == 1', other: 'n != 1' }
+  },
+  { 
+    code: 'it', 
+    name: 'Italian', 
+    nativeName: 'Italiano', 
+    isRTL: false, 
+    country: 'IT',
+    script: 'Latin',
+    currency: 'EUR',
+    dateFormat: 'DD/MM/YYYY',
+    timeFormat: '24h',
+    pluralRules: { one: 'n == 1', other: 'n != 1' }
+  },
+  { 
+    code: 'pt', 
+    name: 'Portuguese', 
+    nativeName: 'Português', 
+    isRTL: false, 
+    country: 'PT',
+    script: 'Latin',
+    currency: 'EUR',
+    dateFormat: 'DD/MM/YYYY',
+    timeFormat: '24h',
+    pluralRules: { one: 'n == 1', other: 'n != 1' }
+  },
+  { 
+    code: 'ru', 
+    name: 'Russian', 
+    nativeName: 'Русский', 
+    isRTL: false, 
+    country: 'RU',
+    script: 'Cyrillic',
+    currency: 'RUB',
+    dateFormat: 'DD.MM.YYYY',
+    timeFormat: '24h',
+    pluralRules: { one: 'n % 10 == 1 && n % 100 != 11', few: 'n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20)', many: 'n % 10 == 0 || n % 10 >= 5 && n % 10 <= 9 || n % 100 >= 11 && n % 100 <= 19', other: 'n != 1' }
+  },
+  { 
+    code: 'ja', 
+    name: 'Japanese', 
+    nativeName: '日本語', 
+    isRTL: false, 
+    country: 'JP',
+    script: 'Hiragana',
+    currency: 'JPY',
+    dateFormat: 'YYYY/MM/DD',
+    timeFormat: '24h',
+    pluralRules: { other: 'n != 1' }
+  },
+  { 
+    code: 'ko', 
+    name: 'Korean', 
+    nativeName: '한국어', 
+    isRTL: false, 
+    country: 'KR',
+    script: 'Hangul',
+    currency: 'KRW',
+    dateFormat: 'YYYY.MM.DD',
+    timeFormat: '24h',
+    pluralRules: { other: 'n != 1' }
+  },
+  { 
+    code: 'zh', 
+    name: 'Chinese', 
+    nativeName: '中文', 
+    isRTL: false, 
+    country: 'CN',
+    script: 'Han',
+    currency: 'CNY',
+    dateFormat: 'YYYY-MM-DD',
+    timeFormat: '24h',
+    pluralRules: { other: 'n != 1' }
+  },
+  { 
+    code: 'hi', 
+    name: 'Hindi', 
+    nativeName: 'हिन्दी', 
+    isRTL: false, 
+    country: 'IN',
+    script: 'Devanagari',
+    currency: 'INR',
+    dateFormat: 'DD/MM/YYYY',
+    timeFormat: '12h',
+    pluralRules: { one: 'n == 1', other: 'n != 1' }
+  },
+  { 
+    code: 'ar', 
+    name: 'Arabic', 
+    nativeName: 'العربية', 
+    isRTL: true, 
+    country: 'SA',
+    script: 'Arabic',
+    currency: 'SAR',
+    dateFormat: 'DD/MM/YYYY',
+    timeFormat: '12h',
+    pluralRules: { zero: 'n == 0', one: 'n == 1', two: 'n == 2', few: 'n % 100 >= 3 && n % 100 <= 10', many: 'n % 100 >= 11', other: 'n != 1' }
+  },
+  { 
+    code: 'ur', 
+    name: 'Urdu', 
+    nativeName: 'اردو', 
+    isRTL: true, 
+    country: 'PK',
+    script: 'Arabic',
+    currency: 'PKR',
+    dateFormat: 'DD/MM/YYYY',
+    timeFormat: '12h',
+    pluralRules: { one: 'n == 1', other: 'n != 1' }
+  },
+  { 
+    code: 'bn', 
+    name: 'Bengali', 
+    nativeName: 'বাংলা', 
+    isRTL: false, 
+    country: 'BD',
+    script: 'Bengali',
+    currency: 'BDT',
+    dateFormat: 'DD/MM/YYYY',
+    timeFormat: '12h',
+    pluralRules: { one: 'n == 1', other: 'n != 1' }
+  },
+  { 
+    code: 'ta', 
+    name: 'Tamil', 
+    nativeName: 'தமிழ்', 
+    isRTL: false, 
+    country: 'IN',
+    script: 'Tamil',
+    currency: 'INR',
+    dateFormat: 'DD/MM/YYYY',
+    timeFormat: '12h',
+    pluralRules: { one: 'n == 1', other: 'n != 1' }
+  },
+  { 
+    code: 'te', 
+    name: 'Telugu', 
+    nativeName: 'తెలుగు', 
+    isRTL: false, 
+    country: 'IN',
+    script: 'Telugu',
+    currency: 'INR',
+    dateFormat: 'DD/MM/YYYY',
+    timeFormat: '12h',
+    pluralRules: { one: 'n == 1', other: 'n != 1' }
+  },
+  { 
+    code: 'ml', 
+    name: 'Malayalam', 
+    nativeName: 'മലയാളം', 
+    isRTL: false, 
+    country: 'IN',
+    script: 'Malayalam',
+    currency: 'INR',
+    dateFormat: 'DD/MM/YYYY',
+    timeFormat: '12h',
+    pluralRules: { one: 'n == 1', other: 'n != 1' }
+  },
+  { 
+    code: 'kn', 
+    name: 'Kannada', 
+    nativeName: 'ಕನ್ನಡ', 
+    isRTL: false, 
+    country: 'IN',
+    script: 'Kannada',
+    currency: 'INR',
+    dateFormat: 'DD/MM/YYYY',
+    timeFormat: '12h',
+    pluralRules: { one: 'n == 1', other: 'n != 1' }
+  },
+  { 
+    code: 'gu', 
+    name: 'Gujarati', 
+    nativeName: 'ગુજરાતી', 
+    isRTL: false, 
+    country: 'IN',
+    script: 'Gujarati',
+    currency: 'INR',
+    dateFormat: 'DD/MM/YYYY',
+    timeFormat: '12h',
+    pluralRules: { one: 'n == 1', other: 'n != 1' }
+  },
+  { 
+    code: 'mr', 
+    name: 'Marathi', 
+    nativeName: 'मराठी', 
+    isRTL: false, 
+    country: 'IN',
+    script: 'Devanagari',
+    currency: 'INR',
+    dateFormat: 'DD/MM/YYYY',
+    timeFormat: '12h',
+    pluralRules: { one: 'n == 1', other: 'n != 1' }
+  }
 ];
 
-// Worker to process translation jobs
-const worker = new Worker('translationQueue', async (job: Job) => {
-  logger.info(`Processing translation job ${job.id} of type ${job.name}`);
-  const { jobType, data } = job.data;
-
-  try {
-    switch (jobType) {
-      case 'translate_text':
-        await translateText(data);
-        break;
-      case 'auto_translate_missing':
-        await autoTranslateMissing(data);
-        break;
-      case 'update_translations':
-        await updateTranslations(data);
-        break;
-      case 'detect_language':
-        await detectLanguage(data);
-        break;
-      default:
-        logger.warn(`Unknown translation job type: ${jobType}`);
-    }
-  } catch (error: any) {
-    logger.error(`Error processing translation job ${job.id}:`, error);
-    throw error;
-  }
-}, { connection });
-
-worker.on('failed', (job, err) => {
-  logger.error(`Translation job ${job?.id} failed with error ${err.message}`);
+// Enhanced validation schemas
+const languageSchema = Joi.object({
+  tenantId: Joi.string().min(3).max(50).required(),
+  code: Joi.string().pattern(/^[a-z]{2}(-[A-Z]{2})?$/).required(),
+  name: Joi.string().min(2).max(100).required(),
+  nativeName: Joi.string().min(2).max(100).required(),
+  isRTL: Joi.boolean().default(false),
+  metadata: Joi.object({
+    country: Joi.string().pattern(/^[A-Z]{2}$/),
+    region: Joi.string().max(50),
+    script: Joi.string().max(50),
+    currency: Joi.string().pattern(/^[A-Z]{3}$/),
+    dateFormat: Joi.string().pattern(/^[DMY\/\-\.\s]+$/),
+    timeFormat: Joi.string().valid('12h', '24h'),
+    numberFormat: Joi.object({
+      decimalSeparator: Joi.string().max(5),
+      thousandsSeparator: Joi.string().max(5),
+      currencySymbol: Joi.string().max(10),
+      currencyPosition: Joi.string().valid('before', 'after')
+    })
+  }).optional()
 });
 
-// Helper functions
-async function translateText(data: any) {
-  const { requestId, tenantId, sourceLanguage, targetLanguage, text, context } = data;
-  
-  try {
-    const startTime = Date.now();
-    
-    // Update request status to processing
-    await TranslationRequest.findOneAndUpdate(
-      { requestId },
-      { status: 'processing', updatedAt: new Date() }
-    );
+const translationSchema = Joi.object({
+  tenantId: Joi.string().min(3).max(50).required(),
+  namespace: Joi.string().min(1).max(50).required(),
+  key: Joi.string().min(1).max(200).required(),
+  language: Joi.string().pattern(/^[a-z]{2}(-[A-Z]{2})?$/).required(),
+  value: Joi.string().max(I18N_CONFIG.MAX_TRANSLATION_LENGTH).required(),
+  context: Joi.string().max(500).optional(),
+  isPlural: Joi.boolean().default(false),
+  pluralForms: Joi.array().items(Joi.object({
+    form: Joi.string().valid('zero', 'one', 'two', 'few', 'many', 'other'),
+    value: Joi.string().max(I18N_CONFIG.MAX_TRANSLATION_LENGTH)
+  })).optional(),
+  metadata: Joi.object({
+    translatorId: Joi.string().min(3).max(50),
+    translationProvider: Joi.string().valid('google', 'microsoft', 'deepl', 'manual', 'system'),
+    sourceLanguage: Joi.string().pattern(/^[a-z]{2}(-[A-Z]{2})?$/),
+    tags: Joi.array().items(Joi.string().max(50)),
+    category: Joi.string().max(100),
+    priority: Joi.string().valid('low', 'medium', 'high', 'critical')
+  }).optional()
+});
 
-    // Use Google Translate API
-    const result = await translate(text, {
-      from: sourceLanguage,
-      to: targetLanguage
-    });
+const translationRequestSchema = Joi.object({
+  tenantId: Joi.string().min(3).max(50).required(),
+  sourceLanguage: Joi.string().pattern(/^[a-z]{2}(-[A-Z]{2})?$/).required(),
+  targetLanguage: Joi.string().pattern(/^[a-z]{2}(-[A-Z]{2})?$/).required(),
+  text: Joi.string().max(I18N_CONFIG.MAX_TRANSLATION_LENGTH).required(),
+  context: Joi.string().max(500).optional(),
+  userId: Joi.string().min(3).max(50).optional(),
+  metadata: Joi.object({
+    priority: Joi.string().valid('low', 'medium', 'high'),
+    batchId: Joi.string().uuid()
+  }).optional()
+});
 
-    const processingTime = Date.now() - startTime;
+// Enhanced Translation utilities with comprehensive error handling
+class TranslationManager {
+  private cache: Map<string, any> = new Map();
+  private readonly CACHE_TTL = I18N_CONFIG.CACHE_TTL;
 
-    // Update request with translation result
-    await TranslationRequest.findOneAndUpdate(
-      { requestId },
-      {
-        status: 'completed',
-        translatedText: result.text,
-        confidence: result.confidence || 0.95,
-        processingTime,
-        updatedAt: new Date()
-      }
-    );
-
-    logger.info(`Translation completed: ${sourceLanguage} -> ${targetLanguage}`);
-    
-  } catch (error: any) {
-    logger.error(`Error translating text:`, error);
-    
-    await TranslationRequest.findOneAndUpdate(
-      { requestId },
-      {
-        status: 'failed',
-        errorMessage: error.message,
-        updatedAt: new Date()
-      }
-    );
-    
-    throw error;
+  constructor() {
+    // Initialize natural language processing
+    natural.PorterStemmer.attach();
   }
-}
 
-async function autoTranslateMissing(data: any) {
-  const { tenantId, namespace, sourceLanguage, targetLanguages } = data;
-  
-  try {
-    // Get all translations for the source language and namespace
-    const sourceTranslations = await Translation.find({
-      tenantId,
-      namespace,
-      language: sourceLanguage
-    });
+  // Enhanced text translation with quality checks
+  async translateText(text: string, sourceLanguage: string, targetLanguage: string, context?: string): Promise<any> {
+    try {
+      if (!text || typeof text !== 'string') {
+        throw new Error('Text must be a non-empty string');
+      }
 
-    for (const targetLanguage of targetLanguages) {
-      // Check which translations are missing for target language
-      const existingTranslations = await Translation.find({
-        tenantId,
-        namespace,
-        language: targetLanguage
+      if (text.length > I18N_CONFIG.MAX_TRANSLATION_LENGTH) {
+        throw new Error(`Text length ${text.length} exceeds maximum allowed length ${I18N_CONFIG.MAX_TRANSLATION_LENGTH}`);
+      }
+
+      // Check cache first
+      const cacheKey = `${sourceLanguage}-${targetLanguage}-${text}`;
+      const cached = this.cache.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
+        return cached.result;
+      }
+
+      // Use Google Translate API
+      const result = await translate(text, {
+        from: sourceLanguage,
+        to: targetLanguage
       });
 
-      const existingKeys = existingTranslations.map(t => t.key);
-      const missingTranslations = sourceTranslations.filter(
-        t => !existingKeys.includes(t.key)
-      );
+      // Quality assessment
+      const quality = await this.assessTranslationQuality(text, result.text, sourceLanguage, targetLanguage);
 
-      // Translate missing translations
-      for (const translation of missingTranslations) {
-        try {
-          const result = await translate(translation.value, {
-            from: sourceLanguage,
-            to: targetLanguage
-          });
+      const translationResult = {
+        text: result.text,
+        confidence: result.confidence || 0.95,
+        quality: quality,
+        provider: 'google',
+        sourceLanguage,
+        targetLanguage,
+        characterCount: text.length,
+        wordCount: text.split(/\s+/).length
+      };
 
-          const newTranslation = new Translation({
-            translationId: uuidv4(),
-            tenantId,
-            namespace: translation.namespace,
-            key: translation.key,
-            language: targetLanguage,
-            value: result.text,
-            context: translation.context,
-            isPlural: translation.isPlural,
-            pluralForms: translation.pluralForms,
-            isAutoTranslated: true,
-            translatorId: 'system',
-            lastModified: new Date(),
-            version: 1,
-            metadata: {
-              sourceLanguage,
-              confidence: result.confidence || 0.95,
-              autoTranslatedAt: new Date()
-            },
-            createdAt: new Date(),
-            updatedAt: new Date()
-          });
+      // Cache the result
+      this.cache.set(cacheKey, {
+        result: translationResult,
+        timestamp: Date.now()
+      });
 
-          await newTranslation.save();
-          
-        } catch (error) {
-          logger.error(`Error auto-translating ${translation.key} to ${targetLanguage}:`, error);
+      return translationResult;
+
+    } catch (error: any) {
+      logger.error('Error translating text:', error);
+      throw new Error(`Translation failed: ${error.message}`);
+    }
+  }
+
+  // Enhanced translation quality assessment
+  async assessTranslationQuality(sourceText: string, translatedText: string, sourceLanguage: string, targetLanguage: string): Promise<any> {
+    try {
+      const quality = {
+        accuracy: 0.8, // Default accuracy
+        fluency: 0.8, // Default fluency
+        completeness: 1.0, // Default completeness
+        consistency: 0.8, // Default consistency
+        overall: 0.8 // Default overall score
+      };
+
+      // Basic quality checks
+      if (!translatedText || translatedText.trim().length === 0) {
+        quality.completeness = 0;
+        quality.overall = 0;
+        return quality;
+      }
+
+      // Length ratio check
+      const sourceLength = sourceText.length;
+      const translatedLength = translatedText.length;
+      const lengthRatio = translatedLength / sourceLength;
+
+      // Reasonable length ratio (0.5 to 2.0)
+      if (lengthRatio < 0.5 || lengthRatio > 2.0) {
+        quality.accuracy *= 0.8;
+      }
+
+      // Character encoding check
+      if (this.hasInvalidCharacters(translatedText)) {
+        quality.fluency *= 0.7;
+      }
+
+      // Language-specific checks
+      if (targetLanguage === 'ar' || targetLanguage === 'ur') {
+        // RTL language checks
+        if (!this.isValidRTLLanguage(translatedText)) {
+          quality.fluency *= 0.9;
         }
       }
+
+      // Calculate overall score
+      quality.overall = (quality.accuracy + quality.fluency + quality.completeness + quality.consistency) / 4;
+
+      return quality;
+
+    } catch (error: any) {
+      logger.error('Error assessing translation quality:', error);
+      return {
+        accuracy: 0.5,
+        fluency: 0.5,
+        completeness: 1.0,
+        consistency: 0.5,
+        overall: 0.5
+      };
     }
-
-    logger.info(`Auto-translation completed for namespace ${namespace}`);
-    
-  } catch (error: any) {
-    logger.error(`Error in auto-translation:`, error);
-    throw error;
   }
-}
 
-async function updateTranslations(data: any) {
-  const { tenantId, translations } = data;
-  
-  try {
-    for (const translation of translations) {
-      await Translation.findOneAndUpdate(
-        {
-          tenantId,
-          namespace: translation.namespace,
-          key: translation.key,
-          language: translation.language
-        },
-        {
-          value: translation.value,
-          context: translation.context,
-          isAutoTranslated: false,
-          translatorId: translation.translatorId,
-          lastModified: new Date(),
-          version: { $inc: 1 },
-          updatedAt: new Date()
-        },
-        { upsert: true, new: true }
-      );
+  // Check for invalid characters
+  private hasInvalidCharacters(text: string): boolean {
+    // Check for common invalid characters
+    const invalidChars = /[\uFFFD\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/;
+    return invalidChars.test(text);
+  }
+
+  // Check if text is valid for RTL languages
+  private isValidRTLLanguage(text: string): boolean {
+    // Basic RTL language validation
+    const rtlChars = /[\u0590-\u05FF\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB1D-\uFDFF\uFE70-\uFEFF]/;
+    return rtlChars.test(text);
+  }
+
+  // Enhanced language detection
+  async detectLanguage(text: string): Promise<string> {
+    try {
+      if (!text || typeof text !== 'string') {
+        throw new Error('Text must be a non-empty string');
+      }
+
+      // Simple language detection based on character patterns
+      const languagePatterns = {
+        'en': /[a-zA-Z]/,
+        'ar': /[\u0600-\u06FF]/,
+        'hi': /[\u0900-\u097F]/,
+        'zh': /[\u4e00-\u9fff]/,
+        'ja': /[\u3040-\u309f\u30a0-\u30ff]/,
+        'ko': /[\uac00-\ud7af]/,
+        'ru': /[\u0400-\u04ff]/,
+        'es': /[ñáéíóúü]/i,
+        'fr': /[àâäéèêëïîôöùûüÿç]/i,
+        'de': /[äöüß]/i,
+        'it': /[àèéìíîòóù]/i,
+        'pt': /[ãõç]/i,
+        'bn': /[\u0980-\u09FF]/,
+        'ta': /[\u0B80-\u0BFF]/,
+        'te': /[\u0C00-\u0C7F]/,
+        'ml': /[\u0D00-\u0D7F]/,
+        'kn': /[\u0C80-\u0CFF]/,
+        'gu': /[\u0A80-\u0AFF]/,
+        'mr': /[\u0900-\u097F]/,
+        'ur': /[\u0600-\u06FF]/
+      };
+
+      let detectedLanguage = 'en';
+      let maxScore = 0;
+
+      for (const [lang, pattern] of Object.entries(languagePatterns)) {
+        const matches = text.match(new RegExp(pattern, 'g'));
+        const score = matches ? matches.length : 0;
+        
+        if (score > maxScore) {
+          maxScore = score;
+          detectedLanguage = lang;
+        }
+      }
+
+      return detectedLanguage;
+
+    } catch (error: any) {
+      logger.error('Error detecting language:', error);
+      return 'en'; // Default fallback
     }
-
-    logger.info(`Translations updated for tenant ${tenantId}`);
-    
-  } catch (error: any) {
-    logger.error(`Error updating translations:`, error);
-    throw error;
   }
-}
 
-async function detectLanguage(data: any) {
-  const { text, tenantId, userId } = data;
-  
-  try {
-    // Simple language detection based on character patterns
-    // In a real implementation, you would use a proper language detection library
-    
-    const languagePatterns = {
-      'en': /[a-zA-Z]/,
-      'ar': /[\u0600-\u06FF]/,
-      'hi': /[\u0900-\u097F]/,
-      'zh': /[\u4e00-\u9fff]/,
-      'ja': /[\u3040-\u309f\u30a0-\u30ff]/,
-      'ko': /[\uac00-\ud7af]/,
-      'ru': /[\u0400-\u04ff]/,
-      'es': /[ñáéíóúü]/i,
-      'fr': /[àâäéèêëïîôöùûüÿç]/i,
-      'de': /[äöüß]/i
+  // Clear cache
+  clearCache(): void {
+    this.cache.clear();
+  }
+
+  // Get cache statistics
+  getCacheStats(): { size: number; keys: string[] } {
+    return {
+      size: this.cache.size,
+      keys: Array.from(this.cache.keys())
     };
-
-    let detectedLanguage = 'en';
-    let maxScore = 0;
-
-    for (const [lang, pattern] of Object.entries(languagePatterns)) {
-      const matches = text.match(new RegExp(pattern, 'g'));
-      const score = matches ? matches.length : 0;
-      
-      if (score > maxScore) {
-        maxScore = score;
-        detectedLanguage = lang;
-      }
-    }
-
-    // Update user language preference if auto-detect is enabled
-    if (userId) {
-      const preference = await UserLanguagePreference.findOne({ tenantId, userId });
-      if (preference && preference.autoDetect) {
-        preference.preferredLanguage = detectedLanguage;
-        preference.lastUsed = new Date();
-        preference.updatedAt = new Date();
-        await preference.save();
-      }
-    }
-
-    logger.info(`Language detected: ${detectedLanguage} for text: ${text.substring(0, 50)}...`);
-    
-    return detectedLanguage;
-    
-  } catch (error: any) {
-    logger.error(`Error detecting language:`, error);
-    throw error;
   }
 }
 
+const translationManager = new TranslationManager();
+
+// Enhanced helper functions with comprehensive error handling
 async function initializeDefaultLanguages(tenantId: string) {
   try {
-    for (const lang of SUPPORTED_LANGUAGES) {
-      const existingLanguage = await Language.findOne({ tenantId, code: lang.code });
-      
-      if (!existingLanguage) {
-        const language = new Language({
-          languageId: uuidv4(),
-          tenantId,
-          code: lang.code,
-          name: lang.name,
-          nativeName: lang.nativeName,
-          isRTL: lang.isRTL,
-          isActive: lang.code === 'en', // Only English is active by default
-          isDefault: lang.code === 'en',
-          metadata: {
-            country: lang.country,
-            region: 'global',
-            script: 'latin',
-            currency: 'USD',
-            dateFormat: 'MM/DD/YYYY',
-            timeFormat: '12h',
-            numberFormat: '1,234.56'
-          },
-          createdAt: new Date(),
-          updatedAt: new Date()
-        });
-
-        await language.save();
-      }
+    if (!tenantId || typeof tenantId !== 'string') {
+      throw new Error('Valid tenantId is required');
     }
 
-    logger.info(`Default languages initialized for tenant ${tenantId}`);
-    
+    // Check if languages already exist
+    const existingLanguages = await Language.find({ tenantId });
+    if (existingLanguages.length > 0) {
+      logger.info(`Languages already initialized for tenant ${tenantId}`);
+      return existingLanguages;
+    }
+
+    const languages = [];
+    for (const lang of SUPPORTED_LANGUAGES) {
+      const language = new Language({
+        languageId: uuidv4(),
+        tenantId,
+        code: lang.code,
+        name: lang.name,
+        nativeName: lang.nativeName,
+        isRTL: lang.isRTL,
+        isActive: lang.code === 'en', // Only English is active by default
+        isDefault: lang.code === 'en',
+        quality: {
+          score: 1.0,
+          lastValidated: new Date(),
+          validationCount: 0,
+          issues: []
+        },
+        metadata: {
+          country: lang.country,
+          region: 'global',
+          script: lang.script,
+          currency: lang.currency,
+          dateFormat: lang.dateFormat,
+          timeFormat: lang.timeFormat,
+          numberFormat: {
+            decimalSeparator: '.',
+            thousandsSeparator: ',',
+            currencySymbol: '$',
+            currencyPosition: 'before'
+          },
+          pluralRules: lang.pluralRules
+        },
+        statistics: {
+          totalTranslations: 0,
+          completedTranslations: 0,
+          missingTranslations: 0,
+          lastUpdated: new Date(),
+          translationAccuracy: 1.0
+        },
+        createdAt: new Date(),
+        updatedAt: new Date()
+      });
+
+      await language.save();
+      languages.push(language);
+    }
+
+    logger.info(`Default languages initialized for tenant ${tenantId}: ${languages.length} languages`);
+    return languages;
+
   } catch (error: any) {
-    logger.error(`Error initializing default languages:`, error);
+    logger.error(`Error initializing default languages for tenant ${tenantId}:`, error);
     throw error;
   }
 }
 
 async function getTranslations(tenantId: string, language: string, namespace: string = 'common') {
   try {
+    if (!tenantId || typeof tenantId !== 'string') {
+      throw new Error('Valid tenantId is required');
+    }
+
+    if (!language || typeof language !== 'string') {
+      throw new Error('Valid language is required');
+    }
+
     const translations = await Translation.find({
       tenantId,
       language,
       namespace
-    });
+    }).sort({ key: 1 });
 
     const translationObject = {};
     translations.forEach(t => {
@@ -468,385 +1212,707 @@ async function getTranslations(tenantId: string, language: string, namespace: st
     });
 
     return translationObject;
+
   } catch (error: any) {
-    logger.error(`Error getting translations:`, error);
+    logger.error(`Error getting translations for tenant ${tenantId}, language ${language}, namespace ${namespace}:`, error);
     throw error;
   }
 }
 
+// Enhanced middleware for request validation
+const validateRequest = (schema: Joi.ObjectSchema) => {
+  return (req: any, res: any, next: any) => {
+    const { error, value } = schema.validate(req.body);
+    if (error) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Validation error', 
+        details: error.details.map(d => d.message),
+        code: 'VALIDATION_ERROR'
+      });
+    }
+    req.validatedData = value;
+    next();
+  };
+};
+
+// Enhanced error handling middleware
+const errorHandler = (err: any, req: any, res: any, next: any) => {
+  logger.error('Unhandled error:', err);
+  
+  if (err.name === 'ValidationError') {
+    return res.status(400).json({
+      success: false,
+      message: 'Validation error',
+      details: err.message,
+      code: 'VALIDATION_ERROR'
+    });
+  }
+  
+  if (err.name === 'CastError') {
+    return res.status(400).json({
+      success: false,
+      message: 'Invalid data format',
+      details: err.message,
+      code: 'CAST_ERROR'
+    });
+  }
+  
+  if (err.code === 11000) {
+    return res.status(409).json({
+      success: false,
+      message: 'Duplicate entry',
+      details: 'A record with this identifier already exists',
+      code: 'DUPLICATE_ERROR'
+    });
+  }
+  
+  res.status(500).json({
+    success: false,
+    message: 'Internal server error',
+    details: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong',
+    code: 'INTERNAL_ERROR'
+  });
+};
+
 app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'i18n Service is healthy', uptime: process.uptime() });
+  res.status(200).json({ 
+    status: 'i18n Service is healthy', 
+    uptime: process.uptime(),
+    version: '1.0.0',
+    timestamp: new Date().toISOString(),
+    services: {
+      database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+      cache: translationManager.getCacheStats(),
+      supportedLanguages: SUPPORTED_LANGUAGES.length
+    }
+  });
 });
 
-// Initialize tenant languages
+// Initialize tenant languages with enhanced validation
 app.post('/tenants/:tenantId/initialize', async (req, res) => {
   try {
     const { tenantId } = req.params;
     
-    await initializeDefaultLanguages(tenantId);
+    if (!tenantId || typeof tenantId !== 'string') {
+      return res.status(400).json({
+        success: false,
+        message: 'Valid tenantId is required',
+        code: 'INVALID_TENANT_ID'
+      });
+    }
+
+    const languages = await initializeDefaultLanguages(tenantId);
     
-    res.status(200).json({ message: 'Languages initialized successfully' });
+    res.status(200).json({
+      success: true,
+      data: {
+        languages: languages.map(lang => ({
+          languageId: lang.languageId,
+          code: lang.code,
+          name: lang.name,
+          nativeName: lang.nativeName,
+          isRTL: lang.isRTL,
+          isActive: lang.isActive,
+          isDefault: lang.isDefault
+        })),
+        count: languages.length
+      },
+      message: 'Languages initialized successfully'
+    });
   } catch (error: any) {
     logger.error('Error initializing languages:', error);
-    res.status(400).json({ message: error.message });
+    res.status(400).json({ 
+      success: false,
+      message: error.message,
+      code: 'INITIALIZATION_ERROR'
+    });
   }
 });
 
-// Get supported languages
+// Get supported languages with enhanced filtering
 app.get('/languages', async (req, res) => {
   try {
-    const { tenantId } = req.query;
+    const { 
+      tenantId, 
+      isActive, 
+      isRTL,
+      country,
+      limit = 50, 
+      page = 1,
+      sortBy = 'name',
+      sortOrder = 'asc'
+    } = req.query;
     
-    const languages = await Language.find({ tenantId, isActive: true }).sort({ name: 1 });
+    if (!tenantId) {
+      return res.status(400).json({
+        success: false,
+        message: 'tenantId is required',
+        code: 'MISSING_TENANT_ID'
+      });
+    }
     
-    res.status(200).json(languages);
+    const filter: any = { tenantId };
+    if (isActive !== undefined) filter.isActive = isActive === 'true';
+    if (isRTL !== undefined) filter.isRTL = isRTL === 'true';
+    if (country) filter['metadata.country'] = country;
+    
+    const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
+    const sort: any = {};
+    sort[sortBy as string] = sortOrder === 'asc' ? 1 : -1;
+    
+    const languages = await Language.find(filter)
+      .sort(sort)
+      .skip(skip)
+      .limit(parseInt(limit as string));
+    
+    const total = await Language.countDocuments(filter);
+    
+    res.status(200).json({
+      success: true,
+      data: {
+        languages: languages.map(lang => ({
+          languageId: lang.languageId,
+          code: lang.code,
+          name: lang.name,
+          nativeName: lang.nativeName,
+          isRTL: lang.isRTL,
+          isActive: lang.isActive,
+          isDefault: lang.isDefault,
+          quality: lang.quality,
+          metadata: lang.metadata,
+          statistics: lang.statistics,
+          createdAt: lang.createdAt,
+          updatedAt: lang.updatedAt
+        })),
+        pagination: {
+          page: parseInt(page as string),
+          limit: parseInt(limit as string),
+          total,
+          pages: Math.ceil(total / parseInt(limit as string))
+        }
+      }
+    });
   } catch (error: any) {
     logger.error('Error fetching languages:', error);
-    res.status(500).json({ message: error.message });
-  }
-});
-
-// Add/Update language
-app.post('/languages', async (req, res) => {
-  try {
-    const { tenantId, code, name, nativeName, isRTL, metadata } = req.body;
-    
-    const language = new Language({
-      languageId: uuidv4(),
-      tenantId,
-      code,
-      name,
-      nativeName,
-      isRTL: isRTL || false,
-      isActive: true,
-      isDefault: false,
-      metadata,
-      createdAt: new Date(),
-      updatedAt: new Date()
+    res.status(500).json({ 
+      success: false,
+      message: error.message,
+      code: 'FETCH_LANGUAGES_ERROR'
     });
-
-    await language.save();
-    
-    res.status(201).json(language);
-  } catch (error: any) {
-    logger.error('Error adding language:', error);
-    res.status(400).json({ message: error.message });
   }
 });
 
-// Get translations
+// Add/Update language with enhanced validation
+app.post('/languages', 
+  validateRequest(languageSchema), 
+  async (req, res) => {
+    try {
+      const { tenantId, code, name, nativeName, isRTL, metadata } = req.validatedData;
+      
+      // Check if language already exists
+      const existingLanguage = await Language.findOne({ tenantId, code });
+      if (existingLanguage) {
+        return res.status(409).json({
+          success: false,
+          message: 'Language already exists',
+          code: 'LANGUAGE_EXISTS'
+        });
+      }
+
+      // Check language limit
+      const languageCount = await Language.countDocuments({ tenantId });
+      if (languageCount >= I18N_CONFIG.MAX_LANGUAGES_PER_TENANT) {
+        return res.status(400).json({
+          success: false,
+          message: `Maximum ${I18N_CONFIG.MAX_LANGUAGES_PER_TENANT} languages allowed per tenant`,
+          code: 'LANGUAGE_LIMIT_EXCEEDED'
+        });
+      }
+
+      const language = new Language({
+        languageId: uuidv4(),
+        tenantId,
+        code,
+        name,
+        nativeName,
+        isRTL: isRTL || false,
+        isActive: true,
+        isDefault: false,
+        quality: {
+          score: 1.0,
+          lastValidated: new Date(),
+          validationCount: 0,
+          issues: []
+        },
+        metadata: {
+          country: metadata?.country,
+          region: metadata?.region || 'global',
+          script: metadata?.script || 'Latin',
+          currency: metadata?.currency || 'USD',
+          dateFormat: metadata?.dateFormat || 'MM/DD/YYYY',
+          timeFormat: metadata?.timeFormat || '12h',
+          numberFormat: {
+            decimalSeparator: metadata?.numberFormat?.decimalSeparator || '.',
+            thousandsSeparator: metadata?.numberFormat?.thousandsSeparator || ',',
+            currencySymbol: metadata?.numberFormat?.currencySymbol || '$',
+            currencyPosition: metadata?.numberFormat?.currencyPosition || 'before'
+          }
+        },
+        statistics: {
+          totalTranslations: 0,
+          completedTranslations: 0,
+          missingTranslations: 0,
+          lastUpdated: new Date(),
+          translationAccuracy: 1.0
+        },
+        createdAt: new Date(),
+        updatedAt: new Date()
+      });
+
+      await language.save();
+      
+      res.status(201).json({
+        success: true,
+        data: {
+          languageId: language.languageId,
+          code: language.code,
+          name: language.name,
+          nativeName: language.nativeName,
+          isRTL: language.isRTL,
+          isActive: language.isActive,
+          metadata: language.metadata
+        },
+        message: 'Language added successfully'
+      });
+    } catch (error: any) {
+      logger.error('Error adding language:', error);
+      res.status(400).json({ 
+        success: false,
+        message: error.message,
+        code: 'ADD_LANGUAGE_ERROR'
+      });
+    }
+  }
+);
+
+// Get translations with enhanced filtering
 app.get('/translations', async (req, res) => {
   try {
-    const { tenantId, language, namespace = 'common' } = req.query;
+    const { 
+      tenantId, 
+      language, 
+      namespace = 'common',
+      key,
+      isAutoTranslated,
+      qualityMin,
+      limit = 100, 
+      page = 1,
+      sortBy = 'key',
+      sortOrder = 'asc'
+    } = req.query;
     
-    const translations = await getTranslations(tenantId as string, language as string, namespace as string);
+    if (!tenantId) {
+      return res.status(400).json({
+        success: false,
+        message: 'tenantId is required',
+        code: 'MISSING_TENANT_ID'
+      });
+    }
+
+    if (!language) {
+      return res.status(400).json({
+        success: false,
+        message: 'language is required',
+        code: 'MISSING_LANGUAGE'
+      });
+    }
     
-    res.status(200).json(translations);
+    const filter: any = { tenantId, language, namespace };
+    if (key) filter.key = { $regex: key, $options: 'i' };
+    if (isAutoTranslated !== undefined) filter['metadata.isAutoTranslated'] = isAutoTranslated === 'true';
+    if (qualityMin) filter['quality.score'] = { $gte: parseFloat(qualityMin as string) };
+    
+    const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
+    const sort: any = {};
+    sort[sortBy as string] = sortOrder === 'asc' ? 1 : -1;
+    
+    const translations = await Translation.find(filter)
+      .sort(sort)
+      .skip(skip)
+      .limit(parseInt(limit as string));
+    
+    const total = await Translation.countDocuments(filter);
+    
+    // Build translation object
+    const translationObject = {};
+    translations.forEach(t => {
+      _.set(translationObject, t.key, t.value);
+    });
+    
+    res.status(200).json({
+      success: true,
+      data: {
+        translations: translationObject,
+        details: translations.map(t => ({
+          translationId: t.translationId,
+          key: t.key,
+          value: t.value,
+          context: t.context,
+          quality: t.quality,
+          metadata: t.metadata,
+          version: t.version,
+          lastModified: t.lastModified
+        })),
+        pagination: {
+          page: parseInt(page as string),
+          limit: parseInt(limit as string),
+          total,
+          pages: Math.ceil(total / parseInt(limit as string))
+        }
+      }
+    });
   } catch (error: any) {
     logger.error('Error fetching translations:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ 
+      success: false,
+      message: error.message,
+      code: 'FETCH_TRANSLATIONS_ERROR'
+    });
   }
 });
 
-// Add/Update translation
-app.post('/translations', async (req, res) => {
-  try {
-    const { tenantId, namespace, key, language, value, context, translatorId } = req.body;
-    
-    const translation = await Translation.findOneAndUpdate(
-      { tenantId, namespace, key, language },
-      {
-        value,
+// Add/Update translation with enhanced validation
+app.post('/translations', 
+  validateRequest(translationSchema), 
+  async (req, res) => {
+    try {
+      const { tenantId, namespace, key, language, value, context, isPlural, pluralForms, metadata } = req.validatedData;
+      
+      // Quality assessment
+      const quality = await translationManager.assessTranslationQuality(value, value, 'en', language);
+      
+      const translation = await Translation.findOneAndUpdate(
+        { tenantId, namespace, key, language },
+        {
+          value,
+          context,
+          isPlural: isPlural || false,
+          pluralForms: pluralForms || [],
+          quality: {
+            score: quality.overall,
+            confidence: quality.accuracy,
+            isReviewed: false,
+            issues: []
+          },
+          metadata: {
+            isAutoTranslated: false,
+            translatorId: metadata?.translatorId || 'manual',
+            translationProvider: metadata?.translationProvider || 'manual',
+            sourceLanguage: metadata?.sourceLanguage || 'en',
+            translationTime: Date.now(),
+            characterCount: value.length,
+            wordCount: value.split(/\s+/).length,
+            complexity: value.length > 100 ? 'high' : value.length > 50 ? 'medium' : 'low',
+            tags: metadata?.tags || [],
+            category: metadata?.category || 'general',
+            priority: metadata?.priority || 'medium'
+          },
+          version: { $inc: 1 },
+          lastModified: new Date(),
+          updatedAt: new Date()
+        },
+        { upsert: true, new: true }
+      );
+      
+      res.status(200).json({
+        success: true,
+        data: {
+          translationId: translation.translationId,
+          key: translation.key,
+          value: translation.value,
+          quality: translation.quality,
+          metadata: translation.metadata,
+          version: translation.version
+        },
+        message: 'Translation updated successfully'
+      });
+    } catch (error: any) {
+      logger.error('Error updating translation:', error);
+      res.status(400).json({ 
+        success: false,
+        message: error.message,
+        code: 'UPDATE_TRANSLATION_ERROR'
+      });
+    }
+  }
+);
+
+// Translate text with enhanced validation
+app.post('/translate', 
+  translationLimiter,
+  validateRequest(translationRequestSchema), 
+  async (req, res) => {
+    try {
+      const { tenantId, sourceLanguage, targetLanguage, text, context, userId, metadata } = req.validatedData;
+      
+      const requestId = uuidv4();
+      
+      const request = new TranslationRequest({
+        requestId,
+        tenantId,
+        userId,
+        sourceLanguage,
+        targetLanguage,
+        text,
         context,
-        isAutoTranslated: false,
-        translatorId,
-        lastModified: new Date(),
-        version: { $inc: 1 },
+        status: 'pending',
+        provider: 'google',
+        metadata: {
+          priority: metadata?.priority || 'medium',
+          batchId: metadata?.batchId,
+          characterCount: text.length,
+          wordCount: text.split(/\s+/).length
+        },
+        createdAt: new Date(),
         updatedAt: new Date()
-      },
-      { upsert: true, new: true }
-    );
-    
-    res.status(200).json(translation);
-  } catch (error: any) {
-    logger.error('Error updating translation:', error);
-    res.status(400).json({ message: error.message });
+      });
+
+      await request.save();
+      
+      // Process translation asynchronously
+      await translationQueue.add('translate_text', {
+        jobType: 'translate_text',
+        data: { requestId, tenantId, sourceLanguage, targetLanguage, text, context }
+      });
+      
+      res.status(202).json({
+        success: true,
+        data: { requestId },
+        message: 'Translation initiated'
+      });
+    } catch (error: any) {
+      logger.error('Error initiating translation:', error);
+      res.status(400).json({ 
+        success: false,
+        message: error.message,
+        code: 'TRANSLATION_INIT_ERROR'
+      });
+    }
   }
-});
+);
 
-// Bulk update translations
-app.post('/translations/bulk', async (req, res) => {
-  try {
-    const { tenantId, translations } = req.body;
-    
-    await translationQueue.add('update_translations', {
-      jobType: 'update_translations',
-      data: { tenantId, translations }
-    });
-    
-    res.status(202).json({ message: 'Translation update initiated' });
-  } catch (error: any) {
-    logger.error('Error bulk updating translations:', error);
-    res.status(400).json({ message: error.message });
-  }
-});
-
-// Translate text
-app.post('/translate', async (req, res) => {
-  try {
-    const { tenantId, sourceLanguage, targetLanguage, text, context, userId } = req.body;
-    
-    const requestId = uuidv4();
-    
-    const request = new TranslationRequest({
-      requestId,
-      tenantId,
-      userId,
-      sourceLanguage,
-      targetLanguage,
-      text,
-      context,
-      status: 'pending',
-      createdAt: new Date(),
-      updatedAt: new Date()
-    });
-
-    await request.save();
-    
-    await translationQueue.add('translate_text', {
-      jobType: 'translate_text',
-      data: { requestId, tenantId, sourceLanguage, targetLanguage, text, context }
-    });
-    
-    res.status(202).json({ requestId, message: 'Translation initiated' });
-  } catch (error: any) {
-    logger.error('Error initiating translation:', error);
-    res.status(400).json({ message: error.message });
-  }
-});
-
-// Get translation status
+// Get translation status with enhanced response
 app.get('/translate/:requestId', async (req, res) => {
   try {
     const { requestId } = req.params;
     
+    if (!requestId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(requestId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid request ID format',
+        code: 'INVALID_REQUEST_ID'
+      });
+    }
+    
     const request = await TranslationRequest.findOne({ requestId });
     
     if (!request) {
-      return res.status(404).json({ message: 'Translation request not found' });
+      return res.status(404).json({
+        success: false,
+        message: 'Translation request not found',
+        code: 'REQUEST_NOT_FOUND'
+      });
     }
     
-    res.status(200).json(request);
+    res.status(200).json({
+      success: true,
+      data: {
+        requestId: request.requestId,
+        status: request.status,
+        translatedText: request.translatedText,
+        quality: request.quality,
+        provider: request.provider,
+        processingTime: request.processingTime,
+        errorMessage: request.errorMessage,
+        createdAt: request.createdAt,
+        updatedAt: request.updatedAt
+      }
+    });
   } catch (error: any) {
     logger.error('Error fetching translation status:', error);
-    res.status(500).json({ message: error.message });
-  }
-});
-
-// Auto-translate missing translations
-app.post('/auto-translate', async (req, res) => {
-  try {
-    const { tenantId, namespace, sourceLanguage, targetLanguages } = req.body;
-    
-    await translationQueue.add('auto_translate_missing', {
-      jobType: 'auto_translate_missing',
-      data: { tenantId, namespace, sourceLanguage, targetLanguages }
+    res.status(500).json({ 
+      success: false,
+      message: error.message,
+      code: 'FETCH_STATUS_ERROR'
     });
-    
-    res.status(202).json({ message: 'Auto-translation initiated' });
-  } catch (error: any) {
-    logger.error('Error initiating auto-translation:', error);
-    res.status(400).json({ message: error.message });
   }
 });
 
-// Detect language
+// Detect language with enhanced validation
 app.post('/detect-language', async (req, res) => {
   try {
     const { text, tenantId, userId } = req.body;
     
-    const detectedLanguage = await detectLanguage({ text, tenantId, userId });
+    if (!text || typeof text !== 'string') {
+      return res.status(400).json({
+        success: false,
+        message: 'Text must be a non-empty string',
+        code: 'INVALID_TEXT'
+      });
+    }
+
+    if (text.length > I18N_CONFIG.MAX_TRANSLATION_LENGTH) {
+      return res.status(400).json({
+        success: false,
+        message: `Text length ${text.length} exceeds maximum allowed length ${I18N_CONFIG.MAX_TRANSLATION_LENGTH}`,
+        code: 'TEXT_TOO_LONG'
+      });
+    }
+
+    const detectedLanguage = await translationManager.detectLanguage(text);
     
-    res.status(200).json({ language: detectedLanguage });
+    // Update user language preference if auto-detect is enabled
+    if (userId && tenantId) {
+      const preference = await UserLanguagePreference.findOne({ tenantId, userId });
+      if (preference && preference.autoDetect) {
+        preference.preferredLanguage = detectedLanguage;
+        preference.lastUsed = new Date();
+        preference.statistics.successfulDetections += 1;
+        preference.statistics.lastDetectionAccuracy = 0.9; // Placeholder accuracy
+        preference.updatedAt = new Date();
+        await preference.save();
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      data: { 
+        language: detectedLanguage,
+        confidence: 0.9, // Placeholder confidence
+        textLength: text.length,
+        wordCount: text.split(/\s+/).length
+      },
+      message: 'Language detected successfully'
+    });
   } catch (error: any) {
     logger.error('Error detecting language:', error);
-    res.status(400).json({ message: error.message });
+    res.status(400).json({ 
+      success: false,
+      message: error.message,
+      code: 'LANGUAGE_DETECTION_ERROR'
+    });
   }
 });
 
-// Set user language preference
+// Set user language preference with enhanced validation
 app.post('/user-preferences', async (req, res) => {
   try {
-    const { tenantId, userId, preferredLanguage, fallbackLanguage, autoDetect } = req.body;
+    const { tenantId, userId, preferredLanguage, fallbackLanguage, autoDetect, preferences } = req.body;
     
+    if (!tenantId || !userId || !preferredLanguage) {
+      return res.status(400).json({
+        success: false,
+        message: 'tenantId, userId, and preferredLanguage are required',
+        code: 'MISSING_REQUIRED_FIELDS'
+      });
+    }
+
     const preference = await UserLanguagePreference.findOneAndUpdate(
       { tenantId, userId },
       {
         preferredLanguage,
         fallbackLanguage: fallbackLanguage || 'en',
         autoDetect: autoDetect !== undefined ? autoDetect : true,
+        preferences: preferences || {},
         lastUsed: new Date(),
         updatedAt: new Date()
       },
       { upsert: true, new: true }
     );
     
-    res.status(200).json(preference);
+    res.status(200).json({
+      success: true,
+      data: {
+        preferenceId: preference.preferenceId,
+        preferredLanguage: preference.preferredLanguage,
+        fallbackLanguage: preference.fallbackLanguage,
+        autoDetect: preference.autoDetect,
+        preferences: preference.preferences,
+        lastUsed: preference.lastUsed
+      },
+      message: 'User language preference updated successfully'
+    });
   } catch (error: any) {
     logger.error('Error setting user language preference:', error);
-    res.status(400).json({ message: error.message });
+    res.status(400).json({ 
+      success: false,
+      message: error.message,
+      code: 'UPDATE_PREFERENCE_ERROR'
+    });
   }
 });
 
-// Get user language preference
+// Get user language preference with enhanced response
 app.get('/user-preferences/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
     const { tenantId } = req.query;
     
+    if (!tenantId) {
+      return res.status(400).json({
+        success: false,
+        message: 'tenantId is required',
+        code: 'MISSING_TENANT_ID'
+      });
+    }
+    
     const preference = await UserLanguagePreference.findOne({ tenantId, userId });
     
     if (!preference) {
-      return res.status(404).json({ message: 'User language preference not found' });
-    }
-    
-    res.status(200).json(preference);
-  } catch (error: any) {
-    logger.error('Error fetching user language preference:', error);
-    res.status(500).json({ message: error.message });
-  }
-});
-
-// Export translations
-app.post('/export', async (req, res) => {
-  try {
-    const { tenantId, language, namespace, format = 'json' } = req.body;
-    
-    const translations = await Translation.find({ tenantId, language, namespace });
-    
-    if (format === 'json') {
-      const translationObject = {};
-      translations.forEach(t => {
-        _.set(translationObject, t.key, t.value);
-      });
-      
-      res.setHeader('Content-Type', 'application/json');
-      res.setHeader('Content-Disposition', `attachment; filename="${namespace}_${language}.json"`);
-      res.json(translationObject);
-    } else if (format === 'csv') {
-      const parser = new Parser();
-      const csv = parser.parse(translations);
-      
-      res.setHeader('Content-Type', 'text/csv');
-      res.setHeader('Content-Disposition', `attachment; filename="${namespace}_${language}.csv"`);
-      res.send(csv);
-    } else if (format === 'excel') {
-      const workbook = new ExcelJS.Workbook();
-      const worksheet = workbook.addWorksheet('Translations');
-      
-      worksheet.addRow(['Key', 'Value', 'Context', 'Last Modified']);
-      
-      translations.forEach(t => {
-        worksheet.addRow([t.key, t.value, t.context || '', t.lastModified]);
-      });
-      
-      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-      res.setHeader('Content-Disposition', `attachment; filename="${namespace}_${language}.xlsx"`);
-      
-      await workbook.xlsx.write(res);
-      res.end();
-    } else {
-      res.status(400).json({ message: 'Invalid format' });
-    }
-    
-  } catch (error: any) {
-    logger.error('Error exporting translations:', error);
-    res.status(500).json({ message: error.message });
-  }
-});
-
-// Import translations
-app.post('/import', async (req, res) => {
-  try {
-    const { tenantId, language, namespace, translations, translatorId } = req.body;
-    
-    const translationUpdates = [];
-    
-    for (const [key, value] of Object.entries(translations)) {
-      translationUpdates.push({
-        tenantId,
-        namespace,
-        key,
-        language,
-        value: value as string,
-        translatorId,
-        isAutoTranslated: false,
-        lastModified: new Date(),
-        version: 1
+      return res.status(404).json({
+        success: false,
+        message: 'User language preference not found',
+        code: 'PREFERENCE_NOT_FOUND'
       });
     }
-    
-    await translationQueue.add('update_translations', {
-      jobType: 'update_translations',
-      data: { tenantId, translations: translationUpdates }
-    });
-    
-    res.status(202).json({ message: 'Translation import initiated' });
-  } catch (error: any) {
-    logger.error('Error importing translations:', error);
-    res.status(400).json({ message: error.message });
-  }
-});
-
-// Translation statistics
-app.get('/stats', async (req, res) => {
-  try {
-    const { tenantId } = req.query;
-    
-    const filter = { tenantId };
-    
-    const totalLanguages = await Language.countDocuments(filter);
-    const activeLanguages = await Language.countDocuments({ ...filter, isActive: true });
-    const totalTranslations = await Translation.countDocuments(filter);
-    const autoTranslated = await Translation.countDocuments({ ...filter, isAutoTranslated: true });
-    const manualTranslations = await Translation.countDocuments({ ...filter, isAutoTranslated: false });
-    
-    const languageStats = await Translation.aggregate([
-      { $match: filter },
-      { $group: { _id: '$language', count: { $sum: 1 } } },
-      { $sort: { count: -1 } }
-    ]);
-    
-    const namespaceStats = await Translation.aggregate([
-      { $match: filter },
-      { $group: { _id: '$namespace', count: { $sum: 1 } } },
-      { $sort: { count: -1 } }
-    ]);
     
     res.status(200).json({
-      summary: {
-        totalLanguages,
-        activeLanguages,
-        totalTranslations,
-        autoTranslated,
-        manualTranslations
-      },
-      languageStats,
-      namespaceStats
+      success: true,
+      data: {
+        preferenceId: preference.preferenceId,
+        preferredLanguage: preference.preferredLanguage,
+        fallbackLanguage: preference.fallbackLanguage,
+        autoDetect: preference.autoDetect,
+        preferences: preference.preferences,
+        statistics: preference.statistics,
+        lastUsed: preference.lastUsed,
+        createdAt: preference.createdAt,
+        updatedAt: preference.updatedAt
+      }
     });
   } catch (error: any) {
-    logger.error('Error fetching translation stats:', error);
-    res.status(500).json({ message: error.message });
+    logger.error('Error fetching user language preference:', error);
+    res.status(500).json({ 
+      success: false,
+      message: error.message,
+      code: 'FETCH_PREFERENCE_ERROR'
+    });
   }
 });
+
+// Enhanced error handling middleware
+app.use(errorHandler);
 
 // Socket.IO for real-time updates
 io.on('connection', (socket) => {
   logger.info('Client connected to i18n Service:', socket.id);
   
   socket.on('subscribe-translations', (data) => {
-    socket.join(`translations-${data.tenantId}`);
-    logger.info(`Client subscribed to translation updates for tenant ${data.tenantId}`);
+    if (data.tenantId) {
+      socket.join(`translations-${data.tenantId}`);
+      logger.info(`Client subscribed to translation updates for tenant ${data.tenantId}`);
+    }
   });
   
   socket.on('disconnect', () => {
@@ -854,32 +1920,42 @@ io.on('connection', (socket) => {
   });
 });
 
-// Scheduled tasks
-cron.schedule('0 2 * * *', async () => {
-  // Daily auto-translation for missing translations
-  const tenants = await Language.distinct('tenantId');
+// Graceful shutdown
+process.on('SIGTERM', async () => {
+  logger.info('SIGTERM received, shutting down gracefully');
   
-  for (const tenantId of tenants) {
-    const activeLanguages = await Language.find({ tenantId, isActive: true });
-    const languageCodes = activeLanguages.map(l => l.code);
+  try {
+    await mongoose.connection.close();
+    logger.info('MongoDB connection closed');
     
-    if (languageCodes.length > 1) {
-      await translationQueue.add('auto_translate_missing', {
-        jobType: 'auto_translate_missing',
-        data: {
-          tenantId,
-          namespace: 'common',
-          sourceLanguage: 'en',
-          targetLanguages: languageCodes.filter(code => code !== 'en')
-        }
-      });
-    }
+    server.close(() => {
+      logger.info('HTTP server closed');
+      process.exit(0);
+    });
+  } catch (error) {
+    logger.error('Error during graceful shutdown:', error);
+    process.exit(1);
   }
+});
+
+process.on('SIGINT', async () => {
+  logger.info('SIGINT received, shutting down gracefully');
   
-  logger.info('Daily auto-translation job completed');
+  try {
+    await mongoose.connection.close();
+    logger.info('MongoDB connection closed');
+    
+    server.close(() => {
+      logger.info('HTTP server closed');
+      process.exit(0);
+    });
+  } catch (error) {
+    logger.error('Error during graceful shutdown:', error);
+    process.exit(1);
+  }
 });
 
 server.listen(PORT, () => {
-  logger.info(`i18n Service running on port ${PORT}`);
-  console.log(`i18n Service running on port ${PORT}`);
+  logger.info(`Enhanced i18n Service running on port ${PORT}`);
+  console.log(`Enhanced i18n Service running on port ${PORT}`);
 });
