@@ -191,3 +191,7 @@ INSERT INTO promotional_campaigns (tenant_id, name, description, campaign_type, 
 
 
 
+
+
+
+

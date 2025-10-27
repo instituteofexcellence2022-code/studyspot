@@ -4,11 +4,14 @@
  * Provides common utilities for API requests
  */
 
-import { AxiosRequestConfig, AxiosResponse } from 'axios';
 import apiClient from '../services/apiClient';
 import { handleApiError } from './errorHandler';
 import { ApiResponse, PaginatedResponse } from '../types/api';
 import Logger from './logger';
+
+// Use any for axios types to avoid version conflicts
+type AxiosRequestConfig = any;
+type AxiosResponse<T = any> = any;
 
 /**
  * Generic request wrapper
@@ -47,7 +50,7 @@ export async function makeGetRequest<T = any>(
   url: string,
   config?: AxiosRequestConfig
 ): Promise<T> {
-  return makeRequest<T>(() => apiClient.get<ApiResponse<T>>(url, config));
+  return makeRequest<T>(() => apiClient.get<ApiResponse<T>>(url, config) as any);
 }
 
 /**
@@ -58,7 +61,7 @@ export async function makePostRequest<T = any>(
   data?: any,
   config?: AxiosRequestConfig
 ): Promise<T> {
-  return makeRequest<T>(() => apiClient.post<ApiResponse<T>>(url, data, config));
+  return makeRequest<T>(() => apiClient.post<ApiResponse<T>>(url, data, config) as any);
 }
 
 /**
@@ -69,7 +72,7 @@ export async function makePutRequest<T = any>(
   data?: any,
   config?: AxiosRequestConfig
 ): Promise<T> {
-  return makeRequest<T>(() => apiClient.put<ApiResponse<T>>(url, data, config));
+  return makeRequest<T>(() => apiClient.put<ApiResponse<T>>(url, data, config) as any);
 }
 
 /**
@@ -80,7 +83,7 @@ export async function makePatchRequest<T = any>(
   data?: any,
   config?: AxiosRequestConfig
 ): Promise<T> {
-  return makeRequest<T>(() => apiClient.patch<ApiResponse<T>>(url, data, config));
+  return makeRequest<T>(() => apiClient.patch<ApiResponse<T>>(url, data, config) as any);
 }
 
 /**
@@ -90,7 +93,7 @@ export async function makeDeleteRequest<T = any>(
   url: string,
   config?: AxiosRequestConfig
 ): Promise<T> {
-  return makeRequest<T>(() => apiClient.delete<ApiResponse<T>>(url, config));
+  return makeRequest<T>(() => apiClient.delete<ApiResponse<T>>(url, config) as any);
 }
 
 /**
@@ -154,17 +157,3 @@ export function createAuthConfig(config?: AxiosRequestConfig): AxiosRequestConfi
     },
   };
 }
-
-// Export all utilities
-export {
-  makeRequest,
-  makeGetRequest,
-  makePostRequest,
-  makePutRequest,
-  makePatchRequest,
-  makeDeleteRequest,
-  makePaginatedRequest,
-  buildQueryString,
-  handleResponse,
-  createAuthConfig,
-};

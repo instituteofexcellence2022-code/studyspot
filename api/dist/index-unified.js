@@ -68,6 +68,11 @@ const dashboardRoutes = require('./routes/dashboard');
 const studentRoutes = require('./routes/students');
 const invoiceRoutes = require('./routes/invoices');
 const auditRoutes = require('./routes/audit');
+
+// API Consolidation: Unified Routes
+const unifiedUserRoutes = require('./routes/unified-users');
+const unifiedBookingRoutes = require('./routes/unified-bookings');
+const unifiedSeatRoutes = require('./routes/unified-seats');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
@@ -205,9 +210,12 @@ app.get('/', (req, res) => {
 
 // Core Features (Phases 1-4)
 app.use('/api/auth', authRoutes); // Real authentication (rate limiting applied inside routes)
-app.use('/api/users', userRoutes); // User management
+app.use('/api/users', userRoutes); // User management (LEGACY - use /api/v2/users)
+app.use('/api/v2/users', unifiedUserRoutes); // Unified user/student/staff management
+app.use('/api/v2/seats', unifiedSeatRoutes); // Unified seat management
 app.use('/api/libraries', libraryRoutes); // Library CRUD + Seats
-app.use('/api/bookings', bookingRoutes); // Booking management
+app.use('/api/bookings', bookingRoutes); // Booking management (LEGACY - use /api/v2/bookings)
+app.use('/api/v2/bookings', unifiedBookingRoutes); // Unified booking management
 app.use('/api/payments', paymentRoutes); // Payment processing + Razorpay
 app.use('/api/payment-analytics', paymentAnalyticsRoutes); // Payment analytics & insights
 app.use('/api/seat-management', seatManagementRoutes); // Seat & space management

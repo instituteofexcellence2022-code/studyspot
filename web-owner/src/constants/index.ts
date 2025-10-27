@@ -132,6 +132,7 @@ export const ROUTES = {
   STAFF: '/staff',
   BOOKINGS: '/bookings',
   BOOKING_DETAILS: '/bookings/:id',
+  PAYMENTS: '/payments',
   USERS: '/users',
   USER_DETAILS: '/users/:id',
   USER_CREATE: '/users/create',

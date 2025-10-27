@@ -231,6 +231,7 @@ app.use('/api/dashboard', dashboardRoutes);  // Enhanced dashboard with real-tim
 app.use('/api/students', studentRoutes);      // Enhanced student management
 app.use('/api/invoices', invoiceRoutes);      // GST-compliant invoicing & financial management
 app.use('/api/audit', auditRoutes);           // Audit trail & security monitoring
+app.use('/api/fee-plans', require('./routes/feePlans')); // Fee plans management
 
 // Monitoring & Metrics (New)
 app.use('/api/metrics', metricsRouter);       // Application metrics and monitoring

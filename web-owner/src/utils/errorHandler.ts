@@ -4,7 +4,7 @@
  * Provides unified error handling for API errors
  */
 
-import { AxiosError } from 'axios';
+import axios from 'axios';
 import Logger from './logger';
 import { ErrorResponse } from '../types/api';
 
@@ -25,9 +25,10 @@ const ERROR_MESSAGES: Record<number, string> = {
  * Transform error to user-friendly message
  */
 export function transformError(error: unknown): string {
-  if (error instanceof AxiosError) {
-    const status = error.response?.status;
-    const message = error.response?.data?.message || error.message;
+  if (error && typeof error === 'object' && 'isAxiosError' in error && (error as any).isAxiosError) {
+    const axiosError = error as any;
+    const status = axiosError.response?.status;
+    const message = axiosError.response?.data?.message || axiosError.message;
     
     // Use status-based message if available
     if (status && ERROR_MESSAGES[status]) {
@@ -55,7 +56,8 @@ export function transformError(error: unknown): string {
  */
 export function handleApiError(error: unknown): ErrorResponse {
   const transformedMessage = transformError(error);
-  const statusCode = error instanceof AxiosError ? error.response?.status : 500;
+  const statusCode = (error && typeof error === 'object' && 'isAxiosError' in error && (error as any).isAxiosError) 
+    ? (error as any).response?.status : 500;
   
   // Log error
   Logger.error('API Error', error);
@@ -65,8 +67,10 @@ export function handleApiError(error: unknown): ErrorResponse {
     success: false,
     error: transformedMessage,
     message: transformedMessage,
-    code: error instanceof AxiosError ? error.response?.data?.code : 'UNKNOWN_ERROR',
-    details: error instanceof AxiosError ? error.response?.data?.details : undefined,
+    code: (error && typeof error === 'object' && 'isAxiosError' in error && (error as any).isAxiosError) 
+      ? (error as any).response?.data?.code : 'UNKNOWN_ERROR',
+    details: (error && typeof error === 'object' && 'isAxiosError' in error && (error as any).isAxiosError) 
+      ? (error as any).response?.data?.details : undefined,
     timestamp: new Date().toISOString(),
   };
 }
@@ -75,8 +79,8 @@ export function handleApiError(error: unknown): ErrorResponse {
  * Get error status code
  */
 export function getErrorStatusCode(error: unknown): number {
-  if (error instanceof AxiosError && error.response?.status) {
-    return error.response.status;
+  if (error && typeof error === 'object' && 'isAxiosError' in error && (error as any).isAxiosError && (error as any).response?.status) {
+    return (error as any).response.status;
   }
   return 500;
 }
@@ -92,7 +96,7 @@ export function isErrorStatus(error: unknown, status: number): boolean {
  * Check if error is a network error
  */
 export function isNetworkError(error: unknown): boolean {
-  return error instanceof AxiosError && !error.response;
+  return (error && typeof error === 'object' && 'isAxiosError' in error && (error as any).isAxiosError) && !(error as any).response;
 }
 
 /**
@@ -111,12 +115,3 @@ export function handleError<T>(
   return errorResponse;
 }
 
-// Export utilities
-export {
-  transformError,
-  handleApiError,
-  getErrorStatusCode,
-  isErrorStatus,
-  isNetworkError,
-  handleError,
-};

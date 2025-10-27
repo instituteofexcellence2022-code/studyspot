@@ -95,7 +95,7 @@ const DashboardPageEnhanced: React.FC = () => {
       subtitle: 'Target: ₹15,000',
       change: '+23.1%',
       positive: true,
-      route: ROUTES.REVENUE_MANAGEMENT,
+      route: ROUTES.PAYMENTS,
       action: 'View Payments',
     },
     {
@@ -131,7 +131,7 @@ const DashboardPageEnhanced: React.FC = () => {
       subtitle: 'Overdue: ₹1,000',
       change: '-15.2%',
       positive: false,
-      route: ROUTES.REVENUE_MANAGEMENT,
+      route: ROUTES.PAYMENTS,
       action: 'Follow Up',
     },
   ];
@@ -149,7 +149,7 @@ const DashboardPageEnhanced: React.FC = () => {
       label: 'Record Payment', 
       icon: <AttachMoney />, 
       color: 'success', 
-      path: ROUTES.REVENUE_MANAGEMENT,
+      path: ROUTES.PAYMENTS,
       description: 'Add payment record'
     },
     { 
@@ -177,7 +177,7 @@ const DashboardPageEnhanced: React.FC = () => {
       icon: <AttachMoney />, 
       color: 'success',
       action: 'View Receipt',
-      route: ROUTES.REVENUE_MANAGEMENT
+      route: ROUTES.PAYMENTS
     },
     { 
       type: 'checkin', 
@@ -213,7 +213,7 @@ const DashboardPageEnhanced: React.FC = () => {
       icon: <AttachMoney />, 
       color: 'error',
       action: 'Follow Up',
-      route: ROUTES.REVENUE_MANAGEMENT
+      route: ROUTES.PAYMENTS
     },
   ];
 
@@ -223,7 +223,7 @@ const DashboardPageEnhanced: React.FC = () => {
       message: '5 payments overdue - follow-up required', 
       severity: 'error', 
       action: 'View Payments',
-      route: ROUTES.REVENUE_MANAGEMENT,
+      route: ROUTES.PAYMENTS,
       details: 'Total overdue amount: ₹2,500. Last payment received 3 days ago.'
     },
     { 
@@ -237,7 +237,7 @@ const DashboardPageEnhanced: React.FC = () => {
       message: 'Monthly revenue target: 83% achieved', 
       severity: 'info', 
       action: 'View Details',
-      route: ROUTES.REVENUE_MANAGEMENT,
+      route: ROUTES.PAYMENTS,
       details: 'Current: ₹12,450 / Target: ₹15,000. On track to meet target by month end.'
     },
   ];
@@ -245,9 +245,9 @@ const DashboardPageEnhanced: React.FC = () => {
   // Performance metrics
   const performanceMetrics = [
     { label: 'Average Occupancy', value: '72%', target: '80%', progress: 90, route: ROUTES.SEATS },
-    { label: 'Collection Efficiency', value: '88%', target: '95%', progress: 93, route: ROUTES.REVENUE_MANAGEMENT },
+    { label: 'Collection Efficiency', value: '88%', target: '95%', progress: 93, route: ROUTES.PAYMENTS },
     { label: 'Student Retention', value: '91%', target: '90%', progress: 100, route: ROUTES.STUDENTS },
-    { label: 'Revenue Growth', value: '23%', target: '20%', progress: 115, route: ROUTES.REVENUE_MANAGEMENT },
+    { label: 'Revenue Growth', value: '23%', target: '20%', progress: 115, route: ROUTES.PAYMENTS },
   ];
 
   const handleRefresh = () => {
@@ -560,7 +560,7 @@ const DashboardPageEnhanced: React.FC = () => {
               <Button 
                 variant="outlined" 
                 size="small"
-                onClick={() => navigate(ROUTES.REVENUE_MANAGEMENT)}
+                onClick={() => navigate(ROUTES.PAYMENTS)}
               >
                 View Full Report
               </Button>
@@ -576,7 +576,7 @@ const DashboardPageEnhanced: React.FC = () => {
                 cursor: 'pointer',
                 '&:hover': { bgcolor: 'grey.100' }
               }}
-              onClick={() => navigate(ROUTES.REVENUE_MANAGEMENT)}
+              onClick={() => navigate(ROUTES.PAYMENTS)}
             >
               <Typography variant="body2" color="text.secondary" textAlign="center">
                 📊 Chart Visualization Coming Soon

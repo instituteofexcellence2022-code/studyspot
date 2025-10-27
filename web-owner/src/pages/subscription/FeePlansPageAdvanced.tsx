@@ -139,9 +139,55 @@ const FeePlansPageAdvanced: React.FC = () => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [menuPlan, setMenuPlan] = useState<FeePlan | null>(null);
 
+  // Load fee plans from API
+  const loadFeePlans = async () => {
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+      
+      const response = await fetch(`${apiUrl}/api/fee-plans`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok && data.success) {
+        // Transform API data to match our FeePlan interface
+        const transformedPlans = data.data.feePlans.map((plan: any) => ({
+          id: plan.id,
+          name: plan.name,
+          description: plan.description,
+          type: plan.type,
+          basePrice: parseFloat(plan.base_price),
+          features: plan.features || [],
+          status: plan.status,
+          maxSeats: plan.max_seats,
+          maxHours: plan.max_hours,
+          scholarshipEligible: plan.scholarship_eligible,
+          waiverAllowed: plan.waiver_allowed,
+          isPopular: plan.is_popular,
+          discount: plan.discount,
+          createdAt: plan.created_at,
+          updatedAt: plan.updated_at,
+        }));
+        
+        setPlans(transformedPlans);
+      }
+    } catch (error) {
+      console.error('Error loading fee plans:', error);
+      // Fallback to demo data if API fails
+      loadDemoPlans();
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Load demo data
   useEffect(() => {
-    loadDemoPlans();
+    loadFeePlans();
     loadDemoPricingRules();
   }, []);
 
@@ -265,39 +311,121 @@ const FeePlansPageAdvanced: React.FC = () => {
   // Form steps
   const formSteps = ['Basic Info', 'Pricing Structure', 'Discounts & Offers', 'Review'];
 
-  // Handle plan creation/edit
-  const handleSavePlan = async () => {
+  // Handle plan creation/edit with API
+  const handleSavePlan = async (planData: any) => {
     setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    if (editDialogOpen && selectedPlan) {
-      setPlans(prev => prev.map(p => p.id === selectedPlan.id ? { ...currentPlan, id: selectedPlan.id } as FeePlan : p));
-      setSnackbar({ open: true, message: '✅ Plan updated successfully!', severity: 'success' });
-    } else {
-      const newPlan: FeePlan = {
-        ...currentPlan,
-        id: Date.now().toString(),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      } as FeePlan;
-      setPlans(prev => [...prev, newPlan]);
-      setSnackbar({ open: true, message: '✅ Plan created successfully!', severity: 'success' });
+    try {
+      const token = localStorage.getItem('token');
+      const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+      
+      const payload = {
+        name: planData.name,
+        description: planData.description,
+        type: planData.type,
+        basePrice: planData.basePrice,
+        selectedShift: planData.selectedShift || null,
+        selectedZone: planData.selectedZone || null,
+        customShift: planData.customShift || null,
+        customZone: planData.customZone || null,
+        features: planData.features || [],
+        enableDiscount: planData.enableDiscount || false,
+        discount: planData.enableDiscount ? planData.discount : null,
+        isPopular: planData.isPopular || false,
+        scholarshipEligible: planData.scholarshipEligible || false,
+        waiverAllowed: planData.waiverAllowed || false,
+        status: planData.status || 'active',
+        maxSeats: planData.maxSeats || null,
+        maxHours: planData.maxHours || null,
+      };
+      
+      let response;
+      if (editDialogOpen && selectedPlan) {
+        // Update existing plan
+        response = await fetch(`${apiUrl}/api/fee-plans/${selectedPlan.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(payload)
+        });
+      } else {
+        // Create new plan
+        response = await fetch(`${apiUrl}/api/fee-plans`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(payload)
+        });
+      }
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to save fee plan');
+      }
+      
+      // Reload plans from API
+      await loadFeePlans();
+      
+      setSnackbar({ 
+        open: true, 
+        message: editDialogOpen ? '✅ Plan updated successfully!' : '✅ Plan created successfully!', 
+        severity: 'success' 
+      });
+      
+      setCreateDialogOpen(false);
+      setEditDialogOpen(false);
+      setActiveStep(0);
+    } catch (error: any) {
+      console.error('Error saving fee plan:', error);
+      setSnackbar({ 
+        open: true, 
+        message: error.message || 'Failed to save fee plan. Please try again.', 
+        severity: 'error' 
+      });
+    } finally {
+      setLoading(false);
     }
-    
-    setCreateDialogOpen(false);
-    setEditDialogOpen(false);
-    setActiveStep(0);
-    setLoading(false);
   };
 
   const handleDeletePlan = async () => {
     if (!selectedPlan) return;
     setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 500));
-    setPlans(prev => prev.filter(p => p.id !== selectedPlan.id));
-    setSnackbar({ open: true, message: '✅ Plan deleted successfully!', severity: 'success' });
-    setDeleteDialogOpen(false);
-    setLoading(false);
+    try {
+      const token = localStorage.getItem('token');
+      const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+      
+      const response = await fetch(`${apiUrl}/api/fee-plans/${selectedPlan.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to delete fee plan');
+      }
+      
+      // Reload plans from API
+      await loadFeePlans();
+      
+      setSnackbar({ open: true, message: '✅ Plan deleted successfully!', severity: 'success' });
+      setDeleteDialogOpen(false);
+    } catch (error: any) {
+      console.error('Error deleting fee plan:', error);
+      setSnackbar({ 
+        open: true, 
+        message: error.message || 'Failed to delete fee plan. Please try again.', 
+        severity: 'error' 
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleDuplicatePlan = (plan: FeePlan) => {
@@ -878,14 +1006,19 @@ const FeePlansPageAdvanced: React.FC = () => {
         </Paper>
       )}
 
-      {/* Fee Plan Form Dialog */}
-      <FeePlanFormDialog
-        open={createDialogOpen || editDialogOpen}
-        onClose={() => { setCreateDialogOpen(false); setEditDialogOpen(false); }}
-        onSave={handleSavePlan}
-        editMode={editDialogOpen}
-        initialData={editDialogOpen ? currentPlan : undefined}
-      />
+             {/* Fee Plan Form Dialog */}
+       <FeePlanFormDialog
+         open={createDialogOpen || editDialogOpen}
+         onClose={() => { 
+           setCreateDialogOpen(false); 
+           setEditDialogOpen(false); 
+           setSelectedPlan(null);
+           setCurrentPlan({ name: '', type: 'monthly', basePrice: 0, features: [], status: 'active', shiftPricing: {}, zonePricing: {} });
+         }}
+         onSave={handleSavePlan}
+         editMode={editDialogOpen}
+         initialData={editDialogOpen && selectedPlan ? selectedPlan : undefined}
+       />
 
       {/* Context Menu */}
       <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}>

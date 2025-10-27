@@ -15,7 +15,8 @@ const migrations = [
   '003_subscription_system.sql',
   '004_tenant_management.sql',
   '005_rbac_system.sql',
-  '006_credit_management.sql'
+  '006_credit_management.sql',
+  '010_fee_plans_system.sql'
 ];
 
 async function runMigrations() {

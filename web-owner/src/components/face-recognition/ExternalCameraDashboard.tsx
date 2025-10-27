@@ -117,6 +117,7 @@ import {
   CameraEvent,
   CameraGroup,
   cameraBrands,
+  cameraBrandDetails,
   cameraHelpers 
 } from '../../services/unifiedFaceRecognitionService';
 
@@ -143,15 +144,7 @@ const ExternalCameraDashboard: React.FC = () => {
     protocol: 'RTSP',
     resolution: { width: 1920, height: 1080 },
     fps: 30,
-    capabilities: {
-      pan: false,
-      tilt: false,
-      zoom: false,
-      nightVision: false,
-      audio: false,
-      motionDetection: false,
-      faceDetection: false
-    },
+    capabilities: [],
     settings: {
       brightness: 50,
       contrast: 50,
@@ -186,15 +179,7 @@ const ExternalCameraDashboard: React.FC = () => {
       fps: 30,
       status: 'online',
       lastSeen: new Date().toISOString(),
-      capabilities: {
-        pan: true,
-        tilt: true,
-        zoom: true,
-        nightVision: true,
-        audio: true,
-        motionDetection: true,
-        faceDetection: true
-      },
+      capabilities: ['pan', 'tilt', 'zoom', 'nightVision', 'audio', 'motionDetection', 'faceDetection'],
       settings: {
         brightness: 60,
         contrast: 55,
@@ -233,15 +218,7 @@ const ExternalCameraDashboard: React.FC = () => {
       fps: 25,
       status: 'online',
       lastSeen: new Date().toISOString(),
-      capabilities: {
-        pan: false,
-        tilt: false,
-        zoom: false,
-        nightVision: true,
-        audio: false,
-        motionDetection: true,
-        faceDetection: true
-      },
+      capabilities: ['nightVision', 'motionDetection', 'faceDetection'],
       settings: {
         brightness: 55,
         contrast: 60,
@@ -341,15 +318,7 @@ const ExternalCameraDashboard: React.FC = () => {
         protocol: 'RTSP',
         resolution: { width: 1920, height: 1080 },
         fps: 30,
-        capabilities: {
-          pan: false,
-          tilt: false,
-          zoom: false,
-          nightVision: false,
-          audio: false,
-          motionDetection: false,
-          faceDetection: false
-        },
+        capabilities: [],
         settings: {
           brightness: 50,
           contrast: 50,
@@ -381,7 +350,7 @@ const ExternalCameraDashboard: React.FC = () => {
       const result = {
         success: true,
         message: 'Connection successful',
-        capabilities: cameraBrands[newCamera.brand as keyof typeof cameraBrands]?.capabilities,
+        capabilities: cameraBrandDetails[newCamera.brand as keyof typeof cameraBrandDetails]?.capabilities || [],
         streamUrl: `rtsp://${newCamera.ipAddress}:${newCamera.port}/stream1`
       };
       
@@ -574,7 +543,7 @@ const ExternalCameraDashboard: React.FC = () => {
                         
                         <Box sx={{ mb: 2 }}>
                           <Typography variant="body2" color="text.secondary" gutterBottom>
-                            {cameraBrands[camera.brand]?.name} {camera.model}
+                            {cameraBrandDetails[camera.brand as keyof typeof cameraBrandDetails]?.name} {camera.model}
                           </Typography>
                           <Typography variant="body2" color="text.secondary">
                             {camera.ipAddress}:{camera.port}
@@ -717,11 +686,11 @@ const ExternalCameraDashboard: React.FC = () => {
                           <TableCell>
                             <Box sx={{ display: 'flex', alignItems: 'center' }}>
                               <Typography variant="body2">
-                                {Math.round(event.confidence * 100)}%
+                                {Math.round((event.confidence || 0) * 100)}%
                               </Typography>
                               <LinearProgress
                                 variant="determinate"
-                                value={event.confidence * 100}
+                                value={(event.confidence || 0) * 100}
                                 sx={{ ml: 1, width: 50, height: 4 }}
                               />
                             </Box>
@@ -850,11 +819,11 @@ const ExternalCameraDashboard: React.FC = () => {
                               <Box>
                                 <Typography gutterBottom>Brightness</Typography>
                                 <Slider
-                                  value={camera.settings.brightness}
+                                  value={camera.settings?.brightness || 50}
                                   onChange={(e, value) => {
                                     setCameras(cameras.map(c => 
                                       c.id === camera.id 
-                                        ? { ...c, settings: { ...c.settings, brightness: value as number } }
+                                        ? { ...c, settings: { ...c.settings, brightness: value as number, contrast: c.settings?.contrast || 50, saturation: c.settings?.saturation || 50, sharpness: c.settings?.sharpness || 50, exposure: c.settings?.exposure || 50, whiteBalance: c.settings?.whiteBalance || 'auto', nightMode: c.settings?.nightMode || false } }
                                         : c
                                     ));
                                   }}
@@ -866,11 +835,11 @@ const ExternalCameraDashboard: React.FC = () => {
                               <Box>
                                 <Typography gutterBottom>Contrast</Typography>
                                 <Slider
-                                  value={camera.settings.contrast}
+                                  value={camera.settings?.contrast || 50}
                                   onChange={(e, value) => {
                                     setCameras(cameras.map(c => 
                                       c.id === camera.id 
-                                        ? { ...c, settings: { ...c.settings, contrast: value as number } }
+                                        ? { ...c, settings: { ...c.settings, brightness: c.settings?.brightness || 50, contrast: value as number, saturation: c.settings?.saturation || 50, sharpness: c.settings?.sharpness || 50, exposure: c.settings?.exposure || 50, whiteBalance: c.settings?.whiteBalance || 'auto', nightMode: c.settings?.nightMode || false } }
                                         : c
                                     ));
                                   }}
@@ -882,11 +851,11 @@ const ExternalCameraDashboard: React.FC = () => {
                               <FormControlLabel
                                 control={
                                   <Switch
-                                    checked={camera.settings.nightMode}
+                                    checked={camera.settings?.nightMode || false}
                                     onChange={(e) => {
                                       setCameras(cameras.map(c => 
                                         c.id === camera.id 
-                                          ? { ...c, settings: { ...c.settings, nightMode: e.target.checked } }
+                                          ? { ...c, settings: { ...c.settings, brightness: c.settings?.brightness || 50, contrast: c.settings?.contrast || 50, saturation: c.settings?.saturation || 50, sharpness: c.settings?.sharpness || 50, exposure: c.settings?.exposure || 50, whiteBalance: c.settings?.whiteBalance || 'auto', nightMode: e.target.checked } }
                                           : c
                                       ));
                                     }}
