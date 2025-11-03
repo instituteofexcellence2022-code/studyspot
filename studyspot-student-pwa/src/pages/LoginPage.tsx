@@ -222,6 +222,37 @@ export default function LoginPage({ setIsAuthenticated }: LoginPageProps) {
                 </Link>
               </Typography>
             </Box>
+
+            {/* DEV MODE: Skip Authentication Button */}
+            <Box sx={{ textAlign: 'center', mt: 2 }}>
+              <Button
+                variant="outlined"
+                color="secondary"
+                size="small"
+                onClick={() => {
+                  localStorage.setItem('bypassAuth', 'true');
+                  const mockUser = {
+                    id: 'dev-user-123',
+                    email: 'dev@studyspot.com',
+                    firstName: 'Dev',
+                    lastName: 'User',
+                    role: 'student'
+                  };
+                  localStorage.setItem('user', JSON.stringify(mockUser));
+                  localStorage.setItem('token', 'dev-mock-token-bypass');
+                  setIsAuthenticated(true);
+                  navigate('/dashboard');
+                }}
+                sx={{ 
+                  textTransform: 'none',
+                  borderStyle: 'dashed',
+                  opacity: 0.7,
+                  '&:hover': { opacity: 1 }
+                }}
+              >
+                🔓 Skip Login (Dev Mode)
+              </Button>
+            </Box>
           </form>
         </Paper>
       </Container>

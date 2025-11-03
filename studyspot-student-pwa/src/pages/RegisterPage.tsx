@@ -185,6 +185,25 @@ export default function RegisterPage() {
                 </Link>
               </Typography>
             </Box>
+
+            {/* DEV MODE: Skip Authentication Button */}
+            <Box sx={{ textAlign: 'center', mt: 2 }}>
+              <Button
+                variant="outlined"
+                color="secondary"
+                size="small"
+                component={Link}
+                to="/dev-bypass"
+                sx={{ 
+                  textTransform: 'none',
+                  borderStyle: 'dashed',
+                  opacity: 0.7,
+                  '&:hover': { opacity: 1 }
+                }}
+              >
+                🔓 Skip Registration (Dev Mode)
+              </Button>
+            </Box>
           </form>
         </Paper>
       </Container>
