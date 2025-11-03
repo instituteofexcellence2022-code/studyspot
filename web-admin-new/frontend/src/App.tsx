@@ -31,7 +31,6 @@ const TicketManagementPage = lazy(() => import('./modules/tickets/pages/TicketMa
 const TicketDetailsPage = lazy(() => import('./modules/tickets/pages/TicketDetailsPage'));
 const AuditLogsPage = lazy(() => import('./modules/audit/pages/AuditLogsPage'));
 const RolesPage = lazy(() => import('./modules/roles/pages/RolesPage'));
-const ReportsPage = lazy(() => import('./modules/reports/pages/ReportsPage'));
 const NotificationsPage = lazy(() => import('./modules/notifications/pages/NotificationsPage'));
 
 // Student Management
@@ -98,7 +97,6 @@ const App: React.FC = () => {
           <Route path="/tickets/:id" element={<TicketDetailsPage />} />
           <Route path="/audit-logs" element={<AuditLogsPage />} />
           <Route path="/roles" element={<RolesPage />} />
-          <Route path="/reports" element={<ReportsPage />} />
           <Route path="/notifications" element={<NotificationsPage />} />
           <Route path={ROUTES.SETTINGS} element={<SettingsPage />} />
           <Route path={ROUTES.PROFILE} element={<DashboardPage />} />

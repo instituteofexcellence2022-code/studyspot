@@ -113,7 +113,6 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose, variant = 'permanent' 
       title: 'INSIGHTS',
       items: [
         { title: 'Platform Analytics', icon: <Assessment />, path: '/analytics' },
-        { title: 'Reports', icon: <Description />, path: '/reports' },
       ],
     },
     {
