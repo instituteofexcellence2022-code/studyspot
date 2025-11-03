@@ -45,11 +45,11 @@ const roleRoutes = require('./routes/roles');
 const tenantRoutes = require('./routes/tenants');
 const webhookRoutes = require('./routes/webhooks');
 
-// Phase 7: Enhanced Features
-const dashboardRoutes = require('./routes/dashboard');
-const studentRoutes = require('./routes/students');
-const invoiceRoutes = require('./routes/invoices');
-const auditRoutes = require('./routes/audit');
+// Phase 7: Enhanced Features - TEMPORARILY DISABLED TO FIND ERROR
+// const dashboardRoutes = require('./routes/dashboard');
+// const studentRoutes = require('./routes/students');
+// const invoiceRoutes = require('./routes/invoices');
+// const auditRoutes = require('./routes/audit');
 
 // Additional Features - TEMPORARILY DISABLED FOR DEBUGGING
 // const issueManagementRoutes = require('./routes/issueManagement');
@@ -231,11 +231,11 @@ app.use('/api/roles', roleRoutes);          // RBAC - Roles & Permissions
 app.use('/api/tenants', tenantRoutes);      // Enhanced tenant management
 app.use('/api/webhooks', webhookRoutes);    // Stripe webhooks
 
-// Phase 7: Enhanced Features
-app.use('/api/dashboard', dashboardRoutes);  // Enhanced dashboard with real-time metrics
-app.use('/api/students', studentRoutes);      // Enhanced student management
-app.use('/api/invoices', invoiceRoutes);      // GST-compliant invoicing & financial management
-app.use('/api/audit', auditRoutes);           // Audit trail & security monitoring
+// Phase 7: Enhanced Features - TEMPORARILY DISABLED TO FIX DEPLOYMENT
+// app.use('/api/dashboard', dashboardRoutes);  // Enhanced dashboard with real-time metrics
+// app.use('/api/students', studentRoutes);      // Enhanced student management
+// app.use('/api/invoices', invoiceRoutes);      // GST-compliant invoicing & financial management
+// app.use('/api/audit', auditRoutes);           // Audit trail & security monitoring
 app.use('/api/fee-plans', require('./routes/feePlans')); // Fee plans management
 
 // Additional Features (Issues, Referrals, Offline Payments) - TEMPORARILY DISABLED
