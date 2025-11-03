@@ -29,58 +29,24 @@ const EmailVerificationPage = lazy(() => import('./pages/auth/EmailVerificationP
 // Dashboard Pages
 const DashboardPage = lazy(() => import('./pages/dashboard/DashboardPage'));
 
-// Library Pages
+// Library Pages (Student View - Browse & Search)
 const LibrariesPage = lazy(() => import('./pages/library/LibrariesPage'));
 const LibraryDetailsPage = lazy(() => import('./pages/library/LibraryDetailsPage'));
-const LibraryCreatePage = lazy(() => import('./pages/library/LibraryCreatePage'));
-const LibraryEditPage = lazy(() => import('./pages/library/LibraryEditPage'));
 
-// Booking Pages
+// Booking Pages (Student Bookings)
 const BookingsPage = lazy(() => import('./pages/booking/BookingsPage'));
 const BookingDetailsPage = lazy(() => import('./pages/booking/BookingDetailsPage'));
 
-// User Pages
-const UsersPage = lazy(() => import('./pages/user/UsersPage'));
-const UserDetailsPage = lazy(() => import('./pages/user/UserDetailsPage'));
-const UserCreatePage = lazy(() => import('./pages/user/UserCreatePage'));
-const UserEditPage = lazy(() => import('./pages/user/UserEditPage'));
-
-// Admin Pages
-const AdminPage = lazy(() => import('./pages/admin/AdminPage'));
-const AdminTenantsPage = lazy(() => import('./pages/admin/AdminTenantsPage'));
-const AdminTenantDetailsPage = lazy(() => import('./pages/admin/AdminTenantDetailsPage'));
-const AdminAnalyticsPage = lazy(() => import('./pages/admin/AdminAnalyticsPage'));
-
-// AI Pages
+// AI Pages (Student AI Features)
 const AIAssistantPage = lazy(() => import('./pages/ai/AIAssistantPage'));
 const RecommendationsPage = lazy(() => import('./pages/ai/RecommendationsPage'));
-const PredictiveAnalyticsPage = lazy(() => import('./pages/ai/PredictiveAnalyticsPage'));
-const SmartSchedulerPage = lazy(() => import('./pages/ai/SmartSchedulerPage'));
 
-// Subscription Pages
+// Subscription Pages (Student Plans)
 const SubscriptionPlansPage = lazy(() => import('./pages/subscription/SubscriptionPlansPage'));
-const SubscriptionManagePage = lazy(() => import('./pages/subscription/SubscriptionManagePage'));
 const SubscriptionCheckoutPage = lazy(() => import('./pages/subscription/SubscriptionCheckoutPage'));
 const SubscriptionSuccessPage = lazy(() => import('./pages/subscription/SubscriptionSuccessPage'));
+const SubscriptionManagePage = lazy(() => import('./pages/subscription/SubscriptionManagePage'));
 const InvoicesPage = lazy(() => import('./pages/subscription/InvoicesPage'));
-
-// Tenant Pages
-const OnboardingWizard = lazy(() => import('./pages/tenant/OnboardingWizard'));
-const TenantSettings = lazy(() => import('./pages/tenant/SettingsDashboard'));
-const TenantAnalytics = lazy(() => import('./pages/tenant/AnalyticsDashboard'));
-const TenantManagement = lazy(() => import('./pages/admin/TenantManagementPage'));
-
-// RBAC Pages (Sprint 3)
-const RoleManagementPage = lazy(() => import('./pages/admin/RoleManagementPage'));
-const AuditLogPage = lazy(() => import('./pages/admin/AuditLogPage'));
-const SecuritySettingsPage = lazy(() => import('./pages/admin/SecuritySettingsPage'));
-
-// Credit Management Pages (Sprint 4)
-const CreditDashboardPage = lazy(() => import('./pages/credits/CreditDashboardPage'));
-const CreditPurchasePage = lazy(() => import('./pages/credits/CreditPurchasePage'));
-const AutoTopupPage = lazy(() => import('./pages/credits/AutoTopupPage'));
-const UsageAnalyticsPage = lazy(() => import('./pages/credits/UsageAnalyticsPage'));
-const TransactionHistoryPage = lazy(() => import('./pages/credits/TransactionHistoryPage'));
 
 // Profile Pages
 const ProfilePage = lazy(() => import('./pages/profile/ProfilePage'));
@@ -204,50 +170,24 @@ const AppContent: React.FC = () => {
             <Route index element={<Navigate to={ROUTES.DASHBOARD} replace />} />
             <Route path={ROUTES.DASHBOARD} element={<DashboardPage />} />
 
-            {/* Library Routes */}
+            {/* Library Routes - Student View (Browse & Search Only) */}
             <Route path={ROUTES.LIBRARIES} element={<LibrariesPage />} />
-            <Route path={ROUTES.LIBRARY_CREATE} element={<LibraryCreatePage />} />
             <Route path={ROUTES.LIBRARY_DETAILS} element={<LibraryDetailsPage />} />
-            <Route path={ROUTES.LIBRARY_EDIT} element={<LibraryEditPage />} />
 
-            {/* Booking Routes */}
+            {/* Booking Routes - Student Bookings */}
             <Route path={ROUTES.BOOKINGS} element={<BookingsPage />} />
             <Route path={ROUTES.BOOKING_DETAILS} element={<BookingDetailsPage />} />
 
-            {/* User Routes */}
-            <Route path={ROUTES.USERS} element={<UsersPage />} />
-            <Route path={ROUTES.USER_CREATE} element={<UserCreatePage />} />
-            <Route path={ROUTES.USER_DETAILS} element={<UserDetailsPage />} />
-            <Route path={ROUTES.USER_EDIT} element={<UserEditPage />} />
+            {/* AI Features - Student AI Assistant & Recommendations */}
+            <Route path={ROUTES.AI_ASSISTANT} element={<AIAssistantPage />} />
+            <Route path={ROUTES.AI_RECOMMENDATIONS} element={<RecommendationsPage />} />
 
-            {/* Admin Routes */}
-            <Route path={ROUTES.ADMIN} element={<AdminPage />} />
-            <Route path={ROUTES.ADMIN_TENANTS} element={<AdminTenantsPage />} />
-            <Route path={ROUTES.ADMIN_TENANT_DETAILS} element={<AdminTenantDetailsPage />} />
-            <Route path={ROUTES.ADMIN_ANALYTICS} element={<AdminAnalyticsPage />} />
-            <Route path={ROUTES.ADMIN_ROLES} element={<RoleManagementPage />} />
-            <Route path={ROUTES.ADMIN_AUDIT_LOGS} element={<AuditLogPage />} />
-            <Route path={ROUTES.ADMIN_SECURITY} element={<SecuritySettingsPage />} />
-
-            {/* Subscription Routes */}
+            {/* Subscription Routes - Student Plans & Billing */}
             <Route path={ROUTES.SUBSCRIPTION_PLANS} element={<SubscriptionPlansPage />} />
             <Route path={ROUTES.SUBSCRIPTION_CHECKOUT} element={<SubscriptionCheckoutPage />} />
             <Route path={ROUTES.SUBSCRIPTION_SUCCESS} element={<SubscriptionSuccessPage />} />
             <Route path={ROUTES.SUBSCRIPTION_MANAGE} element={<SubscriptionManagePage />} />
             <Route path={ROUTES.SUBSCRIPTION_INVOICES} element={<InvoicesPage />} />
-
-            {/* Tenant Routes */}
-            <Route path={ROUTES.TENANT_ONBOARDING} element={<OnboardingWizard />} />
-            <Route path={ROUTES.TENANT_SETTINGS} element={<TenantSettings />} />
-            <Route path={ROUTES.TENANT_ANALYTICS} element={<TenantAnalytics />} />
-            <Route path={ROUTES.ADMIN_TENANTS} element={<TenantManagement />} />
-
-            {/* Credit Management Routes (Sprint 4) */}
-            <Route path="/credits" element={<CreditDashboardPage />} />
-            <Route path="/credits/purchase" element={<CreditPurchasePage />} />
-            <Route path="/credits/auto-topup" element={<AutoTopupPage />} />
-            <Route path="/credits/analytics" element={<UsageAnalyticsPage />} />
-            <Route path="/credits/transactions" element={<TransactionHistoryPage />} />
 
             {/* Profile Routes */}
             <Route path={ROUTES.PROFILE} element={<ProfilePage />} />

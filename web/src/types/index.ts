@@ -8,6 +8,7 @@ export interface User {
   role: UserRole;
   status: UserStatus;
   tenantId: string;
+  permissions?: string[];
   createdAt: string;
   updatedAt: string;
 }
