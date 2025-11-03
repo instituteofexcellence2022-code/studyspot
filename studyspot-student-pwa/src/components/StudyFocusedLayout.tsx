@@ -21,6 +21,8 @@ import {
   BottomNavigationAction,
   useMediaQuery,
   useTheme,
+  Menu,
+  MenuItem,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -42,6 +44,8 @@ import {
   Logout,
   QrCodeScanner,
   Campaign,
+  Notifications,
+  Person,
 } from '@mui/icons-material';
 
 interface LayoutProps {
@@ -57,9 +61,17 @@ export default function StudyFocusedLayout({ children, setIsAuthenticated, darkM
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [notifAnchor, setNotifAnchor] = useState<null | HTMLElement>(null);
 
   const user = JSON.parse(localStorage.getItem('user') || '{}');
-  const streak = 12; // Get from API
+  const streak = 12;
+  const unreadNotifications = 3;
+  
+  const recentNotifications = [
+    { id: '1', title: 'Booking Confirmed', message: 'Your seat A-12 is confirmed for today', time: '5 min ago', read: false },
+    { id: '2', title: 'Study Streak 🔥', message: 'Congrats! 7-day study streak achieved', time: '1 hour ago', read: false },
+    { id: '3', title: 'Payment Success', message: 'Payment of ₹300 completed', time: '2 hours ago', read: false },
+  ];
 
   // STUDY-FOCUSED NAVIGATION
   const studyMenuItems = [
@@ -99,10 +111,11 @@ export default function StudyFocusedLayout({ children, setIsAuthenticated, darkM
     {
       category: '⚙️ More',
       items: [
+        { text: 'Membership', icon: <Star />, path: '/membership', badge: null },
         { text: 'Payments', icon: <School />, path: '/payments', badge: null },
         { text: 'Favorites', icon: <Bookmarks />, path: '/favorites', badge: null },
         { text: 'My Reviews', icon: <Psychology />, path: '/reviews', badge: null },
-        { text: 'Profile', icon: <Avatar />, path: '/profile', badge: null },
+        { text: 'Profile', icon: <Person />, path: '/profile', badge: null },
       ]
     },
   ];
@@ -166,6 +179,15 @@ export default function StudyFocusedLayout({ children, setIsAuthenticated, darkM
           />
 
           <Box sx={{ display: 'flex', gap: 1 }}>
+            <IconButton 
+              color="inherit" 
+              onClick={(e) => setNotifAnchor(e.currentTarget)}
+            >
+              <Badge badgeContent={unreadNotifications} color="error">
+                <Notifications />
+              </Badge>
+            </IconButton>
+            
             {setDarkMode && (
               <IconButton color="inherit" onClick={() => setDarkMode(!darkMode)}>
                 {darkMode ? <Brightness7 /> : <Brightness4 />}
@@ -327,6 +349,79 @@ export default function StudyFocusedLayout({ children, setIsAuthenticated, darkM
           </BottomNavigation>
         </Paper>
       )}
+
+      <Menu
+        anchorEl={notifAnchor}
+        open={Boolean(notifAnchor)}
+        onClose={() => setNotifAnchor(null)}
+        PaperProps={{
+          sx: {
+            width: 360,
+            maxHeight: 500,
+            mt: 1,
+          }
+        }}
+      >
+        <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography variant="h6" fontWeight="bold">
+              Notifications
+            </Typography>
+            {unreadNotifications > 0 && (
+              <Chip label={`${unreadNotifications} new`} size="small" color="primary" />
+            )}
+          </Box>
+        </Box>
+
+        <List sx={{ p: 0 }}>
+          {recentNotifications.map((notif, index) => (
+            <Box key={notif.id}>
+              <ListItemButton
+                onClick={() => {
+                  setNotifAnchor(null);
+                  navigate('/announcements');
+                }}
+                sx={{
+                  bgcolor: notif.read ? 'transparent' : 'action.hover',
+                }}
+              >
+                <ListItemText
+                  primary={
+                    <Typography variant="body2" fontWeight={notif.read ? 'normal' : 'bold'}>
+                      {notif.title}
+                    </Typography>
+                  }
+                  secondary={
+                    <Box component="div">
+                      <Typography variant="caption" color="text.secondary" display="block">
+                        {notif.message}
+                      </Typography>
+                      <Typography variant="caption" color="primary.main" sx={{ mt: 0.5 }}>
+                        {notif.time}
+                      </Typography>
+                    </Box>
+                  }
+                />
+              </ListItemButton>
+              {index < recentNotifications.length - 1 && <Divider />}
+            </Box>
+          ))}
+        </List>
+
+        <Divider />
+        <Box sx={{ p: 1.5, textAlign: 'center' }}>
+          <Button
+            fullWidth
+            size="small"
+            onClick={() => {
+              setNotifAnchor(null);
+              navigate('/announcements');
+            }}
+          >
+            View All Notifications
+          </Button>
+        </Box>
+      </Menu>
     </Box>
   );
 }
