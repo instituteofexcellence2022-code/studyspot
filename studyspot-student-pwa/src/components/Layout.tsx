@@ -13,6 +13,7 @@ import {
   ListItemText,
   Box,
   Avatar,
+  Badge,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -27,6 +28,13 @@ import {
   EmojiEvents as RewardsIcon,
   Payment as PaymentIcon,
   MenuBook as ResourceIcon,
+  BugReport as IssueIcon,
+  Help as SupportIcon,
+  Campaign as AnnouncementIcon,
+  Share as ReferralIcon,
+  Analytics as AnalyticsIcon,
+  Task as TaskIcon,
+  Groups as CommunityIcon,
 } from '@mui/icons-material';
 
 interface LayoutProps {
@@ -47,10 +55,17 @@ export default function Layout({ children, setIsAuthenticated }: LayoutProps) {
     { text: 'My Bookings', icon: <BookingIcon />, path: '/bookings' },
     { text: 'Payments', icon: <PaymentIcon />, path: '/payments' },
     { text: 'Resources', icon: <ResourceIcon />, path: '/resources' },
+    { text: 'Announcements', icon: <AnnouncementIcon />, path: '/announcements', badge: 3 },
     { text: 'QR Scanner', icon: <QRIcon />, path: '/qr-scanner' },
     { text: 'Attendance', icon: <AttendanceIcon />, path: '/attendance' },
     { text: 'Study Timer', icon: <TimerIcon />, path: '/study-timer' },
+    { text: 'Analytics', icon: <AnalyticsIcon />, path: '/analytics' },
+    { text: 'Tasks & Goals', icon: <TaskIcon />, path: '/tasks-goals' },
+    { text: 'Community', icon: <CommunityIcon />, path: '/community' },
     { text: 'Rewards', icon: <RewardsIcon />, path: '/rewards' },
+    { text: 'Refer & Earn', icon: <ReferralIcon />, path: '/referral', badge: '₹500' },
+    { text: 'Report Issue', icon: <IssueIcon />, path: '/issues' },
+    { text: 'Help & Support', icon: <SupportIcon />, path: '/support' },
     { text: 'Profile', icon: <PersonIcon />, path: '/profile' },
   ];
 
@@ -109,7 +124,13 @@ export default function Layout({ children, setIsAuthenticated }: LayoutProps) {
                     setDrawerOpen(false);
                   }}
                 >
-                  <ListItemIcon>{item.icon}</ListItemIcon>
+                  <ListItemIcon>
+                    {(item as any).badge ? (
+                      <Badge badgeContent={(item as any).badge} color="error">
+                        {item.icon}
+                      </Badge>
+                    ) : item.icon}
+                  </ListItemIcon>
                   <ListItemText primary={item.text} />
                 </ListItemButton>
               </ListItem>

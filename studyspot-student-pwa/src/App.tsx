@@ -16,6 +16,13 @@ import StudyTimerPage from './pages/StudyTimerPage';
 import RewardsPage from './pages/RewardsPage';
 import PaymentsPage from './pages/PaymentsPage';
 import ResourcesPage from './pages/ResourcesPage';
+import IssuesPage from './pages/IssuesPage';
+import SupportPage from './pages/SupportPage';
+import AnnouncementsPage from './pages/AnnouncementsPage';
+import ReferralPage from './pages/ReferralPage';
+import AnalyticsPage from './pages/AnalyticsPage';
+import TasksGoalsPage from './pages/TasksGoalsPage';
+import CommunityPage from './pages/CommunityPage';
 
 // Dev Bypass Component
 function DevBypass({ setIsAuthenticated }: { setIsAuthenticated: (value: boolean) => void }) {
@@ -144,6 +151,13 @@ function App() {
           <Route path="/rewards" element={isAuthenticated ? <RewardsPage setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/login" />} />
           <Route path="/payments" element={isAuthenticated ? <PaymentsPage setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/login" />} />
           <Route path="/resources" element={isAuthenticated ? <ResourcesPage setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/login" />} />
+          <Route path="/issues" element={isAuthenticated ? <IssuesPage setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/login" />} />
+          <Route path="/support" element={isAuthenticated ? <SupportPage setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/login" />} />
+          <Route path="/announcements" element={isAuthenticated ? <AnnouncementsPage setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/login" />} />
+          <Route path="/referral" element={isAuthenticated ? <ReferralPage setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/login" />} />
+          <Route path="/analytics" element={isAuthenticated ? <AnalyticsPage setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/login" />} />
+          <Route path="/tasks-goals" element={isAuthenticated ? <TasksGoalsPage setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/login" />} />
+          <Route path="/community" element={isAuthenticated ? <CommunityPage setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/login" />} />
 
           {/* Default Route */}
           <Route path="/" element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} />} />
