@@ -21,6 +21,10 @@ import {
   BookOnline as BookingIcon,
   Person as PersonIcon,
   Logout as LogoutIcon,
+  QrCodeScanner as QRIcon,
+  Schedule as AttendanceIcon,
+  Timer as TimerIcon,
+  EmojiEvents as RewardsIcon,
 } from '@mui/icons-material';
 
 interface LayoutProps {
@@ -39,6 +43,10 @@ export default function Layout({ children, setIsAuthenticated }: LayoutProps) {
     { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
     { text: 'Libraries', icon: <LibraryIcon />, path: '/libraries' },
     { text: 'My Bookings', icon: <BookingIcon />, path: '/bookings' },
+    { text: 'QR Scanner', icon: <QRIcon />, path: '/qr-scanner' },
+    { text: 'Attendance', icon: <AttendanceIcon />, path: '/attendance' },
+    { text: 'Study Timer', icon: <TimerIcon />, path: '/study-timer' },
+    { text: 'Rewards', icon: <RewardsIcon />, path: '/rewards' },
     { text: 'Profile', icon: <PersonIcon />, path: '/profile' },
   ];
 

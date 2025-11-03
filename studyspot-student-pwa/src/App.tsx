@@ -10,6 +10,10 @@ import LibrariesPageEnhanced from './pages/LibrariesPageEnhanced';
 import LibraryDetailsPageEnhanced from './pages/LibraryDetailsPageEnhanced';
 import BookingsPage from './pages/BookingsPage';
 import ProfilePageEnhanced from './pages/ProfilePageEnhanced';
+import QRScannerPage from './pages/QRScannerPage';
+import AttendancePage from './pages/AttendancePage';
+import StudyTimerPage from './pages/StudyTimerPage';
+import RewardsPage from './pages/RewardsPage';
 
 // Theme
 const theme = createTheme({
@@ -60,6 +64,10 @@ function App() {
           <Route path="/libraries/:id" element={isAuthenticated ? <LibraryDetailsPageEnhanced setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/login" />} />
           <Route path="/bookings" element={isAuthenticated ? <BookingsPage setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/login" />} />
           <Route path="/profile" element={isAuthenticated ? <ProfilePageEnhanced setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/login" />} />
+          <Route path="/qr-scanner" element={isAuthenticated ? <QRScannerPage setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/login" />} />
+          <Route path="/attendance" element={isAuthenticated ? <AttendancePage setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/login" />} />
+          <Route path="/study-timer" element={isAuthenticated ? <StudyTimerPage setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/login" />} />
+          <Route path="/rewards" element={isAuthenticated ? <RewardsPage setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/login" />} />
 
           {/* Default Route */}
           <Route path="/" element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} />} />
