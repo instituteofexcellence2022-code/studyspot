@@ -5,7 +5,7 @@ import { useState, useEffect, useMemo } from 'react';
 // Pages
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
-import DashboardPageEnhanced from './pages/DashboardEnhancedV2';
+import DashboardPageEnhanced from './pages/DashboardStudyFocused';
 import LibrariesPageEnhanced from './pages/LibrariesPageEnhanced';
 import LibraryDetailsPageEnhanced from './pages/LibraryDetailsPageEnhanced';
 import BookingsPage from './pages/BookingsPage';
