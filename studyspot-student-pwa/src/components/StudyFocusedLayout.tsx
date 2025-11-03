@@ -22,7 +22,7 @@ import {
   useMediaQuery,
   useTheme,
   Menu,
-  MenuItem,
+  Button,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -392,14 +392,14 @@ export default function StudyFocusedLayout({ children, setIsAuthenticated, darkM
                     </Typography>
                   }
                   secondary={
-                    <Box component="div">
+                    <>
                       <Typography variant="caption" color="text.secondary" display="block">
                         {notif.message}
                       </Typography>
                       <Typography variant="caption" color="primary.main" sx={{ mt: 0.5 }}>
                         {notif.time}
                       </Typography>
-                    </Box>
+                    </>
                   }
                 />
               </ListItemButton>
