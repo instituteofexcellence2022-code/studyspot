@@ -45,11 +45,11 @@ const roleRoutes = require('./routes/roles');
 const tenantRoutes = require('./routes/tenants');
 const webhookRoutes = require('./routes/webhooks');
 
-// Phase 7: Enhanced Features - TEMPORARILY DISABLED TO FIND ERROR
-// const dashboardRoutes = require('./routes/dashboard');
-// const studentRoutes = require('./routes/students');
-// const invoiceRoutes = require('./routes/invoices');
-// const auditRoutes = require('./routes/audit');
+// Phase 7: Enhanced Features - RE-ENABLED
+const dashboardRoutes = require('./routes/dashboard');
+const studentRoutes = require('./routes/students');
+const invoiceRoutes = require('./routes/invoices');
+const auditRoutes = require('./routes/audit');
 
 // Additional Features - TEMPORARILY DISABLED FOR DEBUGGING
 // const issueManagementRoutes = require('./routes/issueManagement');
