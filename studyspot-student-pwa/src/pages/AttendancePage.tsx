@@ -21,7 +21,7 @@ import {
   TrendingUp,
 } from '@mui/icons-material';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import Layout from '../components/Layout';
+import Layout from '../components/StudyFocusedLayout';
 import api from '../services/api';
 
 interface AttendancePageProps {

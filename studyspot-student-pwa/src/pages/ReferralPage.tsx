@@ -33,7 +33,7 @@ import {
   TrendingUp,
 } from '@mui/icons-material';
 import { QRCodeSVG } from 'qrcode.react';
-import Layout from '../components/Layout';
+import Layout from '../components/StudyFocusedLayout';
 import api from '../services/api';
 
 interface Referral {

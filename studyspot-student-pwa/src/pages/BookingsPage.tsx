@@ -16,7 +16,7 @@ import {
   Cancel,
   Pending,
 } from '@mui/icons-material';
-import Layout from '../components/Layout';
+import Layout from '../components/StudyFocusedLayout';
 import api from '../services/api';
 
 interface BookingsPageProps {

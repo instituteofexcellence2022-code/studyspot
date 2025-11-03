@@ -43,7 +43,7 @@ import {
   ExpandMore,
 } from '@mui/icons-material';
 import { GoogleMap, LoadScript, Marker, InfoWindow } from '@react-google-maps/api';
-import Layout from '../components/Layout';
+import Layout from '../components/StudyFocusedLayout';
 import api from '../services/api';
 
 interface LibrariesPageEnhancedProps {

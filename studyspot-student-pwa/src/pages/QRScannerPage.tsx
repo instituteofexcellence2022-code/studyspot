@@ -25,7 +25,7 @@ import {
   CameraAlt,
 } from '@mui/icons-material';
 import { Html5QrcodeScanner } from 'html5-qrcode';
-import Layout from '../components/Layout';
+import Layout from '../components/StudyFocusedLayout';
 import api from '../services/api';
 
 interface QRScannerPageProps {

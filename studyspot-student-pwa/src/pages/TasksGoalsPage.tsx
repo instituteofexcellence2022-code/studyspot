@@ -36,7 +36,7 @@ import {
   TrendingUp,
   EmojiEvents,
 } from '@mui/icons-material';
-import Layout from '../components/Layout';
+import Layout from '../components/StudyFocusedLayout';
 import api from '../services/api';
 
 interface Task {
