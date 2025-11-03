@@ -1,0 +1,53 @@
+{
+  "version": 2,
+  "name": "studyspot-admin-portal-v2",
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist"
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/assets/(.*)",
+      "headers": {
+        "cache-control": "public, max-age=31536000, immutable"
+      },
+      "dest": "/assets/$1"
+    },
+    {
+      "src": "/(.*\\.(js|css|png|jpg|jpeg|svg|ico|json|woff|woff2|ttf|eot))",
+      "headers": {
+        "cache-control": "public, max-age=31536000, immutable"
+      },
+      "dest": "/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
+  ],
+  "env": {
+    "REACT_APP_API_BASE_URL": "https://studyspot-gateway.onrender.com/api/v1",
+    "REACT_APP_PORTAL_TYPE": "admin",
+    "REACT_APP_PORTAL_NAME": "StudySpot Admin Portal",
+    "REACT_APP_VERSION": "2.0.0",
+    "NODE_ENV": "production"
+  },
+  "build": {
+    "env": {
+      "REACT_APP_API_BASE_URL": "https://studyspot-gateway.onrender.com/api/v1",
+      "REACT_APP_PORTAL_TYPE": "admin"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
+

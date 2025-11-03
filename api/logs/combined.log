@@ -1,0 +1,65 @@
+{"level":"warn","message":"Email configuration incomplete. Email notifications will be disabled.","timestamp":"2025-10-22T22:40:22.582Z"}
+{"level":"warn","message":"Twilio configuration incomplete. SMS notifications will be disabled.","timestamp":"2025-10-22T22:40:22.584Z"}
+{"level":"warn","message":"Razorpay credentials not configured. Payment features will be limited.","timestamp":"2025-10-22T22:40:22.608Z"}
+{"level":"warn","message":"Stripe secret key not configured","timestamp":"2025-10-22T22:40:23.007Z"}
+{"level":"info","message":"========================================","timestamp":"2025-10-22T22:40:23.170Z"}
+{"level":"info","message":"🎓 STUDYSPOT - Unified API Server","timestamp":"2025-10-22T22:40:23.172Z"}
+{"level":"info","message":"========================================","timestamp":"2025-10-22T22:40:23.173Z"}
+{"level":"info","message":"Starting server initialization...","timestamp":"2025-10-22T22:40:23.173Z"}
+{"level":"info","message":"Connecting to PostgreSQL database...","timestamp":"2025-10-22T22:40:23.175Z"}
+{"level":"info","message":"Database connected successfully","timestamp":"2025-10-22T22:40:24.056Z"}
+{"level":"info","message":"✅ Database connected successfully","timestamp":"2025-10-22T22:40:24.157Z"}
+{"level":"info","message":"   Version: PostgreSQL","timestamp":"2025-10-22T22:40:24.157Z"}
+{"level":"info","message":"Connecting to Redis...","timestamp":"2025-10-22T22:40:24.158Z"}
+{"level":"warn","message":"REDIS_URL not configured. Caching will be disabled.","timestamp":"2025-10-22T22:40:24.159Z"}
+{"level":"warn","message":"Redis not configured - running without cache","timestamp":"2025-10-22T22:40:24.159Z"}
+{"level":"info","message":"✅ Redis connected successfully (caching enabled)","timestamp":"2025-10-22T22:40:24.159Z"}
+{"level":"info","message":"","timestamp":"2025-10-22T22:40:24.163Z"}
+{"level":"info","message":"========================================","timestamp":"2025-10-22T22:40:24.163Z"}
+{"level":"info","message":"✅ SERVER STARTED SUCCESSFULLY","timestamp":"2025-10-22T22:40:24.164Z"}
+{"level":"info","message":"========================================","timestamp":"2025-10-22T22:40:24.164Z"}
+{"level":"info","message":"","timestamp":"2025-10-22T22:40:24.164Z"}
+{"level":"info","message":"🌐 Server running on port: 3001","timestamp":"2025-10-22T22:40:24.164Z"}
+{"level":"info","message":"📊 Environment: production","timestamp":"2025-10-22T22:40:24.164Z"}
+{"level":"info","message":"","timestamp":"2025-10-22T22:40:24.164Z"}
+{"level":"info","message":"📍 Available Endpoints:","timestamp":"2025-10-22T22:40:24.165Z"}
+{"level":"info","message":"   - API Root:          http://localhost:3001/","timestamp":"2025-10-22T22:40:24.165Z"}
+{"level":"info","message":"   - Health Check:      http://localhost:3001/health","timestamp":"2025-10-22T22:40:24.165Z"}
+{"level":"info","message":"   - API Documentation: http://localhost:3001/api-docs","timestamp":"2025-10-22T22:40:24.165Z"}
+{"level":"info","message":"","timestamp":"2025-10-22T22:40:24.165Z"}
+{"level":"info","message":"🔌 API Routes:","timestamp":"2025-10-22T22:40:24.165Z"}
+{"level":"info","message":"   ✓ /api/auth          - Authentication (register, login, refresh)","timestamp":"2025-10-22T22:40:24.166Z"}
+{"level":"info","message":"   ✓ /api/users         - User management & profiles","timestamp":"2025-10-22T22:40:24.166Z"}
+{"level":"info","message":"   ✓ /api/libraries     - Library CRUD & seat management","timestamp":"2025-10-22T22:40:24.166Z"}
+{"level":"info","message":"   ✓ /api/bookings      - Booking management & check-in/out","timestamp":"2025-10-22T22:40:24.166Z"}
+{"level":"info","message":"   ✓ /api/payments      - Payment processing (Razorpay)","timestamp":"2025-10-22T22:40:24.166Z"}
+{"level":"info","message":"   ✓ /api/notifications - Notification system","timestamp":"2025-10-22T22:40:24.167Z"}
+{"level":"info","message":"   ✓ /api/maps          - Google Maps integration","timestamp":"2025-10-22T22:40:24.167Z"}
+{"level":"info","message":"   ✓ /api/analytics     - Analytics & reports","timestamp":"2025-10-22T22:40:24.168Z"}
+{"level":"info","message":"   ✓ /api/monitoring    - System monitoring","timestamp":"2025-10-22T22:40:24.168Z"}
+{"level":"info","message":"   ✓ /api/ai            - AI recommendations & insights","timestamp":"2025-10-22T22:40:24.168Z"}
+{"level":"info","message":"   ✓ /api/study-tools   - Study sessions & Pomodoro timers","timestamp":"2025-10-22T22:40:24.169Z"}
+{"level":"info","message":"   ✓ /api/iot           - IoT device management","timestamp":"2025-10-22T22:40:24.170Z"}
+{"level":"info","message":"","timestamp":"2025-10-22T22:40:24.170Z"}
+{"level":"info","message":"📦 Total Available Features:","timestamp":"2025-10-22T22:40:24.171Z"}
+{"level":"info","message":"   - 13 Complete Route Groups","timestamp":"2025-10-22T22:40:24.171Z"}
+{"level":"info","message":"   - 100+ API Endpoints","timestamp":"2025-10-22T22:40:24.172Z"}
+{"level":"info","message":"   - Real Database Integration","timestamp":"2025-10-22T22:40:24.172Z"}
+{"level":"info","message":"   - Payment Gateway (Razorpay)","timestamp":"2025-10-22T22:40:24.172Z"}
+{"level":"info","message":"   - Google Maps API","timestamp":"2025-10-22T22:40:24.172Z"}
+{"level":"info","message":"   - AI/ML Features","timestamp":"2025-10-22T22:40:24.173Z"}
+{"level":"info","message":"   - IoT Support","timestamp":"2025-10-22T22:40:24.173Z"}
+{"level":"info","message":"","timestamp":"2025-10-22T22:40:24.173Z"}
+{"level":"info","message":"========================================","timestamp":"2025-10-22T22:40:24.173Z"}
+{"level":"info","message":"🎓 STUDYSPOT API is ready to serve!","timestamp":"2025-10-22T22:40:24.173Z"}
+{"level":"info","message":"========================================","timestamp":"2025-10-22T22:40:24.173Z"}
+{"level":"warn","message":"Email configuration incomplete. Email notifications will be disabled.","timestamp":"2025-10-23T03:02:38.129Z"}
+{"level":"warn","message":"Twilio configuration incomplete. SMS notifications will be disabled.","timestamp":"2025-10-23T03:02:38.133Z"}
+{"level":"warn","message":"Razorpay credentials not configured. Payment features will be limited.","timestamp":"2025-10-23T03:02:38.168Z"}
+{"level":"warn","message":"Stripe secret key not configured","timestamp":"2025-10-23T03:02:38.721Z"}
+{"level":"info","message":"========================================","timestamp":"2025-10-23T03:02:39.003Z"}
+{"level":"info","message":"🎓 STUDYSPOT - Unified API Server","timestamp":"2025-10-23T03:02:39.020Z"}
+{"level":"info","message":"========================================","timestamp":"2025-10-23T03:02:39.024Z"}
+{"level":"info","message":"Starting server initialization...","timestamp":"2025-10-23T03:02:39.036Z"}
+{"level":"info","message":"Connecting to PostgreSQL database...","timestamp":"2025-10-23T03:02:39.038Z"}
+{"code":"28P01","length":78,"level":"error","message":"Database connection failed: password authentication failed for user \"postgres\"","name":"error","severity":"FATAL","stack":"error: password authentication failed for user \"postgres\"\n    at C:\\Users\\insti\\OneDrive\\Desktop\\om\\api\\node_modules\\pg-pool\\index.js:45:11\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async connectDatabase (C:\\Users\\insti\\OneDrive\\Desktop\\om\\api\\src\\config\\database.js:33:20)\n    at async startServer (C:\\Users\\insti\\OneDrive\\Desktop\\om\\api\\src\\index-unified.js:253:7)","timestamp":"2025-10-23T03:02:39.719Z"}

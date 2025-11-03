@@ -1,0 +1,371 @@
+// ============================================
+// ADMIN USERS PAGE
+// ============================================
+
+import React, { useState } from 'react';
+import {
+  Box,
+  Typography,
+  Card,
+  CardContent,
+  TextField,
+  Button,
+  Chip,
+  IconButton,
+  Menu,
+  MenuItem,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+} from '@mui/material';
+import { DataGrid, GridColDef, GridRenderCellParams } from '@mui/x-data-grid';
+import {
+  Search,
+  Add,
+  MoreVert,
+  Edit,
+  Delete,
+  Visibility,
+  AdminPanelSettings,
+} from '@mui/icons-material';
+import { useAppSelector, useAppDispatch } from '../../../hooks/redux';
+import { setFilters, removeAdminUser } from '../../../store/slices/userSlice';
+import { showSuccess } from '../../../store/slices/uiSlice';
+import { AdminUser } from '../types';
+
+const AdminUsersPage: React.FC = () => {
+  const dispatch = useAppDispatch();
+  const { adminUsers, filters, loading } = useAppSelector((state) => state.user);
+
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+
+  // Handle search
+  const handleSearch = (value: string) => {
+    dispatch(setFilters({ search: value, page: 1 }));
+  };
+
+  // Handle menu
+  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, user: AdminUser) => {
+    setAnchorEl(event.currentTarget);
+    setSelectedUser(user);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
+
+  // Handle actions
+  const handleView = () => {
+    if (selectedUser) {
+      dispatch(showSuccess(`Viewing ${selectedUser.name}`));
+    }
+    handleMenuClose();
+  };
+
+  const handleEdit = () => {
+    if (selectedUser) {
+      dispatch(showSuccess(`Editing ${selectedUser.name}`));
+    }
+    handleMenuClose();
+  };
+
+  const handleDeleteClick = () => {
+    setDeleteDialogOpen(true);
+    handleMenuClose();
+  };
+
+  const handleDeleteConfirm = () => {
+    if (selectedUser) {
+      dispatch(removeAdminUser(selectedUser.id));
+      dispatch(showSuccess(`Admin user "${selectedUser.name}" deleted successfully`));
+    }
+    setDeleteDialogOpen(false);
+    setSelectedUser(null);
+  };
+
+  // Get colors
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'active': return 'success';
+      case 'suspended': return 'error';
+      case 'inactive': return 'default';
+      default: return 'default';
+    }
+  };
+
+  const getRoleColor = (role: string) => {
+    switch (role) {
+      case 'super_admin': return 'error';
+      case 'admin': return 'primary';
+      case 'support': return 'info';
+      case 'viewer': return 'default';
+      default: return 'default';
+    }
+  };
+
+  // DataGrid columns
+  const columns: GridColDef[] = [
+    {
+      field: 'name',
+      headerName: 'Name',
+      flex: 1,
+      minWidth: 180,
+    },
+    {
+      field: 'email',
+      headerName: 'Email',
+      flex: 1,
+      minWidth: 200,
+    },
+    {
+      field: 'role',
+      headerName: 'Role',
+      width: 150,
+      renderCell: (params: GridRenderCellParams) => (
+        <Chip
+          label={params.value?.replace('_', ' ')}
+          color={getRoleColor(params.value as string) as any}
+          size="small"
+          sx={{ textTransform: 'capitalize' }}
+        />
+      ),
+    },
+    {
+      field: 'permissions',
+      headerName: 'Permissions',
+      flex: 1,
+      minWidth: 150,
+      renderCell: (params: GridRenderCellParams) => {
+        const perms = params.value as string[];
+        return (
+          <Typography variant="body2" color="text.secondary">
+            {perms[0] === 'all' ? 'All Permissions' : `${perms.length} permissions`}
+          </Typography>
+        );
+      },
+    },
+    {
+      field: 'status',
+      headerName: 'Status',
+      width: 120,
+      renderCell: (params: GridRenderCellParams) => (
+        <Chip
+          label={params.value}
+          color={getStatusColor(params.value as string) as any}
+          size="small"
+        />
+      ),
+    },
+    {
+      field: 'lastLogin',
+      headerName: 'Last Login',
+      width: 150,
+      valueGetter: (value) => {
+        return value ? new Date(value).toLocaleDateString() : 'Never';
+      },
+    },
+    {
+      field: 'actions',
+      headerName: 'Actions',
+      width: 80,
+      sortable: false,
+      renderCell: (params: GridRenderCellParams) => (
+        <IconButton
+          size="small"
+          onClick={(e) => handleMenuOpen(e, params.row as AdminUser)}
+        >
+          <MoreVert />
+        </IconButton>
+      ),
+    },
+  ];
+
+  // Filter users
+  const filteredUsers = adminUsers.filter((user) => {
+    const matchesSearch =
+      !filters.search ||
+      user.name.toLowerCase().includes(filters.search.toLowerCase()) ||
+      user.email.toLowerCase().includes(filters.search.toLowerCase());
+
+    const matchesRole = !filters.role || user.role === filters.role;
+    const matchesStatus = !filters.status || user.status === filters.status;
+
+    return matchesSearch && matchesRole && matchesStatus;
+  });
+
+  // Calculate stats
+  const stats = {
+    total: filteredUsers.length,
+    superAdmins: filteredUsers.filter(u => u.role === 'super_admin').length,
+    admins: filteredUsers.filter(u => u.role === 'admin').length,
+    support: filteredUsers.filter(u => u.role === 'support').length,
+    active: filteredUsers.filter(u => u.status === 'active').length,
+  };
+
+  return (
+    <Box sx={{ p: 3 }}>
+      {/* Header */}
+      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Box>
+          <Typography variant="h4" fontWeight="bold" gutterBottom>
+            Admin Users
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Manage internal platform administrators and their permissions
+          </Typography>
+        </Box>
+        <Button
+          variant="contained"
+          startIcon={<Add />}
+          onClick={() => dispatch(showSuccess('Create Admin User feature coming soon'))}
+        >
+          Add Admin User
+        </Button>
+      </Box>
+
+      {/* Stats Cards */}
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: {
+            xs: 'repeat(2, 1fr)',
+            sm: 'repeat(3, 1fr)',
+            md: 'repeat(5, 1fr)',
+          },
+          gap: 2,
+          mb: 3,
+        }}
+      >
+        <Card>
+          <CardContent>
+            <Typography variant="h4" fontWeight="bold" color="primary">
+              {stats.total}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Total Admins
+            </Typography>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent>
+            <Typography variant="h4" fontWeight="bold" color="error.main">
+              {stats.superAdmins}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Super Admins
+            </Typography>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent>
+            <Typography variant="h4" fontWeight="bold" color="primary.main">
+              {stats.admins}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Admins
+            </Typography>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent>
+            <Typography variant="h4" fontWeight="bold" color="info.main">
+              {stats.support}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Support Staff
+            </Typography>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent>
+            <Typography variant="h4" fontWeight="bold" color="success.main">
+              {stats.active}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Active Users
+            </Typography>
+          </CardContent>
+        </Card>
+      </Box>
+
+      {/* Filters */}
+      <Card sx={{ mb: 3 }}>
+        <CardContent>
+          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+            <TextField
+              placeholder="Search admin users..."
+              size="small"
+              value={filters.search}
+              onChange={(e) => handleSearch(e.target.value)}
+              InputProps={{
+                startAdornment: <Search sx={{ mr: 1, color: 'text.secondary' }} />,
+              }}
+              sx={{ minWidth: 300 }}
+            />
+            <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', ml: 'auto' }}>
+              Showing {filteredUsers.length} of {adminUsers.length} admin users
+            </Typography>
+          </Box>
+        </CardContent>
+      </Card>
+
+      {/* Data Grid */}
+      <Card>
+        <DataGrid
+          rows={filteredUsers}
+          columns={columns}
+          loading={loading}
+          pageSizeOptions={[10, 25, 50]}
+          paginationModel={{
+            page: filters.page - 1,
+            pageSize: filters.limit,
+          }}
+          onPaginationModelChange={(model) => {
+            dispatch(setFilters({ page: model.page + 1, limit: model.pageSize }));
+          }}
+          disableRowSelectionOnClick
+          autoHeight
+        />
+      </Card>
+
+      {/* Action Menu */}
+      <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}>
+        <MenuItem onClick={handleView}>
+          <Visibility sx={{ mr: 1 }} fontSize="small" />
+          View Details
+        </MenuItem>
+        <MenuItem onClick={handleEdit}>
+          <Edit sx={{ mr: 1 }} fontSize="small" />
+          Edit User
+        </MenuItem>
+        <MenuItem onClick={handleDeleteClick} sx={{ color: 'error.main' }}>
+          <Delete sx={{ mr: 1 }} fontSize="small" />
+          Delete User
+        </MenuItem>
+      </Menu>
+
+      {/* Delete Dialog */}
+      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
+        <DialogTitle>Delete Admin User</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to delete <strong>{selectedUser?.name}</strong>?
+            This admin user will lose all access to the platform.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
+          <Button onClick={handleDeleteConfirm} color="error" variant="contained">
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
+  );
+};
+
+export default AdminUsersPage;
+

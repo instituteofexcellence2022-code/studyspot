@@ -1,0 +1,1158 @@
+// ============================================
+// TICKET MANAGEMENT - API SERVICE
+// ============================================
+
+import { ApiResponse } from '../../types';
+import {
+  Ticket,
+  TicketComment,
+  TicketActivity,
+  TicketStatistics,
+  TicketCategory,
+  SLAConfiguration,
+  TicketDashboard,
+  CreateTicketData,
+  UpdateTicketData,
+  BulkTicketAction,
+  TicketFilters,
+} from '../../modules/tickets/types';
+
+// Mock Mode Toggle
+const MOCK_MODE = true;
+
+// ============================================
+// MOCK DATA - TICKET CATEGORIES
+// ============================================
+
+const MOCK_CATEGORIES: TicketCategory[] = [
+  {
+    id: 'cat-1',
+    name: 'Technical Support',
+    description: 'Technical issues, bugs, and system problems',
+    slaResponseMinutes: 30,
+    slaResolutionMinutes: 240,
+    color: '#2196F3',
+    icon: 'Build',
+    isActive: true,
+  },
+  {
+    id: 'cat-2',
+    name: 'Billing & Payments',
+    description: 'Payment issues, invoices, and billing inquiries',
+    slaResponseMinutes: 60,
+    slaResolutionMinutes: 480,
+    color: '#4CAF50',
+    icon: 'Payment',
+    isActive: true,
+  },
+  {
+    id: 'cat-3',
+    name: 'Feature Request',
+    description: 'New feature suggestions and enhancements',
+    slaResponseMinutes: 120,
+    slaResolutionMinutes: 2880, // 2 days
+    color: '#9C27B0',
+    icon: 'Lightbulb',
+    isActive: true,
+  },
+  {
+    id: 'cat-4',
+    name: 'Bug Report',
+    description: 'Software bugs and errors',
+    slaResponseMinutes: 15,
+    slaResolutionMinutes: 120,
+    color: '#F44336',
+    icon: 'BugReport',
+    isActive: true,
+  },
+  {
+    id: 'cat-5',
+    name: 'Account Management',
+    description: 'Account settings, profile, and access issues',
+    slaResponseMinutes: 45,
+    slaResolutionMinutes: 360,
+    color: '#FF9800',
+    icon: 'AccountCircle',
+    isActive: true,
+  },
+  {
+    id: 'cat-6',
+    name: 'General Inquiry',
+    description: 'General questions and information requests',
+    slaResponseMinutes: 90,
+    slaResolutionMinutes: 720,
+    color: '#607D8B',
+    icon: 'Help',
+    isActive: true,
+  },
+];
+
+// ============================================
+// MOCK DATA - SLA CONFIGURATIONS
+// ============================================
+
+const MOCK_SLA_CONFIG: SLAConfiguration[] = [
+  {
+    id: 'sla-1',
+    priority: 'critical',
+    responseTimeMinutes: 15,
+    resolutionTimeMinutes: 120,
+    businessHoursOnly: false,
+  },
+  {
+    id: 'sla-2',
+    priority: 'high',
+    responseTimeMinutes: 30,
+    resolutionTimeMinutes: 240,
+    businessHoursOnly: false,
+  },
+  {
+    id: 'sla-3',
+    priority: 'medium',
+    responseTimeMinutes: 60,
+    resolutionTimeMinutes: 480,
+    businessHoursOnly: true,
+  },
+  {
+    id: 'sla-4',
+    priority: 'low',
+    responseTimeMinutes: 120,
+    resolutionTimeMinutes: 1440,
+    businessHoursOnly: true,
+  },
+];
+
+// Helper function to calculate SLA status
+const calculateSLAStatus = (target: number, actual?: number, deadline?: string): 'on_time' | 'at_risk' | 'overdue' => {
+  if (!deadline) return 'on_time';
+  
+  const now = new Date();
+  const deadlineDate = new Date(deadline);
+  const timeRemaining = deadlineDate.getTime() - now.getTime();
+  const minutesRemaining = timeRemaining / (1000 * 60);
+  
+  if (actual !== undefined) {
+    return actual <= target ? 'on_time' : 'overdue';
+  }
+  
+  if (minutesRemaining < 0) return 'overdue';
+  if (minutesRemaining < target * 0.2) return 'at_risk'; // Less than 20% time remaining
+  return 'on_time';
+};
+
+// ============================================
+// MOCK DATA - TICKETS
+// ============================================
+
+const MOCK_TICKETS: Ticket[] = [
+  // NEW TICKETS
+  {
+    id: 'tkt-1',
+    ticketNumber: 'TKT-2024-001',
+    title: 'Unable to login to admin portal',
+    description: 'Getting "Invalid credentials" error even with correct password. Tried resetting password but issue persists.',
+    status: 'new',
+    priority: 'high',
+    category: 'Technical Support',
+    tenantId: 'tenant-1',
+    tenantName: 'Central Library',
+    userId: 'user-101',
+    userName: 'Rajesh Kumar',
+    userEmail: 'rajesh@centrallibrary.com',
+    tags: ['login', 'authentication'],
+    attachments: [],
+    createdAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(), // 30 min ago
+    updatedAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
+    sla: {
+      responseTarget: 30,
+      resolutionTarget: 240,
+      responseStatus: 'on_time',
+      resolutionStatus: 'on_time',
+      responseDeadline: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+      resolutionDeadline: new Date(Date.now() + 210 * 60 * 1000).toISOString(),
+    },
+  },
+  {
+    id: 'tkt-2',
+    ticketNumber: 'TKT-2024-002',
+    title: 'Payment gateway not working',
+    description: 'Razorpay integration is failing. Students unable to make payments online.',
+    status: 'new',
+    priority: 'critical',
+    category: 'Technical Support',
+    tenantId: 'tenant-2',
+    tenantName: 'Smart Study Center',
+    userId: 'user-102',
+    userName: 'Priya Sharma',
+    userEmail: 'priya@smartstudy.com',
+    tags: ['payment', 'razorpay', 'urgent'],
+    attachments: [
+      {
+        id: 'att-1',
+        name: 'error-screenshot.png',
+        url: '/uploads/error-screenshot.png',
+        size: 245000,
+        type: 'image/png',
+        uploadedBy: 'Priya Sharma',
+        uploadedAt: new Date(Date.now() - 10 * 60 * 1000).toISOString(),
+      },
+    ],
+    createdAt: new Date(Date.now() - 10 * 60 * 1000).toISOString(), // 10 min ago
+    updatedAt: new Date(Date.now() - 10 * 60 * 1000).toISOString(),
+    sla: {
+      responseTarget: 15,
+      resolutionTarget: 120,
+      responseStatus: 'on_time',
+      resolutionStatus: 'on_time',
+      responseDeadline: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+      resolutionDeadline: new Date(Date.now() + 110 * 60 * 1000).toISOString(),
+    },
+  },
+  {
+    id: 'tkt-3',
+    ticketNumber: 'TKT-2024-003',
+    title: 'Request for bulk SMS feature',
+    description: 'Need ability to send bulk SMS to all students at once for announcements.',
+    status: 'new',
+    priority: 'medium',
+    category: 'Feature Request',
+    tenantId: 'tenant-3',
+    tenantName: 'Elite Coaching',
+    userId: 'user-103',
+    userName: 'Amit Patel',
+    userEmail: 'amit@elitecoaching.com',
+    tags: ['feature', 'sms', 'bulk'],
+    attachments: [],
+    createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
+    updatedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+    sla: {
+      responseTarget: 120,
+      resolutionTarget: 2880,
+      responseStatus: 'on_time',
+      resolutionStatus: 'on_time',
+      responseDeadline: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+      resolutionDeadline: new Date(Date.now() + 46 * 60 * 60 * 1000).toISOString(),
+    },
+  },
+  {
+    id: 'tkt-4',
+    ticketNumber: 'TKT-2024-004',
+    title: 'Invoice not generated for last month',
+    description: 'Monthly invoice for October not received. Need it for accounting purposes.',
+    status: 'new',
+    priority: 'medium',
+    category: 'Billing & Payments',
+    tenantId: 'tenant-4',
+    tenantName: 'Knowledge Hub',
+    userId: 'user-104',
+    userName: 'Sneha Reddy',
+    userEmail: 'sneha@knowledgehub.com',
+    tags: ['invoice', 'billing'],
+    attachments: [],
+    createdAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(), // 4 hours ago
+    updatedAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
+    sla: {
+      responseTarget: 60,
+      resolutionTarget: 480,
+      responseStatus: 'overdue',
+      resolutionStatus: 'on_time',
+      responseDeadline: new Date(Date.now() - 180 * 60 * 1000).toISOString(),
+      resolutionDeadline: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(),
+    },
+  },
+  {
+    id: 'tkt-5',
+    ticketNumber: 'TKT-2024-005',
+    title: 'How to export student attendance data?',
+    description: 'Need to export attendance data for the last 3 months in Excel format.',
+    status: 'new',
+    priority: 'low',
+    category: 'General Inquiry',
+    tenantId: 'tenant-5',
+    tenantName: 'Study Point',
+    userId: 'user-105',
+    userName: 'Vikram Singh',
+    userEmail: 'vikram@studypoint.com',
+    tags: ['attendance', 'export', 'help'],
+    attachments: [],
+    createdAt: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(), // 6 hours ago
+    updatedAt: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
+    sla: {
+      responseTarget: 90,
+      resolutionTarget: 720,
+      responseStatus: 'at_risk',
+      resolutionStatus: 'on_time',
+      responseDeadline: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+      resolutionDeadline: new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString(),
+    },
+  },
+
+  // OPEN TICKETS
+  {
+    id: 'tkt-6',
+    ticketNumber: 'TKT-2024-006',
+    title: 'Face recognition not working on mobile app',
+    description: 'Face recognition feature fails on Android devices. Works fine on iOS.',
+    status: 'open',
+    priority: 'high',
+    category: 'Bug Report',
+    tenantId: 'tenant-1',
+    tenantName: 'Central Library',
+    userId: 'user-106',
+    userName: 'Anita Desai',
+    userEmail: 'anita@centrallibrary.com',
+    assigneeId: 'admin-1',
+    assigneeName: 'Support Team Lead',
+    tags: ['bug', 'mobile', 'face-recognition', 'android'],
+    attachments: [],
+    createdAt: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(), // 12 hours ago
+    updatedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+    firstResponseAt: new Date(Date.now() - 11 * 60 * 60 * 1000).toISOString(),
+    sla: {
+      responseTarget: 15,
+      resolutionTarget: 120,
+      responseActual: 60,
+      responseStatus: 'overdue',
+      resolutionStatus: 'overdue',
+      responseDeadline: new Date(Date.now() - 11 * 60 * 60 * 45 * 60 * 1000).toISOString(),
+      resolutionDeadline: new Date(Date.now() - 10 * 60 * 60 * 1000).toISOString(),
+    },
+  },
+  {
+    id: 'tkt-7',
+    ticketNumber: 'TKT-2024-007',
+    title: 'Seat booking confirmation email not received',
+    description: 'Students booking seats but not receiving confirmation emails.',
+    status: 'open',
+    priority: 'medium',
+    category: 'Technical Support',
+    tenantId: 'tenant-2',
+    tenantName: 'Smart Study Center',
+    userId: 'user-107',
+    userName: 'Rahul Verma',
+    userEmail: 'rahul@smartstudy.com',
+    assigneeId: 'admin-2',
+    assigneeName: 'Tech Support',
+    tags: ['email', 'booking', 'notification'],
+    attachments: [],
+    createdAt: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(), // 8 hours ago
+    updatedAt: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
+    firstResponseAt: new Date(Date.now() - 7 * 60 * 60 * 1000).toISOString(),
+    sla: {
+      responseTarget: 30,
+      resolutionTarget: 240,
+      responseActual: 60,
+      responseStatus: 'overdue',
+      resolutionStatus: 'on_time',
+      responseDeadline: new Date(Date.now() - 7 * 60 * 60 * 30 * 60 * 1000).toISOString(),
+      resolutionDeadline: new Date(Date.now() + 60 * 1000).toISOString(),
+    },
+  },
+
+  // IN PROGRESS TICKETS
+  {
+    id: 'tkt-8',
+    ticketNumber: 'TKT-2024-008',
+    title: 'Dashboard loading very slow',
+    description: 'Admin dashboard takes 10-15 seconds to load. Need performance optimization.',
+    status: 'in_progress',
+    priority: 'medium',
+    category: 'Technical Support',
+    tenantId: 'tenant-3',
+    tenantName: 'Elite Coaching',
+    userId: 'user-108',
+    userName: 'Deepak Joshi',
+    userEmail: 'deepak@elitecoaching.com',
+    assigneeId: 'admin-1',
+    assigneeName: 'Support Team Lead',
+    tags: ['performance', 'dashboard', 'optimization'],
+    attachments: [],
+    createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
+    updatedAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
+    firstResponseAt: new Date(Date.now() - 23 * 60 * 60 * 1000).toISOString(),
+    sla: {
+      responseTarget: 60,
+      resolutionTarget: 480,
+      responseActual: 60,
+      responseStatus: 'on_time',
+      resolutionStatus: 'at_risk',
+      responseDeadline: new Date(Date.now() - 23 * 60 * 60 * 1000).toISOString(),
+      resolutionDeadline: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
+    },
+  },
+  {
+    id: 'tkt-9',
+    ticketNumber: 'TKT-2024-009',
+    title: 'Unable to update student profile',
+    description: 'Getting error when trying to update student phone number and address.',
+    status: 'in_progress',
+    priority: 'high',
+    category: 'Bug Report',
+    tenantId: 'tenant-4',
+    tenantName: 'Knowledge Hub',
+    userId: 'user-109',
+    userName: 'Kavita Nair',
+    userEmail: 'kavita@knowledgehub.com',
+    assigneeId: 'admin-3',
+    assigneeName: 'Senior Developer',
+    tags: ['bug', 'profile', 'update'],
+    attachments: [
+      {
+        id: 'att-2',
+        name: 'error-log.txt',
+        url: '/uploads/error-log.txt',
+        size: 15000,
+        type: 'text/plain',
+        uploadedBy: 'Kavita Nair',
+        uploadedAt: new Date(Date.now() - 18 * 60 * 60 * 1000).toISOString(),
+      },
+    ],
+    createdAt: new Date(Date.now() - 20 * 60 * 60 * 1000).toISOString(), // 20 hours ago
+    updatedAt: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
+    firstResponseAt: new Date(Date.now() - 19 * 60 * 60 * 1000).toISOString(),
+    sla: {
+      responseTarget: 15,
+      resolutionTarget: 120,
+      responseActual: 60,
+      responseStatus: 'overdue',
+      resolutionStatus: 'overdue',
+      responseDeadline: new Date(Date.now() - 19 * 60 * 60 * 45 * 60 * 1000).toISOString(),
+      resolutionDeadline: new Date(Date.now() - 18 * 60 * 60 * 1000).toISOString(),
+    },
+  },
+
+  // RESOLVED TICKETS
+  {
+    id: 'tkt-10',
+    ticketNumber: 'TKT-2024-010',
+    title: 'Password reset link not working',
+    description: 'Password reset link in email shows "Link expired" even when clicked immediately.',
+    status: 'resolved',
+    priority: 'high',
+    category: 'Technical Support',
+    tenantId: 'tenant-5',
+    tenantName: 'Study Point',
+    userId: 'user-110',
+    userName: 'Suresh Iyer',
+    userEmail: 'suresh@studypoint.com',
+    assigneeId: 'admin-2',
+    assigneeName: 'Tech Support',
+    tags: ['password', 'reset', 'email'],
+    attachments: [],
+    createdAt: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString(), // 2 days ago
+    updatedAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+    firstResponseAt: new Date(Date.now() - 47 * 60 * 60 * 1000).toISOString(),
+    resolvedAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+    sla: {
+      responseTarget: 30,
+      resolutionTarget: 240,
+      responseActual: 60,
+      resolutionActual: 1440, // 24 hours
+      responseStatus: 'overdue',
+      resolutionStatus: 'overdue',
+      responseDeadline: new Date(Date.now() - 47 * 60 * 60 * 30 * 60 * 1000).toISOString(),
+      resolutionDeadline: new Date(Date.now() - 44 * 60 * 60 * 1000).toISOString(),
+    },
+    satisfaction: {
+      rating: 4,
+      feedback: 'Issue resolved quickly. Thank you!',
+      submittedAt: new Date(Date.now() - 23 * 60 * 60 * 1000).toISOString(),
+    },
+  },
+  {
+    id: 'tkt-11',
+    ticketNumber: 'TKT-2024-011',
+    title: 'How to add new staff member?',
+    description: 'Need help adding a new staff member to the system with admin access.',
+    status: 'resolved',
+    priority: 'low',
+    category: 'General Inquiry',
+    tenantId: 'tenant-1',
+    tenantName: 'Central Library',
+    userId: 'user-111',
+    userName: 'Meera Kapoor',
+    userEmail: 'meera@centrallibrary.com',
+    assigneeId: 'admin-1',
+    assigneeName: 'Support Team Lead',
+    tags: ['help', 'staff', 'user-management'],
+    attachments: [],
+    createdAt: new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString(), // 3 days ago
+    updatedAt: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString(),
+    firstResponseAt: new Date(Date.now() - 70 * 60 * 60 * 1000).toISOString(),
+    resolvedAt: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString(),
+    sla: {
+      responseTarget: 90,
+      resolutionTarget: 720,
+      responseActual: 120,
+      resolutionActual: 1440,
+      responseStatus: 'overdue',
+      resolutionStatus: 'overdue',
+      responseDeadline: new Date(Date.now() - 70 * 60 * 60 * 30 * 60 * 1000).toISOString(),
+      resolutionDeadline: new Date(Date.now() - 60 * 60 * 60 * 1000).toISOString(),
+    },
+    satisfaction: {
+      rating: 5,
+      feedback: 'Very helpful! Step-by-step guide was perfect.',
+      submittedAt: new Date(Date.now() - 47 * 60 * 60 * 1000).toISOString(),
+    },
+  },
+
+  // CLOSED TICKETS
+  {
+    id: 'tkt-12',
+    ticketNumber: 'TKT-2024-012',
+    title: 'Incorrect fee calculation in invoice',
+    description: 'Invoice shows wrong amount. Should be ₹5000 but showing ₹5500.',
+    status: 'closed',
+    priority: 'high',
+    category: 'Billing & Payments',
+    tenantId: 'tenant-2',
+    tenantName: 'Smart Study Center',
+    userId: 'user-112',
+    userName: 'Arjun Malhotra',
+    userEmail: 'arjun@smartstudy.com',
+    assigneeId: 'admin-3',
+    assigneeName: 'Senior Developer',
+    tags: ['billing', 'invoice', 'calculation'],
+    attachments: [],
+    createdAt: new Date(Date.now() - 96 * 60 * 60 * 1000).toISOString(), // 4 days ago
+    updatedAt: new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString(),
+    firstResponseAt: new Date(Date.now() - 95 * 60 * 60 * 1000).toISOString(),
+    resolvedAt: new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString(),
+    closedAt: new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString(),
+    sla: {
+      responseTarget: 60,
+      resolutionTarget: 480,
+      responseActual: 60,
+      resolutionActual: 1440,
+      responseStatus: 'on_time',
+      resolutionStatus: 'overdue',
+      responseDeadline: new Date(Date.now() - 95 * 60 * 60 * 1000).toISOString(),
+      resolutionDeadline: new Date(Date.now() - 88 * 60 * 60 * 1000).toISOString(),
+    },
+    satisfaction: {
+      rating: 5,
+      feedback: 'Issue fixed and refund processed. Excellent service!',
+      submittedAt: new Date(Date.now() - 71 * 60 * 60 * 1000).toISOString(),
+    },
+  },
+];
+
+// Add more tickets to reach 20+
+const additionalTickets: Ticket[] = [
+  // More tickets for variety
+  {
+    id: 'tkt-13',
+    ticketNumber: 'TKT-2024-013',
+    title: 'QR code scanner not working',
+    description: 'QR code entry system fails to scan student QR codes.',
+    status: 'open',
+    priority: 'critical',
+    category: 'Bug Report',
+    tenantId: 'tenant-3',
+    tenantName: 'Elite Coaching',
+    userId: 'user-113',
+    userName: 'Pooja Gupta',
+    userEmail: 'pooja@elitecoaching.com',
+    assigneeId: 'admin-1',
+    assigneeName: 'Support Team Lead',
+    tags: ['qr-code', 'scanner', 'critical'],
+    attachments: [],
+    createdAt: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
+    updatedAt: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
+    firstResponseAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
+    sla: {
+      responseTarget: 15,
+      resolutionTarget: 120,
+      responseActual: 60,
+      responseStatus: 'overdue',
+      resolutionStatus: 'at_risk',
+      responseDeadline: new Date(Date.now() - 4 * 60 * 60 * 45 * 60 * 1000).toISOString(),
+      resolutionDeadline: new Date(Date.now() + 1 * 60 * 60 * 1000).toISOString(),
+    },
+  },
+  {
+    id: 'tkt-14',
+    ticketNumber: 'TKT-2024-014',
+    title: 'Need custom report for attendance',
+    description: 'Require custom attendance report with date range and student filters.',
+    status: 'in_progress',
+    priority: 'medium',
+    category: 'Feature Request',
+    tenantId: 'tenant-4',
+    tenantName: 'Knowledge Hub',
+    userId: 'user-114',
+    userName: 'Sanjay Mehta',
+    userEmail: 'sanjay@knowledgehub.com',
+    assigneeId: 'admin-2',
+    assigneeName: 'Tech Support',
+    tags: ['report', 'attendance', 'custom'],
+    attachments: [],
+    createdAt: new Date(Date.now() - 36 * 60 * 60 * 1000).toISOString(),
+    updatedAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
+    firstResponseAt: new Date(Date.now() - 34 * 60 * 60 * 1000).toISOString(),
+    sla: {
+      responseTarget: 120,
+      resolutionTarget: 2880,
+      responseActual: 120,
+      responseStatus: 'on_time',
+      resolutionStatus: 'on_time',
+      responseDeadline: new Date(Date.now() - 34 * 60 * 60 * 1000).toISOString(),
+      resolutionDeadline: new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString(),
+    },
+  },
+  {
+    id: 'tkt-15',
+    ticketNumber: 'TKT-2024-015',
+    title: 'Refund not processed',
+    description: 'Requested refund 5 days ago but amount not credited yet.',
+    status: 'in_progress',
+    priority: 'high',
+    category: 'Billing & Payments',
+    tenantId: 'tenant-5',
+    tenantName: 'Study Point',
+    userId: 'user-115',
+    userName: 'Neha Agarwal',
+    userEmail: 'neha@studypoint.com',
+    assigneeId: 'admin-3',
+    assigneeName: 'Senior Developer',
+    tags: ['refund', 'billing', 'payment'],
+    attachments: [],
+    createdAt: new Date(Date.now() - 120 * 60 * 60 * 1000).toISOString(),
+    updatedAt: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(),
+    firstResponseAt: new Date(Date.now() - 118 * 60 * 60 * 1000).toISOString(),
+    sla: {
+      responseTarget: 60,
+      resolutionTarget: 480,
+      responseActual: 120,
+      responseStatus: 'overdue',
+      resolutionStatus: 'overdue',
+      responseDeadline: new Date(Date.now() - 119 * 60 * 60 * 1000).toISOString(),
+      resolutionDeadline: new Date(Date.now() - 112 * 60 * 60 * 1000).toISOString(),
+    },
+  },
+  {
+    id: 'tkt-16',
+    ticketNumber: 'TKT-2024-016',
+    title: 'Mobile app crashing on startup',
+    description: 'Android app crashes immediately after opening. Version 2.1.0.',
+    status: 'resolved',
+    priority: 'critical',
+    category: 'Bug Report',
+    tenantId: 'tenant-1',
+    tenantName: 'Central Library',
+    userId: 'user-116',
+    userName: 'Ravi Shankar',
+    userEmail: 'ravi@centrallibrary.com',
+    assigneeId: 'admin-1',
+    assigneeName: 'Support Team Lead',
+    tags: ['mobile', 'crash', 'android', 'critical'],
+    attachments: [],
+    createdAt: new Date(Date.now() - 168 * 60 * 60 * 1000).toISOString(),
+    updatedAt: new Date(Date.now() - 144 * 60 * 60 * 1000).toISOString(),
+    firstResponseAt: new Date(Date.now() - 167 * 60 * 60 * 1000).toISOString(),
+    resolvedAt: new Date(Date.now() - 144 * 60 * 60 * 1000).toISOString(),
+    sla: {
+      responseTarget: 15,
+      resolutionTarget: 120,
+      responseActual: 60,
+      resolutionActual: 1440,
+      responseStatus: 'overdue',
+      resolutionStatus: 'overdue',
+      responseDeadline: new Date(Date.now() - 167 * 60 * 60 * 45 * 60 * 1000).toISOString(),
+      resolutionDeadline: new Date(Date.now() - 166 * 60 * 60 * 1000).toISOString(),
+    },
+    satisfaction: {
+      rating: 3,
+      feedback: 'Fixed but took too long. App was unusable for 6 days.',
+      submittedAt: new Date(Date.now() - 143 * 60 * 60 * 1000).toISOString(),
+    },
+  },
+  {
+    id: 'tkt-17',
+    ticketNumber: 'TKT-2024-017',
+    title: 'Cannot delete old student records',
+    description: 'Getting permission error when trying to delete inactive student records.',
+    status: 'resolved',
+    priority: 'low',
+    category: 'Account Management',
+    tenantId: 'tenant-2',
+    tenantName: 'Smart Study Center',
+    userId: 'user-117',
+    userName: 'Kiran Bedi',
+    userEmail: 'kiran@smartstudy.com',
+    assigneeId: 'admin-2',
+    assigneeName: 'Tech Support',
+    tags: ['permission', 'delete', 'students'],
+    attachments: [],
+    createdAt: new Date(Date.now() - 192 * 60 * 60 * 1000).toISOString(),
+    updatedAt: new Date(Date.now() - 168 * 60 * 60 * 1000).toISOString(),
+    firstResponseAt: new Date(Date.now() - 190 * 60 * 60 * 1000).toISOString(),
+    resolvedAt: new Date(Date.now() - 168 * 60 * 60 * 1000).toISOString(),
+    sla: {
+      responseTarget: 120,
+      resolutionTarget: 1440,
+      responseActual: 120,
+      resolutionActual: 1440,
+      responseStatus: 'on_time',
+      resolutionStatus: 'on_time',
+      responseDeadline: new Date(Date.now() - 190 * 60 * 60 * 1000).toISOString(),
+      resolutionDeadline: new Date(Date.now() - 168 * 60 * 60 * 1000).toISOString(),
+    },
+    satisfaction: {
+      rating: 5,
+      feedback: 'Perfect! Issue resolved and explained clearly.',
+      submittedAt: new Date(Date.now() - 167 * 60 * 60 * 1000).toISOString(),
+    },
+  },
+  {
+    id: 'tkt-18',
+    ticketNumber: 'TKT-2024-018',
+    title: 'WhatsApp notifications not sending',
+    description: 'WhatsApp message notifications stopped working since yesterday.',
+    status: 'open',
+    priority: 'high',
+    category: 'Technical Support',
+    tenantId: 'tenant-3',
+    tenantName: 'Elite Coaching',
+    userId: 'user-118',
+    userName: 'Manish Tiwari',
+    userEmail: 'manish@elitecoaching.com',
+    assigneeId: 'admin-1',
+    assigneeName: 'Support Team Lead',
+    tags: ['whatsapp', 'notification', 'messaging'],
+    attachments: [],
+    createdAt: new Date(Date.now() - 16 * 60 * 60 * 1000).toISOString(),
+    updatedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+    firstResponseAt: new Date(Date.now() - 15 * 60 * 60 * 1000).toISOString(),
+    sla: {
+      responseTarget: 30,
+      resolutionTarget: 240,
+      responseActual: 60,
+      responseStatus: 'overdue',
+      resolutionStatus: 'on_time',
+      responseDeadline: new Date(Date.now() - 15 * 60 * 60 * 30 * 60 * 1000).toISOString(),
+      resolutionDeadline: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(),
+    },
+  },
+  {
+    id: 'tkt-19',
+    ticketNumber: 'TKT-2024-019',
+    title: 'Request API documentation',
+    description: 'Need API documentation for integrating with our existing system.',
+    status: 'closed',
+    priority: 'medium',
+    category: 'General Inquiry',
+    tenantId: 'tenant-4',
+    tenantName: 'Knowledge Hub',
+    userId: 'user-119',
+    userName: 'Arun Kumar',
+    userEmail: 'arun@knowledgehub.com',
+    assigneeId: 'admin-2',
+    assigneeName: 'Tech Support',
+    tags: ['api', 'documentation', 'integration'],
+    attachments: [],
+    createdAt: new Date(Date.now() - 240 * 60 * 60 * 1000).toISOString(),
+    updatedAt: new Date(Date.now() - 216 * 60 * 60 * 1000).toISOString(),
+    firstResponseAt: new Date(Date.now() - 238 * 60 * 60 * 1000).toISOString(),
+    resolvedAt: new Date(Date.now() - 216 * 60 * 60 * 1000).toISOString(),
+    closedAt: new Date(Date.now() - 216 * 60 * 60 * 1000).toISOString(),
+    sla: {
+      responseTarget: 90,
+      resolutionTarget: 720,
+      responseActual: 120,
+      resolutionActual: 1440,
+      responseStatus: 'overdue',
+      resolutionStatus: 'overdue',
+      responseDeadline: new Date(Date.now() - 238 * 60 * 60 * 30 * 60 * 1000).toISOString(),
+      resolutionDeadline: new Date(Date.now() - 228 * 60 * 60 * 1000).toISOString(),
+    },
+    satisfaction: {
+      rating: 4,
+      feedback: 'Got the documentation. Very helpful!',
+      submittedAt: new Date(Date.now() - 215 * 60 * 60 * 1000).toISOString(),
+    },
+  },
+  {
+    id: 'tkt-20',
+    ticketNumber: 'TKT-2024-020',
+    title: 'Duplicate SMS charges',
+    description: 'Being charged twice for the same SMS campaign. Need refund.',
+    status: 'in_progress',
+    priority: 'high',
+    category: 'Billing & Payments',
+    tenantId: 'tenant-5',
+    tenantName: 'Study Point',
+    userId: 'user-120',
+    userName: 'Priyanka Shah',
+    userEmail: 'priyanka@studypoint.com',
+    assigneeId: 'admin-3',
+    assigneeName: 'Senior Developer',
+    tags: ['billing', 'sms', 'duplicate', 'refund'],
+    attachments: [
+      {
+        id: 'att-3',
+        name: 'invoice-duplicate.pdf',
+        url: '/uploads/invoice-duplicate.pdf',
+        size: 125000,
+        type: 'application/pdf',
+        uploadedBy: 'Priyanka Shah',
+        uploadedAt: new Date(Date.now() - 14 * 60 * 60 * 1000).toISOString(),
+      },
+    ],
+    createdAt: new Date(Date.now() - 15 * 60 * 60 * 1000).toISOString(),
+    updatedAt: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
+    firstResponseAt: new Date(Date.now() - 14 * 60 * 60 * 1000).toISOString(),
+    sla: {
+      responseTarget: 60,
+      resolutionTarget: 480,
+      responseActual: 60,
+      responseStatus: 'on_time',
+      resolutionStatus: 'at_risk',
+      responseDeadline: new Date(Date.now() - 14 * 60 * 60 * 1000).toISOString(),
+      resolutionDeadline: new Date(Date.now() + 1 * 60 * 60 * 1000).toISOString(),
+    },
+  },
+];
+
+// Combine all tickets
+const ALL_TICKETS = [...MOCK_TICKETS, ...additionalTickets];
+
+// ============================================
+// MOCK DATA - COMMENTS
+// ============================================
+
+const MOCK_COMMENTS: TicketComment[] = [
+  {
+    id: 'cmt-1',
+    ticketId: 'tkt-1',
+    userId: 'admin-1',
+    userName: 'Support Team Lead',
+    content: 'We are investigating this issue. Can you please confirm your username?',
+    isInternal: false,
+    attachments: [],
+    createdAt: new Date(Date.now() - 25 * 60 * 1000).toISOString(),
+  },
+  {
+    id: 'cmt-2',
+    ticketId: 'tkt-2',
+    userId: 'admin-1',
+    userName: 'Support Team Lead',
+    content: 'URGENT: Razorpay API key expired. Updating now.',
+    isInternal: true,
+    attachments: [],
+    createdAt: new Date(Date.now() - 8 * 60 * 1000).toISOString(),
+  },
+  {
+    id: 'cmt-3',
+    ticketId: 'tkt-6',
+    userId: 'admin-1',
+    userName: 'Support Team Lead',
+    content: 'Issue identified. Android face recognition library needs update. Working on it.',
+    isInternal: false,
+    attachments: [],
+    createdAt: new Date(Date.now() - 10 * 60 * 60 * 1000).toISOString(),
+  },
+  {
+    id: 'cmt-4',
+    ticketId: 'tkt-8',
+    userId: 'admin-1',
+    userName: 'Support Team Lead',
+    content: 'Optimizing database queries. Should see improvement soon.',
+    isInternal: false,
+    attachments: [],
+    createdAt: new Date(Date.now() - 22 * 60 * 60 * 1000).toISOString(),
+  },
+  {
+    id: 'cmt-5',
+    ticketId: 'tkt-10',
+    userId: 'admin-2',
+    userName: 'Tech Support',
+    content: 'Fixed! Password reset link expiry time increased to 30 minutes.',
+    isInternal: false,
+    attachments: [],
+    createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+  },
+];
+
+// ============================================
+// SERVICE CLASS
+// ============================================
+
+class TicketService {
+  /**
+   * Get all tickets
+   */
+  async getAllTickets(filters?: TicketFilters): Promise<ApiResponse<Ticket[]>> {
+    if (MOCK_MODE) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      
+      let filtered = [...ALL_TICKETS];
+      
+      if (filters) {
+        if (filters.status && filters.status !== 'all') {
+          filtered = filtered.filter((t) => t.status === filters.status);
+        }
+        if (filters.priority && filters.priority !== 'all') {
+          filtered = filtered.filter((t) => t.priority === filters.priority);
+        }
+        if (filters.category && filters.category !== 'all') {
+          filtered = filtered.filter((t) => t.category === filters.category);
+        }
+        if (filters.assignee) {
+          if (filters.assignee === 'unassigned') {
+            filtered = filtered.filter((t) => !t.assigneeId);
+          } else if (filters.assignee !== 'all') {
+            filtered = filtered.filter((t) => t.assigneeId === filters.assignee);
+          }
+        }
+        if (filters.searchQuery) {
+          const query = filters.searchQuery.toLowerCase();
+          filtered = filtered.filter(
+            (t) =>
+              t.ticketNumber.toLowerCase().includes(query) ||
+              t.title.toLowerCase().includes(query) ||
+              t.description.toLowerCase().includes(query)
+          );
+        }
+      }
+      
+      return {
+        success: true,
+        data: filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+      };
+    }
+    throw new Error('Real API not implemented yet');
+  }
+
+  /**
+   * Get ticket by ID
+   */
+  async getTicketById(id: string): Promise<ApiResponse<Ticket>> {
+    if (MOCK_MODE) {
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      const ticket = ALL_TICKETS.find((t) => t.id === id);
+      if (!ticket) {
+        return { success: false, error: { code: 'NOT_FOUND', message: 'Ticket not found' } };
+      }
+      return {
+        success: true,
+        data: ticket,
+      };
+    }
+    throw new Error('Real API not implemented yet');
+  }
+
+  /**
+   * Get ticket statistics
+   */
+  async getStatistics(): Promise<ApiResponse<TicketStatistics>> {
+    if (MOCK_MODE) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      
+      const total = ALL_TICKETS.length;
+      const newTickets = ALL_TICKETS.filter((t) => t.status === 'new').length;
+      const open = ALL_TICKETS.filter((t) => t.status === 'open').length;
+      const inProgress = ALL_TICKETS.filter((t) => t.status === 'in_progress').length;
+      const resolved = ALL_TICKETS.filter((t) => t.status === 'resolved').length;
+      const closed = ALL_TICKETS.filter((t) => t.status === 'closed').length;
+      const unassigned = ALL_TICKETS.filter((t) => !t.assigneeId).length;
+      
+      const ticketsWithResponse = ALL_TICKETS.filter((t) => t.sla.responseActual);
+      const avgResponseTime = ticketsWithResponse.length > 0
+        ? ticketsWithResponse.reduce((sum, t) => sum + (t.sla.responseActual || 0), 0) / ticketsWithResponse.length
+        : 0;
+      
+      const ticketsWithResolution = ALL_TICKETS.filter((t) => t.sla.resolutionActual);
+      const avgResolutionTime = ticketsWithResolution.length > 0
+        ? ticketsWithResolution.reduce((sum, t) => sum + (t.sla.resolutionActual || 0), 0) / ticketsWithResolution.length
+        : 0;
+      
+      const slaResponseMet = ticketsWithResponse.length > 0
+        ? (ticketsWithResponse.filter((t) => t.sla.responseStatus === 'on_time').length / ticketsWithResponse.length) * 100
+        : 0;
+      
+      const slaResolutionMet = ticketsWithResolution.length > 0
+        ? (ticketsWithResolution.filter((t) => t.sla.resolutionStatus === 'on_time').length / ticketsWithResolution.length) * 100
+        : 0;
+      
+      const ticketsWithSatisfaction = ALL_TICKETS.filter((t) => t.satisfaction);
+      const satisfactionScore = ticketsWithSatisfaction.length > 0
+        ? ticketsWithSatisfaction.reduce((sum, t) => sum + (t.satisfaction?.rating || 0), 0) / ticketsWithSatisfaction.length
+        : 0;
+      
+      const resolvedToday = ALL_TICKETS.filter((t) => {
+        if (!t.resolvedAt) return false;
+        const today = new Date();
+        const resolvedDate = new Date(t.resolvedAt);
+        return resolvedDate.toDateString() === today.toDateString();
+      }).length;
+      
+      return {
+        success: true,
+        data: {
+          summary: {
+            total,
+            new: newTickets,
+            open,
+            inProgress,
+            resolved,
+            closed,
+            unassigned,
+          },
+          performance: {
+            avgResponseTime: Math.round(avgResponseTime),
+            avgResolutionTime: Math.round(avgResolutionTime),
+            slaResponseMet: Math.round(slaResponseMet),
+            slaResolutionMet: Math.round(slaResolutionMet),
+            satisfactionScore: Math.round(satisfactionScore * 10) / 10,
+            resolvedToday,
+          },
+          ticketsByPriority: [
+            { priority: 'Critical', count: ALL_TICKETS.filter((t) => t.priority === 'critical').length, percentage: 0 },
+            { priority: 'High', count: ALL_TICKETS.filter((t) => t.priority === 'high').length, percentage: 0 },
+            { priority: 'Medium', count: ALL_TICKETS.filter((t) => t.priority === 'medium').length, percentage: 0 },
+            { priority: 'Low', count: ALL_TICKETS.filter((t) => t.priority === 'low').length, percentage: 0 },
+          ].map((item) => ({ ...item, percentage: Math.round((item.count / total) * 100) })),
+          ticketsByCategory: MOCK_CATEGORIES.map((cat) => ({
+            category: cat.name,
+            count: ALL_TICKETS.filter((t) => t.category === cat.name).length,
+            percentage: 0,
+          })).map((item) => ({ ...item, percentage: Math.round((item.count / total) * 100) })),
+          ticketsByStatus: [
+            { status: 'New', count: newTickets, percentage: Math.round((newTickets / total) * 100) },
+            { status: 'Open', count: open, percentage: Math.round((open / total) * 100) },
+            { status: 'In Progress', count: inProgress, percentage: Math.round((inProgress / total) * 100) },
+            { status: 'Resolved', count: resolved, percentage: Math.round((resolved / total) * 100) },
+            { status: 'Closed', count: closed, percentage: Math.round((closed / total) * 100) },
+          ],
+          ticketsOverTime: Array.from({ length: 30 }, (_, i) => {
+            const date = new Date();
+            date.setDate(date.getDate() - (29 - i));
+            return {
+              date: date.toISOString().split('T')[0],
+              count: Math.floor(Math.random() * 5) + 1,
+              resolved: Math.floor(Math.random() * 3),
+            };
+          }),
+          topPerformers: [
+            {
+              userId: 'admin-1',
+              userName: 'Support Team Lead',
+              ticketsResolved: 8,
+              avgResponseTime: 45,
+              satisfactionScore: 4.5,
+            },
+            {
+              userId: 'admin-2',
+              userName: 'Tech Support',
+              ticketsResolved: 6,
+              avgResponseTime: 60,
+              satisfactionScore: 4.7,
+            },
+            {
+              userId: 'admin-3',
+              userName: 'Senior Developer',
+              ticketsResolved: 4,
+              avgResponseTime: 90,
+              satisfactionScore: 4.2,
+            },
+          ],
+        },
+      };
+    }
+    throw new Error('Real API not implemented yet');
+  }
+
+  /**
+   * Get ticket comments
+   */
+  async getComments(ticketId: string): Promise<ApiResponse<TicketComment[]>> {
+    if (MOCK_MODE) {
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      const comments = MOCK_COMMENTS.filter((c) => c.ticketId === ticketId);
+      return {
+        success: true,
+        data: comments,
+      };
+    }
+    throw new Error('Real API not implemented yet');
+  }
+
+  /**
+   * Get categories
+   */
+  async getCategories(): Promise<ApiResponse<TicketCategory[]>> {
+    if (MOCK_MODE) {
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      return {
+        success: true,
+        data: MOCK_CATEGORIES,
+      };
+    }
+    throw new Error('Real API not implemented yet');
+  }
+
+  /**
+   * Create ticket
+   */
+  async createTicket(data: CreateTicketData): Promise<ApiResponse<Ticket>> {
+    if (MOCK_MODE) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      // Mock creation - in real app, this would call the API
+      return {
+        success: true,
+        data: {} as Ticket, // Would return the created ticket
+      };
+    }
+    throw new Error('Real API not implemented yet');
+  }
+
+  /**
+   * Update ticket
+   */
+  async updateTicket(id: string, data: UpdateTicketData): Promise<ApiResponse<Ticket>> {
+    if (MOCK_MODE) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      // Mock update
+      return {
+        success: true,
+        data: {} as Ticket,
+      };
+    }
+    throw new Error('Real API not implemented yet');
+  }
+
+  /**
+   * Add comment
+   */
+  async addComment(ticketId: string, content: string, isInternal: boolean): Promise<ApiResponse<TicketComment>> {
+    if (MOCK_MODE) {
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      // Mock comment creation
+      return {
+        success: true,
+        data: {} as TicketComment,
+      };
+    }
+    throw new Error('Real API not implemented yet');
+  }
+
+  /**
+   * Bulk action
+   */
+  async bulkAction(action: BulkTicketAction): Promise<ApiResponse<{ updated: number }>> {
+    if (MOCK_MODE) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      return {
+        success: true,
+        data: { updated: action.ticketIds.length },
+      };
+    }
+    throw new Error('Real API not implemented yet');
+  }
+}
+
+export const ticketService = new TicketService();
+
+
