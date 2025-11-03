@@ -38,14 +38,18 @@ import {
   FavoriteBorder as FavoriteIcon,
   EditCalendar as ManageIcon,
   StarBorder as ReviewIcon,
+  Brightness4 as DarkModeIcon,
+  Brightness7 as LightModeIcon,
 } from '@mui/icons-material';
 
 interface LayoutProps {
   children: React.ReactNode;
   setIsAuthenticated: (value: boolean) => void;
+  darkMode?: boolean;
+  setDarkMode?: (value: boolean) => void;
 }
 
-export default function Layout({ children, setIsAuthenticated }: LayoutProps) {
+export default function Layout({ children, setIsAuthenticated, darkMode, setDarkMode }: LayoutProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -99,6 +103,11 @@ export default function Layout({ children, setIsAuthenticated }: LayoutProps) {
           <Typography variant="h6" sx={{ flexGrow: 1, fontWeight: 'bold' }}>
             StudySpot
           </Typography>
+          {setDarkMode && (
+            <IconButton color="inherit" onClick={() => setDarkMode(!darkMode)} sx={{ mr: 1 }}>
+              {darkMode ? <LightModeIcon /> : <DarkModeIcon />}
+            </IconButton>
+          )}
           <Avatar sx={{ bgcolor: 'secondary.main' }}>
             {user.firstName?.[0]}{user.lastName?.[0]}
           </Avatar>

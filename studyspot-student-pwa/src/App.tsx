@@ -1,6 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 
 // Pages
 import LoginPage from './pages/LoginPage';
@@ -62,34 +62,59 @@ function DevBypass({ setIsAuthenticated }: { setIsAuthenticated: (value: boolean
   );
 }
 
-// Theme
-const theme = createTheme({
-  palette: {
-    primary: {
-      main: '#2563eb',
-    },
-    secondary: {
-      main: '#10b981',
-    },
-  },
-  shape: {
-    borderRadius: 8,
-  },
-  components: {
-    MuiButton: {
-      styleOverrides: {
-        root: {
-          textTransform: 'none',
-          fontWeight: 600,
-        },
-      },
-    },
-  },
-});
-
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [darkMode, setDarkMode] = useState(() => {
+    const saved = localStorage.getItem('darkMode');
+    return saved ? JSON.parse(saved) : false;
+  });
+
+  // Create theme based on mode
+  const theme = useMemo(
+    () =>
+      createTheme({
+        palette: {
+          mode: darkMode ? 'dark' : 'light',
+          primary: {
+            main: '#2563eb',
+          },
+          secondary: {
+            main: '#10b981',
+          },
+          background: {
+            default: darkMode ? '#121212' : '#f5f5f5',
+            paper: darkMode ? '#1e1e1e' : '#ffffff',
+          },
+        },
+        shape: {
+          borderRadius: 8,
+        },
+        components: {
+          MuiButton: {
+            styleOverrides: {
+              root: {
+                textTransform: 'none',
+                fontWeight: 600,
+              },
+            },
+          },
+          MuiCard: {
+            styleOverrides: {
+              root: {
+                backgroundImage: 'none',
+              },
+            },
+          },
+        },
+      }),
+    [darkMode]
+  );
+
+  // Save dark mode preference
+  useEffect(() => {
+    localStorage.setItem('darkMode', JSON.stringify(darkMode));
+  }, [darkMode]);
 
   useEffect(() => {
     // Check authentication status
@@ -143,7 +168,7 @@ function App() {
           <Route path="/dev-bypass" element={<DevBypass setIsAuthenticated={setIsAuthenticated} />} />
 
           {/* Protected Routes */}
-          <Route path="/dashboard" element={isAuthenticated ? <DashboardPageEnhanced setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/login" />} />
+          <Route path="/dashboard" element={isAuthenticated ? <DashboardPageEnhanced setIsAuthenticated={setIsAuthenticated} darkMode={darkMode} setDarkMode={setDarkMode} /> : <Navigate to="/login" />} />
           <Route path="/libraries" element={isAuthenticated ? <LibrariesPageEnhanced setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/login" />} />
           <Route path="/libraries/:id" element={isAuthenticated ? <LibraryDetailsPageEnhanced setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/login" />} />
           <Route path="/bookings" element={isAuthenticated ? <BookingsPage setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/login" />} />
