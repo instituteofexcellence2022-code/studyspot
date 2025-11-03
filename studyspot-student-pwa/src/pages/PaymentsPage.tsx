@@ -20,6 +20,8 @@ import {
   Divider,
   Tab,
   Tabs,
+  Checkbox,
+  FormControlLabel,
 } from '@mui/material';
 import {
   Payment as PaymentIcon,
@@ -397,6 +399,29 @@ export default function PaymentsPage({ setIsAuthenticated }: { setIsAuthenticate
               <option value="subscription">Subscription</option>
               <option value="fine">Late Fee / Fine</option>
             </TextField>
+
+            {/* Coupon/Referral Code Input */}
+            <Box sx={{ my: 2, p: 2, bgcolor: 'success.light', borderRadius: 2 }}>
+              <Typography variant="subtitle2" gutterBottom>
+                💰 Have a discount code?
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <TextField
+                  fullWidth
+                  size="small"
+                  placeholder="Enter coupon or referral code"
+                  InputProps={{
+                    endAdornment: (
+                      <Button size="small" variant="contained">Apply</Button>
+                    ),
+                  }}
+                />
+              </Box>
+              <Typography variant="caption" color="text.secondary">
+                Referral codes give ₹200 OFF, Coupons up to 50% OFF
+              </Typography>
+            </Box>
+
             <TextField
               fullWidth
               select
@@ -410,6 +435,23 @@ export default function PaymentsPage({ setIsAuthenticated }: { setIsAuthenticate
               <option value="upi">UPI (Scan QR)</option>
               <option value="cash">Cash (Pay at Library)</option>
             </TextField>
+
+            {/* Auto-payment Option */}
+            <Box sx={{ mt: 2, p: 2, bgcolor: 'info.light', borderRadius: 2 }}>
+              <FormControlLabel
+                control={<Checkbox />}
+                label={
+                  <Box>
+                    <Typography variant="body2" fontWeight="600">
+                      Enable Auto-payment
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Automatically pay for recurring bookings
+                    </Typography>
+                  </Box>
+                }
+              />
+            </Box>
           </DialogContent>
           <DialogActions>
             <Button onClick={() => setPaymentDialog(false)}>Cancel</Button>

@@ -91,7 +91,7 @@ export default function LibraryDetailsPageEnhanced({ setIsAuthenticated }: Libra
     bookingType: 'individual', // 'individual' or 'group'
   });
 
-  const steps = ['Select Date & Shift', 'Choose Seats', 'Confirm Booking'];
+  const steps = ['Select Date & Shift', 'Choose Seats', 'Options', 'Confirm Booking'];
 
   useEffect(() => {
     fetchLibraryDetails();
