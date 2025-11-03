@@ -35,6 +35,9 @@ import {
   Analytics as AnalyticsIcon,
   Task as TaskIcon,
   Groups as CommunityIcon,
+  FavoriteBorder as FavoriteIcon,
+  EditCalendar as ManageIcon,
+  StarBorder as ReviewIcon,
 } from '@mui/icons-material';
 
 interface LayoutProps {
@@ -53,6 +56,9 @@ export default function Layout({ children, setIsAuthenticated }: LayoutProps) {
     { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
     { text: 'Libraries', icon: <LibraryIcon />, path: '/libraries' },
     { text: 'My Bookings', icon: <BookingIcon />, path: '/bookings' },
+    { text: 'Manage Bookings', icon: <ManageIcon />, path: '/manage-bookings' },
+    { text: 'Favorites', icon: <FavoriteIcon />, path: '/favorites' },
+    { text: 'My Reviews', icon: <ReviewIcon />, path: '/reviews' },
     { text: 'Payments', icon: <PaymentIcon />, path: '/payments' },
     { text: 'Resources', icon: <ResourceIcon />, path: '/resources' },
     { text: 'Announcements', icon: <AnnouncementIcon />, path: '/announcements', badge: 3 },

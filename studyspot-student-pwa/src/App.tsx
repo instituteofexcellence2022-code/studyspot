@@ -23,6 +23,9 @@ import ReferralPage from './pages/ReferralPage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import TasksGoalsPage from './pages/TasksGoalsPage';
 import CommunityPage from './pages/CommunityPage';
+import FavoritesPage from './pages/FavoritesPage';
+import ManageBookingsPage from './pages/ManageBookingsPage';
+import ReviewsPage from './pages/ReviewsPage';
 
 // Dev Bypass Component
 function DevBypass({ setIsAuthenticated }: { setIsAuthenticated: (value: boolean) => void }) {
@@ -158,6 +161,9 @@ function App() {
           <Route path="/analytics" element={isAuthenticated ? <AnalyticsPage setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/login" />} />
           <Route path="/tasks-goals" element={isAuthenticated ? <TasksGoalsPage setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/login" />} />
           <Route path="/community" element={isAuthenticated ? <CommunityPage setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/login" />} />
+          <Route path="/favorites" element={isAuthenticated ? <FavoritesPage setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/login" />} />
+          <Route path="/manage-bookings" element={isAuthenticated ? <ManageBookingsPage setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/login" />} />
+          <Route path="/reviews" element={isAuthenticated ? <ReviewsPage setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/login" />} />
 
           {/* Default Route */}
           <Route path="/" element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} />} />

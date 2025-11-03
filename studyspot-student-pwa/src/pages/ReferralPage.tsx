@@ -474,7 +474,7 @@ export default function ReferralPage({ setIsAuthenticated }: { setIsAuthenticate
               <ListItem>
                 <ListItemAvatar>
                   <Avatar sx={{ bgcolor: 'warning.main' }}>
-                    <Star />
+                    <CardGiftcard />
                   </Avatar>
                 </ListItemAvatar>
                 <ListItemText
@@ -493,10 +493,7 @@ export default function ReferralPage({ setIsAuthenticated }: { setIsAuthenticate
   );
 }
 
-function Star() {
-  return <ShareIcon />;
-}
-
+// Helper functions moved inside component scope
 function getStatusColor(status: string) {
   switch (status) {
     case 'completed': return 'success';
