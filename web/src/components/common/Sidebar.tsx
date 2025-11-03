@@ -21,6 +21,9 @@ import {
   AdminPanelSettings as AdminIcon,
   Person as ProfileIcon,
   Settings as SettingsIcon,
+  Psychology as AIIcon,
+  Subscriptions as SubscriptionIcon,
+  Help as HelpIcon,
 } from '@mui/icons-material';
 
 import { ROUTES } from '../../constants';
@@ -49,28 +52,34 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
       roles: ['student', 'library_staff', 'library_admin', 'super_admin'],
     },
     {
-      label: 'Libraries',
+      label: 'Browse Libraries',
       path: ROUTES.LIBRARIES,
       icon: <LibraryIcon />,
-      roles: ['library_staff', 'library_admin', 'super_admin'],
+      roles: ['student', 'library_staff', 'library_admin', 'super_admin'],
     },
     {
-      label: 'Bookings',
+      label: 'My Bookings',
       path: ROUTES.BOOKINGS,
       icon: <BookingIcon />,
       roles: ['student', 'library_staff', 'library_admin', 'super_admin'],
     },
     {
-      label: 'Users',
-      path: ROUTES.USERS,
-      icon: <UserIcon />,
-      roles: ['library_admin', 'super_admin'],
+      label: 'AI Assistant',
+      path: ROUTES.AI_ASSISTANT,
+      icon: <AIIcon />,
+      roles: ['student', 'library_staff', 'library_admin', 'super_admin'],
     },
     {
-      label: 'Admin',
-      path: ROUTES.ADMIN,
-      icon: <AdminIcon />,
-      roles: ['super_admin'],
+      label: 'Subscriptions',
+      path: ROUTES.SUBSCRIPTION_PLANS,
+      icon: <SubscriptionIcon />,
+      roles: ['student', 'library_staff', 'library_admin', 'super_admin'],
+    },
+    {
+      label: 'Help',
+      path: '/help',
+      icon: <HelpIcon />,
+      roles: ['student', 'library_staff', 'library_admin', 'super_admin'],
     },
   ];
 
