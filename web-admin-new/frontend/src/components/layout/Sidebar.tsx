@@ -122,7 +122,6 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose, variant = 'permanent' 
         { title: 'System Health', icon: <HealthAndSafety />, path: '/system/health' },
         { title: 'Compliance & Privacy', icon: <Policy />, path: '/compliance' },
         { title: 'Audit Logs', icon: <Security />, path: '/audit-logs' },
-        { title: 'API Management', icon: <Code />, path: '/developer' },
       ],
     },
     {
