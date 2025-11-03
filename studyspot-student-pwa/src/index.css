@@ -10,28 +10,8 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #f5f5f5;
 }
 
 #root {
   min-height: 100vh;
 }
-
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
-}
-
-/* PWA Install Button */
-.install-button {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  z-index: 1000;
-}
-
-/* Smooth transitions */
-* {
-  transition: all 0.2s ease-in-out;
-}
-
