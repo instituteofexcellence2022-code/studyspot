@@ -14,6 +14,12 @@ import {
   Box,
   Avatar,
   Badge,
+  Chip,
+  SpeedDial,
+  SpeedDialAction,
+  SpeedDialIcon,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -40,7 +46,9 @@ import {
   StarBorder as ReviewIcon,
   Brightness4 as DarkModeIcon,
   Brightness7 as LightModeIcon,
+  Add as AddIcon,
 } from '@mui/icons-material';
+import BottomNav from './BottomNav';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -52,7 +60,10 @@ interface LayoutProps {
 export default function Layout({ children, setIsAuthenticated, darkMode, setDarkMode }: LayoutProps) {
   const navigate = useNavigate();
   const location = useLocation();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [speedDialOpen, setSpeedDialOpen] = useState(false);
 
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
@@ -164,9 +175,40 @@ export default function Layout({ children, setIsAuthenticated, darkMode, setDark
       </Drawer>
 
       {/* Main Content */}
-      <Box component="main" sx={{ flexGrow: 1, bgcolor: '#f5f5f5', p: 2 }}>
+      <Box component="main" sx={{ flexGrow: 1, pb: isMobile ? 8 : 2, pt: 2, px: { xs: 1, sm: 2 } }}>
         {children}
       </Box>
+
+      {/* Bottom Navigation (Mobile Only) */}
+      <BottomNav />
+
+      {/* Quick Actions Speed Dial (Mobile) */}
+      {isMobile && (
+        <SpeedDial
+          ariaLabel="Quick actions"
+          sx={{ position: 'fixed', bottom: 70, right: 16 }}
+          icon={<SpeedDialIcon />}
+          open={speedDialOpen}
+          onOpen={() => setSpeedDialOpen(true)}
+          onClose={() => setSpeedDialOpen(false)}
+        >
+          <SpeedDialAction
+            icon={<QRIcon />}
+            tooltipTitle="QR Scanner"
+            onClick={() => { navigate('/qr-scanner'); setSpeedDialOpen(false); }}
+          />
+          <SpeedDialAction
+            icon={<TimerIcon />}
+            tooltipTitle="Study Timer"
+            onClick={() => { navigate('/study-timer'); setSpeedDialOpen(false); }}
+          />
+          <SpeedDialAction
+            icon={<IssueIcon />}
+            tooltipTitle="Report Issue"
+            onClick={() => { navigate('/issues'); setSpeedDialOpen(false); }}
+          />
+        </SpeedDial>
+      )}
     </Box>
   );
 }
