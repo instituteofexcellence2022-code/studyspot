@@ -51,6 +51,11 @@ const studentRoutes = require('./routes/students');
 const invoiceRoutes = require('./routes/invoices');
 const auditRoutes = require('./routes/audit');
 
+// Additional Features
+const issueManagementRoutes = require('./routes/issueManagement');
+const referralDiscountRoutes = require('./routes/referralDiscount');
+const offlinePaymentsRoutes = require('./routes/offlinePayments');
+
 // API Consolidation: Unified Routes
 const unifiedUserRoutes = require('./routes/unified-users');
 const unifiedBookingRoutes = require('./routes/unified-bookings');
@@ -232,6 +237,11 @@ app.use('/api/students', studentRoutes);      // Enhanced student management
 app.use('/api/invoices', invoiceRoutes);      // GST-compliant invoicing & financial management
 app.use('/api/audit', auditRoutes);           // Audit trail & security monitoring
 app.use('/api/fee-plans', require('./routes/feePlans')); // Fee plans management
+
+// Additional Features (Issues, Referrals, Offline Payments)
+app.use('/api/issues', issueManagementRoutes);  // Issue/Ticket management
+app.use('/api/referrals', referralDiscountRoutes); // Referral & discount system
+app.use('/api/offline-payments', offlinePaymentsRoutes); // Offline payment management
 
 // Monitoring & Metrics (New)
 app.use('/api/metrics', metricsRouter);       // Application metrics and monitoring
