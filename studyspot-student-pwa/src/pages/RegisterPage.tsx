@@ -47,8 +47,22 @@ export default function RegisterPage() {
       return;
     }
 
+    // Validate password length
+    if (formData.password.length < 8) {
+      setError('Password must be at least 8 characters long');
+      setLoading(false);
+      return;
+    }
+
+    // Validate phone (10 digits)
+    if (formData.phone && !/^\d{10}$/.test(formData.phone)) {
+      setError('Phone number must be 10 digits');
+      setLoading(false);
+      return;
+    }
+
     try {
-      await api.post('/api/auth/register', {
+      const response = await api.post('/api/auth/register', {
         firstName: formData.firstName,
         lastName: formData.lastName,
         email: formData.email,
@@ -57,10 +71,17 @@ export default function RegisterPage() {
         role: 'student',
       });
 
+      console.log('Registration response:', response.data);
       setSuccess(true);
       setTimeout(() => navigate('/login'), 2000);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Registration failed. Please try again.');
+      console.error('Registration error:', err);
+      setError(
+        err.response?.data?.message || 
+        err.response?.data?.error ||
+        err.response?.data?.errors?.[0]?.msg ||
+        'Registration failed. Please try again.'
+      );
     } finally {
       setLoading(false);
     }
@@ -136,12 +157,13 @@ export default function RegisterPage() {
 
             <TextField
               fullWidth
-              label="Phone"
+              label="Phone (10 digits)"
               name="phone"
               value={formData.phone}
               onChange={handleChange}
               required
               margin="normal"
+              placeholder="9876543210"
             />
 
             <TextField
@@ -153,6 +175,7 @@ export default function RegisterPage() {
               onChange={handleChange}
               required
               margin="normal"
+              helperText="At least 8 characters"
             />
 
             <TextField
@@ -177,37 +200,35 @@ export default function RegisterPage() {
               {loading ? <CircularProgress size={24} /> : 'Register'}
             </Button>
 
-            <Box sx={{ textAlign: 'center' }}>
+            <Box sx={{ textAlign: 'center', mb: 2 }}>
               <Typography variant="body2" color="text.secondary">
                 Already have an account?{' '}
-                <Link to="/login" style={{ color: '#2563eb', textDecoration: 'none' }}>
+                <Link to="/login" style={{ color: '#2563eb', textDecoration: 'none', fontWeight: 600 }}>
                   Login here
                 </Link>
               </Typography>
             </Box>
 
-            {/* DEV MODE: Skip Authentication Button */}
-            <Box sx={{ textAlign: 'center', mt: 2 }}>
-              <Button
-                variant="outlined"
-                color="secondary"
-                size="small"
-                component={Link}
-                to="/dev-bypass"
-                sx={{ 
-                  textTransform: 'none',
-                  borderStyle: 'dashed',
-                  opacity: 0.7,
-                  '&:hover': { opacity: 1 }
-                }}
-              >
-                🔓 Skip Registration (Dev Mode)
-              </Button>
-            </Box>
+            {/* DEV MODE: Skip Registration Button */}
+            <Button
+              fullWidth
+              variant="outlined"
+              color="secondary"
+              size="small"
+              component={Link}
+              to="/dev-bypass"
+              sx={{ 
+                textTransform: 'none',
+                borderStyle: 'dashed',
+                opacity: 0.7,
+                '&:hover': { opacity: 1, borderStyle: 'dashed' }
+              }}
+            >
+              🔓 Skip Registration (Dev Mode)
+            </Button>
           </form>
         </Paper>
       </Container>
     </Box>
   );
 }
-

@@ -10,18 +10,11 @@ import {
   Alert,
   CircularProgress,
   Divider,
-  IconButton,
 } from '@mui/material';
-import { Login as LoginIcon, Google as GoogleIcon, Facebook as FacebookIcon } from '@mui/icons-material';
-import { signInWithPopup } from 'firebase/auth';
-import { auth, googleProvider, facebookProvider } from '../config/firebase';
+import { Login as LoginIcon } from '@mui/icons-material';
 import api from '../services/api';
 
-interface LoginPageProps {
-  setIsAuthenticated: (value: boolean) => void;
-}
-
-export default function LoginPage({ setIsAuthenticated }: LoginPageProps) {
+export default function LoginPage({ setIsAuthenticated }: { setIsAuthenticated: (value: boolean) => void }) {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -45,80 +38,53 @@ export default function LoginPage({ setIsAuthenticated }: LoginPageProps) {
 
     try {
       const response = await api.post('/api/auth/login', formData);
-      const { tokens, user } = response.data.data || response.data;
-
-      // Save to localStorage
-      localStorage.setItem('token', tokens?.accessToken || response.data.token);
-      localStorage.setItem('user', JSON.stringify(user));
+      
+      // Extract data from response
+      const responseData = response.data?.data || response.data;
+      const tokens = responseData.tokens || {};
+      const user = responseData.user || {};
+      
+      // Store authentication data
+      const accessToken = tokens.accessToken || tokens.token || responseData.token;
+      if (accessToken) {
+        localStorage.setItem('token', accessToken);
+      }
+      if (tokens.refreshToken) {
+        localStorage.setItem('refreshToken', tokens.refreshToken);
+      }
+      if (user && Object.keys(user).length > 0) {
+        localStorage.setItem('user', JSON.stringify(user));
+      }
 
       setIsAuthenticated(true);
       navigate('/dashboard');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Login failed. Please try again.');
+      console.error('Login error:', err);
+      setError(
+        err.response?.data?.message || 
+        err.response?.data?.error || 
+        'Login failed. Please check your credentials.'
+      );
     } finally {
       setLoading(false);
     }
   };
 
-  const handleGoogleLogin = async () => {
-    setLoading(true);
-    setError('');
-
-    try {
-      const result = await signInWithPopup(auth, googleProvider);
-      const user = result.user;
-
-      // Send to backend to create/login user
-      const response = await api.post('/api/auth/social-login', {
-        provider: 'google',
-        providerId: user.uid,
-        email: user.email,
-        firstName: user.displayName?.split(' ')[0] || '',
-        lastName: user.displayName?.split(' ')[1] || '',
-        photoURL: user.photoURL,
-      });
-
-      const { tokens, user: userData } = response.data.data || response.data;
-      localStorage.setItem('token', tokens?.accessToken || response.data.token);
-      localStorage.setItem('user', JSON.stringify(userData));
-
-      setIsAuthenticated(true);
-      navigate('/dashboard');
-    } catch (err: any) {
-      setError(err.message || 'Google login failed. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleFacebookLogin = async () => {
-    setLoading(true);
-    setError('');
-
-    try {
-      const result = await signInWithPopup(auth, facebookProvider);
-      const user = result.user;
-
-      const response = await api.post('/api/auth/social-login', {
-        provider: 'facebook',
-        providerId: user.uid,
-        email: user.email,
-        firstName: user.displayName?.split(' ')[0] || '',
-        lastName: user.displayName?.split(' ')[1] || '',
-        photoURL: user.photoURL,
-      });
-
-      const { tokens, user: userData } = response.data.data || response.data;
-      localStorage.setItem('token', tokens?.accessToken || response.data.token);
-      localStorage.setItem('user', JSON.stringify(userData));
-
-      setIsAuthenticated(true);
-      navigate('/dashboard');
-    } catch (err: any) {
-      setError(err.message || 'Facebook login failed. Please try again.');
-    } finally {
-      setLoading(false);
-    }
+  const handleSkipLogin = () => {
+    // Dev mode bypass
+    const mockUser = {
+      id: 'dev-user-123',
+      email: 'dev@studyspot.com',
+      firstName: 'Dev',
+      lastName: 'User',
+      role: 'student',
+      phone: '9999999999',
+    };
+    localStorage.setItem('user', JSON.stringify(mockUser));
+    localStorage.setItem('token', 'dev-mock-token-bypass');
+    localStorage.setItem('bypassAuth', 'true');
+    setIsAuthenticated(true);
+    navigate('/dashboard');
   };
 
   return (
@@ -137,10 +103,10 @@ export default function LoginPage({ setIsAuthenticated }: LoginPageProps) {
           <Box sx={{ textAlign: 'center', mb: 3 }}>
             <LoginIcon sx={{ fontSize: 48, color: 'primary.main', mb: 2 }} />
             <Typography variant="h4" component="h1" gutterBottom fontWeight="bold">
-              StudySpot
+              Welcome Back
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Student Portal - Login to continue
+              Sign in to your StudySpot account
             </Typography>
           </Box>
 
@@ -185,78 +151,36 @@ export default function LoginPage({ setIsAuthenticated }: LoginPageProps) {
               {loading ? <CircularProgress size={24} /> : 'Login'}
             </Button>
 
-            <Divider sx={{ my: 3 }}>
-              <Typography variant="body2" color="text.secondary">
-                OR
-              </Typography>
-            </Divider>
+            <Divider sx={{ my: 2 }} />
 
-            <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-              <Button
-                fullWidth
-                variant="outlined"
-                startIcon={<GoogleIcon />}
-                onClick={handleGoogleLogin}
-                disabled={loading}
-                sx={{ py: 1.5 }}
-              >
-                Google
-              </Button>
-              <Button
-                fullWidth
-                variant="outlined"
-                startIcon={<FacebookIcon />}
-                onClick={handleFacebookLogin}
-                disabled={loading}
-                sx={{ py: 1.5 }}
-              >
-                Facebook
-              </Button>
-            </Box>
-
-            <Box sx={{ textAlign: 'center' }}>
+            <Box sx={{ textAlign: 'center', mb: 2 }}>
               <Typography variant="body2" color="text.secondary">
                 Don't have an account?{' '}
-                <Link to="/register" style={{ color: '#2563eb', textDecoration: 'none' }}>
+                <Link to="/register" style={{ color: '#2563eb', textDecoration: 'none', fontWeight: 600 }}>
                   Register here
                 </Link>
               </Typography>
             </Box>
 
-            {/* DEV MODE: Skip Authentication Button */}
-            <Box sx={{ textAlign: 'center', mt: 2 }}>
-              <Button
-                variant="outlined"
-                color="secondary"
-                size="small"
-                onClick={() => {
-                  localStorage.setItem('bypassAuth', 'true');
-                  const mockUser = {
-                    id: 'dev-user-123',
-                    email: 'dev@studyspot.com',
-                    firstName: 'Dev',
-                    lastName: 'User',
-                    role: 'student'
-                  };
-                  localStorage.setItem('user', JSON.stringify(mockUser));
-                  localStorage.setItem('token', 'dev-mock-token-bypass');
-                  setIsAuthenticated(true);
-                  navigate('/dashboard');
-                }}
-                sx={{ 
-                  textTransform: 'none',
-                  borderStyle: 'dashed',
-                  opacity: 0.7,
-                  '&:hover': { opacity: 1 }
-                }}
-              >
-                🔓 Skip Login (Dev Mode)
-              </Button>
-            </Box>
+            {/* DEV MODE: Skip Login Button */}
+            <Button
+              fullWidth
+              variant="outlined"
+              color="secondary"
+              size="small"
+              onClick={handleSkipLogin}
+              sx={{ 
+                textTransform: 'none',
+                borderStyle: 'dashed',
+                opacity: 0.7,
+                '&:hover': { opacity: 1, borderStyle: 'dashed' }
+              }}
+            >
+              🔓 Skip Login (Dev Mode)
+            </Button>
           </form>
         </Paper>
       </Container>
     </Box>
   );
 }
-
