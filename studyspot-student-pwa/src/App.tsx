@@ -7,7 +7,7 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import DashboardPageEnhanced from './pages/DashboardStudyFocused';
 import LibrariesPageEnhanced from './pages/LibrariesEnhancedV2';
-import LibraryDetailsPageEnhanced from './pages/LibraryDetailsPageEnhanced';
+import LibraryDetailsPageEnhanced from './pages/LibraryDetailsEnhancedV2';
 import BookingsPage from './pages/BookingsPage';
 import ProfilePageEnhanced from './pages/ProfilePageEnhanced';
 import QRScannerPage from './pages/QRScannerPage';
