@@ -49,7 +49,13 @@ router.use(setTenantContext);
  * - GET /api/v2/bookings?date=2024-01-15 - Get bookings for specific date
  * - GET /api/v2/bookings?status=confirmed - Get confirmed bookings
  */
-router.get('/', unifiedGetBookings);
+router.get('/', asyncHandler(async (req, res) => {
+  // TODO: Implement unified bookings query
+  res.json({
+    success: true,
+    data: { bookings: [], pagination: { page: 1, limit: 10, total: 0, totalPages: 0 } }
+  });
+}));
 
 /**
  * GET /api/v2/bookings/:bookingId

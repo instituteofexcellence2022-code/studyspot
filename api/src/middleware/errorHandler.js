@@ -127,6 +127,9 @@ process.on('unhandledRejection', (err, promise) => {
 
 // Handle uncaught exceptions
 process.on('uncaughtException', (err) => {
+  console.error('❌ UNCAUGHT EXCEPTION:');
+  console.error('Message:', err.message);
+  console.error('Stack:', err.stack);
   logger.error('Uncaught Exception:', err);
   process.exit(1);
 });

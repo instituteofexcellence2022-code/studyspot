@@ -219,23 +219,23 @@ app.use('/api/maps', mapsRoutes);           // Google Maps integration
 app.use('/api/analytics', analyticsRoutes); // Analytics & reporting
 app.use('/api/monitoring', monitoringRoutes); // System monitoring
 
-// Advanced Features (Phase 5 + Option C) - TEMPORARILY DISABLED
-// app.use('/api/ai', aiRoutes);               // AI recommendations & insights
-// app.use('/api/study-tools', studyToolsRoutes); // Study sessions & timers
-// app.use('/api/iot', iotRoutes);             // IoT device management
+// Advanced Features (Phase 5 + Option C) - RE-ENABLED
+app.use('/api/ai', aiRoutes);               // AI recommendations & insights
+app.use('/api/study-tools', studyToolsRoutes); // Study sessions & timers
+app.use('/api/iot', iotRoutes);             // IoT device management
 
-// Phase 6: SaaS Foundation Features - TEMPORARILY DISABLED
-// app.use('/api/subscriptions', subscriptionRoutes); // Subscription management (Stripe)
-// app.use('/api/credits', creditRoutes);      // Credit management (SMS/WhatsApp/Email)
-// app.use('/api/roles', roleRoutes);          // RBAC - Roles & Permissions
-// app.use('/api/tenants', tenantRoutes);      // Enhanced tenant management
-// app.use('/api/webhooks', webhookRoutes);    // Stripe webhooks
+// Phase 6: SaaS Foundation Features - RE-ENABLED FOR OWNER/ADMIN PORTALS
+app.use('/api/subscriptions', subscriptionRoutes); // Subscription management (Stripe)
+app.use('/api/credits', creditRoutes);      // Credit management (SMS/WhatsApp/Email)
+app.use('/api/roles', roleRoutes);          // RBAC - Roles & Permissions
+app.use('/api/tenants', tenantRoutes);      // Enhanced tenant management
+app.use('/api/webhooks', webhookRoutes);    // Stripe webhooks
 
-// Phase 7: Enhanced Features - TEMPORARILY DISABLED TO FIX DEPLOYMENT
-// app.use('/api/dashboard', dashboardRoutes);  // Enhanced dashboard with real-time metrics
-// app.use('/api/students', studentRoutes);      // Enhanced student management
-// app.use('/api/invoices', invoiceRoutes);      // GST-compliant invoicing & financial management
-// app.use('/api/audit', auditRoutes);           // Audit trail & security monitoring
+// Phase 7: Enhanced Features - RE-ENABLED FOR OWNER/ADMIN PORTALS
+app.use('/api/dashboard', dashboardRoutes);  // Enhanced dashboard with real-time metrics
+app.use('/api/students', studentRoutes);      // Enhanced student management
+app.use('/api/invoices', invoiceRoutes);      // GST-compliant invoicing & financial management
+app.use('/api/audit', auditRoutes);           // Audit trail & security monitoring
 app.use('/api/fee-plans', require('./routes/feePlans')); // Fee plans management
 
 // Additional Features (Issues, Referrals, Offline Payments) - TEMPORARILY DISABLED
