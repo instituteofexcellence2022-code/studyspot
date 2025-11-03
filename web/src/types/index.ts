@@ -12,7 +12,18 @@ export interface User {
   updatedAt: string;
 }
 
-export type UserRole = 'student' | 'library_staff' | 'library_admin' | 'super_admin';
+export type UserRole = 
+  | 'student' 
+  | 'library_staff' 
+  | 'library_admin' 
+  | 'super_admin'
+  | 'platform_support'
+  | 'library_owner'
+  | 'branch_manager'
+  | 'front_desk_staff'
+  | 'facility_manager'
+  | 'finance_manager'
+  | 'analytics_manager';
 export type UserStatus = 'active' | 'inactive' | 'suspended' | 'pending';
 
 // Library Types
