@@ -14,6 +14,8 @@ import QRScannerPage from './pages/QRScannerPage';
 import AttendancePage from './pages/AttendancePage';
 import StudyTimerPage from './pages/StudyTimerPage';
 import RewardsPage from './pages/RewardsPage';
+import PaymentsPage from './pages/PaymentsPage';
+import ResourcesPage from './pages/ResourcesPage';
 
 // Dev Bypass Component
 function DevBypass({ setIsAuthenticated }: { setIsAuthenticated: (value: boolean) => void }) {
@@ -140,6 +142,8 @@ function App() {
           <Route path="/attendance" element={isAuthenticated ? <AttendancePage setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/login" />} />
           <Route path="/study-timer" element={isAuthenticated ? <StudyTimerPage setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/login" />} />
           <Route path="/rewards" element={isAuthenticated ? <RewardsPage setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/login" />} />
+          <Route path="/payments" element={isAuthenticated ? <PaymentsPage setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/login" />} />
+          <Route path="/resources" element={isAuthenticated ? <ResourcesPage setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/login" />} />
 
           {/* Default Route */}
           <Route path="/" element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} />} />

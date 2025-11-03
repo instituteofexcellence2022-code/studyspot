@@ -25,6 +25,8 @@ import {
   Schedule as AttendanceIcon,
   Timer as TimerIcon,
   EmojiEvents as RewardsIcon,
+  Payment as PaymentIcon,
+  MenuBook as ResourceIcon,
 } from '@mui/icons-material';
 
 interface LayoutProps {
@@ -43,6 +45,8 @@ export default function Layout({ children, setIsAuthenticated }: LayoutProps) {
     { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
     { text: 'Libraries', icon: <LibraryIcon />, path: '/libraries' },
     { text: 'My Bookings', icon: <BookingIcon />, path: '/bookings' },
+    { text: 'Payments', icon: <PaymentIcon />, path: '/payments' },
+    { text: 'Resources', icon: <ResourceIcon />, path: '/resources' },
     { text: 'QR Scanner', icon: <QRIcon />, path: '/qr-scanner' },
     { text: 'Attendance', icon: <AttendanceIcon />, path: '/attendance' },
     { text: 'Study Timer', icon: <TimerIcon />, path: '/study-timer' },
