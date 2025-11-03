@@ -34,6 +34,7 @@ import {
 } from '@mui/icons-material';
 import Layout from '../components/StudyFocusedLayout';
 import api from '../services/api';
+import { jsPDF } from 'jspdf';
 
 interface Transaction {
   id: string;
@@ -46,7 +47,7 @@ interface Transaction {
   transactionId?: string;
 }
 
-export default function PaymentsPage({ setIsAuthenticated }: { setIsAuthenticated: (value: boolean) => void }) {
+export default function PaymentsPage({ setIsAuthenticated, darkMode, setDarkMode }: any) {
   const [tab, setTab] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -202,33 +203,72 @@ export default function PaymentsPage({ setIsAuthenticated }: { setIsAuthenticate
   };
 
   const downloadReceipt = (transaction: Transaction) => {
-    // Generate receipt
-    const receiptContent = `
-      STUDYSPOT PAYMENT RECEIPT
-      ========================
-      
-      Transaction ID: ${transaction.transactionId || transaction.id}
-      Date: ${new Date(transaction.date).toLocaleDateString()}
-      Type: ${transaction.type}
-      Amount: ₹${transaction.amount}
-      Status: ${transaction.status}
-      Payment Method: ${transaction.paymentMethod || 'N/A'}
-      
-      Description: ${transaction.description}
-      
-      Thank you for using StudySpot!
-    `;
-
-    const blob = new Blob([receiptContent], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `receipt-${transaction.id}.txt`;
-    a.click();
+    const doc = new jsPDF();
+    
+    // Header
+    doc.setFillColor(37, 99, 235);
+    doc.rect(0, 0, 210, 40, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(24);
+    doc.text('StudySpot', 20, 25);
+    
+    // Invoice Title
+    doc.setFontSize(18);
+    doc.text('PAYMENT RECEIPT', 150, 25, { align: 'right' });
+    
+    // Reset text color
+    doc.setTextColor(0, 0, 0);
+    
+    // Student Details
+    doc.setFontSize(10);
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    doc.text('STUDENT DETAILS', 20, 55);
+    doc.setFontSize(9);
+    doc.text(`Name: ${user.name || 'Student'}`, 20, 62);
+    doc.text(`Email: ${user.email || 'student@example.com'}`, 20, 68);
+    doc.text(`Phone: ${user.phone || '+91-XXXXX-XXXXX'}`, 20, 74);
+    
+    // Receipt Details
+    doc.text('RECEIPT DETAILS', 120, 55);
+    doc.text(`Receipt No: RCP${transaction.id}`, 120, 62);
+    doc.text(`Transaction ID: ${transaction.transactionId || transaction.id}`, 120, 68);
+    doc.text(`Date: ${new Date(transaction.date).toLocaleDateString('en-IN')}`, 120, 74);
+    doc.text(`Status: ${transaction.status.toUpperCase()}`, 120, 80);
+    
+    // Table Header
+    doc.setFillColor(37, 99, 235);
+    doc.rect(20, 90, 170, 10, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.text('Description', 25, 97);
+    doc.text('Payment Method', 100, 97);
+    doc.text('Amount', 170, 97, { align: 'right' });
+    
+    // Table Content
+    doc.setTextColor(0, 0, 0);
+    doc.text(transaction.description || 'Library Booking Payment', 25, 107);
+    doc.text(transaction.paymentMethod || 'Online', 100, 107);
+    doc.text(`₹${transaction.amount}`, 185, 107, { align: 'right' });
+    
+    // Total
+    doc.setFillColor(37, 99, 235);
+    doc.rect(20, 115, 170, 10, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(11);
+    doc.text('TOTAL AMOUNT:', 25, 122);
+    doc.text(`₹${transaction.amount}`, 185, 122, { align: 'right' });
+    
+    // Footer
+    doc.setTextColor(100, 100, 100);
+    doc.setFontSize(8);
+    doc.text('Thank you for choosing StudySpot!', 105, 140, { align: 'center' });
+    doc.text('For queries: support@studyspot.com | +91-98765-43210', 105, 146, { align: 'center' });
+    
+    // Save PDF
+    doc.save(`StudySpot-Receipt-${transaction.id}.pdf`);
   };
 
   return (
-    <Layout setIsAuthenticated={setIsAuthenticated}>
+    <Layout setIsAuthenticated={setIsAuthenticated} darkMode={darkMode} setDarkMode={setDarkMode}>
       <Container maxWidth="lg" sx={{ py: 4 }}>
         <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Box>
