@@ -39,20 +39,6 @@
       "bundler": "metro"
     },
     "plugins": [
-      "expo-router",
-      [
-        "expo-linking",
-        {
-          "scheme": "studyspot"
-        }
-      ],
-      [
-        "expo-notifications",
-        {
-          "icon": "./assets/notification-icon.png",
-          "color": "#2563eb"
-        }
-      ],
       [
         "expo-camera",
         {
