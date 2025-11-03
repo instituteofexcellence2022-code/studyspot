@@ -51,7 +51,7 @@ export default function QRScannerPage({ setIsAuthenticated }: QRScannerPageProps
 
   const checkActiveSession = async () => {
     try {
-      const response = await api.get('/attendance/active-session');
+      const response = await api.get('/api/attendance/active-session');
       if (response.data.session) {
         setCurrentSession(response.data.session);
       }
@@ -115,7 +115,7 @@ export default function QRScannerPage({ setIsAuthenticated }: QRScannerPageProps
 
   const handleCheckIn = async (libraryId: string) => {
     try {
-      const response = await api.post('/attendance/check-in', {
+      const response = await api.post('/api/attendance/check-in', {
         libraryId,
         checkInMethod: 'qr_code',
       });
@@ -134,7 +134,7 @@ export default function QRScannerPage({ setIsAuthenticated }: QRScannerPageProps
 
   const handleCheckOut = async (libraryId: string) => {
     try {
-      const response = await api.post('/attendance/check-out', {
+      const response = await api.post('/api/attendance/check-out', {
         sessionId: currentSession.id,
         checkOutMethod: 'qr_code',
       });
@@ -157,7 +157,7 @@ export default function QRScannerPage({ setIsAuthenticated }: QRScannerPageProps
     if (!currentSession) return;
     
     try {
-      const response = await api.post('/attendance/check-out', {
+      const response = await api.post('/api/attendance/check-out', {
         sessionId: currentSession.id,
         checkOutMethod: 'manual',
       });

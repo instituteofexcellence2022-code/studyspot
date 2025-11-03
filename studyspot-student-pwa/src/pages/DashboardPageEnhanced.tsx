@@ -165,7 +165,7 @@ export default function DashboardPageEnhanced({ setIsAuthenticated }: DashboardP
   const fetchDashboardData = async () => {
     try {
       // Fetch real data from API
-      const response = await api.get('/dashboard/stats');
+      const response = await api.get('/api/dashboard/stats');
       // setStats(response.data.stats);
       // setStudyTimeData(response.data.studyTime);
       // ... etc

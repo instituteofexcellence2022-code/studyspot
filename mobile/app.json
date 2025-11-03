@@ -38,20 +38,6 @@
       "favicon": "./assets/favicon.png",
       "bundler": "metro"
     },
-    "plugins": [
-      [
-        "expo-camera",
-        {
-          "cameraPermission": "Allow StudySpot to access your camera for QR code scanning."
-        }
-      ],
-      [
-        "expo-location",
-        {
-          "locationAlwaysAndWhenInUsePermission": "Allow StudySpot to use your location to find nearby libraries."
-        }
-      ]
-    ],
     "scheme": "studyspot",
     "extra": {
       "eas": {

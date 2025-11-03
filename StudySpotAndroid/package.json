@@ -27,6 +27,7 @@
   "dependencies": {
     "@expo/vector-icons": "^13.0.0",
     "@hookform/resolvers": "^3.3.2",
+    "@react-native-async-storage/async-storage": "^1.19.5",
     "@react-native-community/netinfo": "^7.1.3",
     "@react-native-firebase/analytics": "^18.6.1",
     "@react-native-firebase/app": "^18.6.1",
@@ -37,9 +38,14 @@
     "@react-navigation/native": "^6.1.9",
     "@react-navigation/stack": "^6.3.20",
     "@reduxjs/toolkit": "^1.9.7",
+    "@tanstack/react-query": "^4.36.1",
     "async": "^3.2.4",
     "axios": "^1.6.2",
+    "expo": "^54.0.21",
+    "expo-camera": "^17.0.8",
+    "expo-location": "^19.0.7",
     "lodash": "^4.17.21",
+    "lottie-react-native": "^6.4.1",
     "moment": "^2.29.4",
     "native-base": "^3.4.28",
     "react": "18.2.0",
@@ -74,6 +80,7 @@
     "react-native-otp-inputs": "^7.4.0",
     "react-native-pager-view": "^6.2.2",
     "react-native-paper": "^5.11.1",
+    "react-native-performance": "^5.0.0",
     "react-native-permissions": "^3.10.1",
     "react-native-phone-number-input": "^2.1.0",
     "react-native-progress": "^5.0.1",
@@ -99,16 +106,11 @@
     "react-native-vision-camera": "^3.6.17",
     "react-native-webview": "^13.6.2",
     "react-query": "^3.39.3",
-    "@tanstack/react-query": "^4.36.1",
     "react-redux": "^8.1.3",
     "redux-persist": "^6.0.0",
     "socket.io-client": "^4.7.4",
     "uuid": "^9.0.1",
-    "yup": "^1.3.3",
-    "lottie-react-native": "^6.4.1",
-    "@react-native-async-storage/async-storage": "^1.19.5",
-    "react-native-performance": "^5.0.0",
-    "react-native-flipper": "^0.212.0"
+    "yup": "^1.3.3"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",
@@ -182,15 +184,3 @@
   },
   "homepage": "https://studyspot.com/mobile"
 }
-
-
-
-
-
-
-
-
-
-
-
-

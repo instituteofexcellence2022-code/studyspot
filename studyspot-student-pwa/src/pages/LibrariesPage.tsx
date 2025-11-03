@@ -34,7 +34,7 @@ export default function LibrariesPage({ setIsAuthenticated }: LibrariesPageProps
 
   const fetchLibraries = async () => {
     try {
-      const response = await api.get('/libraries');
+      const response = await api.get('/api/libraries');
       setLibraries(response.data.data || []);
     } catch (error) {
       console.error('Failed to fetch libraries:', error);

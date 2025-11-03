@@ -44,11 +44,11 @@ export default function LoginPage({ setIsAuthenticated }: LoginPageProps) {
     setError('');
 
     try {
-      const response = await api.post('/auth/login', formData);
-      const { token, user } = response.data;
+      const response = await api.post('/api/auth/login', formData);
+      const { tokens, user } = response.data.data || response.data;
 
       // Save to localStorage
-      localStorage.setItem('token', token);
+      localStorage.setItem('token', tokens?.accessToken || response.data.token);
       localStorage.setItem('user', JSON.stringify(user));
 
       setIsAuthenticated(true);
@@ -69,7 +69,7 @@ export default function LoginPage({ setIsAuthenticated }: LoginPageProps) {
       const user = result.user;
 
       // Send to backend to create/login user
-      const response = await api.post('/auth/social-login', {
+      const response = await api.post('/api/auth/social-login', {
         provider: 'google',
         providerId: user.uid,
         email: user.email,
@@ -78,8 +78,8 @@ export default function LoginPage({ setIsAuthenticated }: LoginPageProps) {
         photoURL: user.photoURL,
       });
 
-      const { token, user: userData } = response.data;
-      localStorage.setItem('token', token);
+      const { tokens, user: userData } = response.data.data || response.data;
+      localStorage.setItem('token', tokens?.accessToken || response.data.token);
       localStorage.setItem('user', JSON.stringify(userData));
 
       setIsAuthenticated(true);
@@ -99,7 +99,7 @@ export default function LoginPage({ setIsAuthenticated }: LoginPageProps) {
       const result = await signInWithPopup(auth, facebookProvider);
       const user = result.user;
 
-      const response = await api.post('/auth/social-login', {
+      const response = await api.post('/api/auth/social-login', {
         provider: 'facebook',
         providerId: user.uid,
         email: user.email,
@@ -108,8 +108,8 @@ export default function LoginPage({ setIsAuthenticated }: LoginPageProps) {
         photoURL: user.photoURL,
       });
 
-      const { token, user: userData } = response.data;
-      localStorage.setItem('token', token);
+      const { tokens, user: userData } = response.data.data || response.data;
+      localStorage.setItem('token', tokens?.accessToken || response.data.token);
       localStorage.setItem('user', JSON.stringify(userData));
 
       setIsAuthenticated(true);

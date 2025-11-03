@@ -37,7 +37,7 @@ export default function ProfilePage({ setIsAuthenticated }: ProfilePageProps) {
 
   const handleSave = async () => {
     try {
-      await api.put('/users/profile', formData);
+      await api.put('/api/users/profile', formData);
       localStorage.setItem('user', JSON.stringify({ ...user, ...formData }));
       setEditMode(false);
       alert('Profile updated successfully!');

@@ -245,7 +245,7 @@ export default function LibraryDetailsPageEnhanced({ setIsAuthenticated }: Libra
       const selectedShift = shifts.find(s => s.id === bookingData.shift);
       const selectedSeatObjects = seats.filter(s => bookingData.selectedSeats.includes(s.id));
       
-      await api.post('/bookings', {
+      await api.post('/api/bookings', {
         libraryId: id,
         date: bookingData.date,
         shift: bookingData.shift,

@@ -149,7 +149,7 @@ export default function StudyTimerPage({ setIsAuthenticated }: StudyTimerPagePro
 
   const saveSession = async (sessionType: string, duration: number) => {
     try {
-      await api.post('/study-tools/sessions', {
+      await api.post('/api/study-tools/sessions', {
         type: sessionType,
         duration,
         completedAt: new Date().toISOString(),

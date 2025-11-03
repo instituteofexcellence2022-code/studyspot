@@ -88,7 +88,7 @@ export default function ProfilePageEnhanced({ setIsAuthenticated }: ProfilePageE
 
   const handleSave = async () => {
     try {
-      await api.put('/users/profile', { ...formData, photoURL });
+      await api.put('/api/users/profile', { ...formData, photoURL });
       localStorage.setItem('user', JSON.stringify({ ...user, ...formData, photoURL }));
       setEditMode(false);
       alert('Profile updated successfully!');
@@ -108,7 +108,7 @@ export default function ProfilePageEnhanced({ setIsAuthenticated }: ProfilePageE
       const formData = new FormData();
       formData.append('photo', file);
 
-      const response = await api.post('/users/upload-photo', formData, {
+      const response = await api.post('/api/users/upload-photo', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
 

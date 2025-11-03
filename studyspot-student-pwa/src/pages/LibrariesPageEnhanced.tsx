@@ -144,7 +144,7 @@ export default function LibrariesPageEnhanced({ setIsAuthenticated }: LibrariesP
 
   const fetchLibraries = async () => {
     try {
-      const response = await api.get('/libraries');
+      const response = await api.get('/api/libraries');
       const librariesData = response.data.data || [];
       
       // Calculate distances

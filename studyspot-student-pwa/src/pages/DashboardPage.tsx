@@ -42,7 +42,7 @@ export default function DashboardPage({ setIsAuthenticated }: DashboardPageProps
   const fetchDashboardData = async () => {
     try {
       // Fetch user bookings for stats
-      const response = await api.get('/bookings/my-bookings');
+      const response = await api.get('/api/bookings/my-bookings');
       const bookings = response.data.data || [];
 
       const upcoming = bookings.filter((b: any) => 

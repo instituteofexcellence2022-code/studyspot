@@ -56,7 +56,7 @@ export default function AttendancePage({ setIsAuthenticated }: AttendancePagePro
 
   const fetchAttendanceData = async () => {
     try {
-      const response = await api.get('/attendance/history');
+      const response = await api.get('/api/attendance/history');
       setAttendanceHistory(response.data.sessions || []);
       setStats(response.data.stats || stats);
     } catch (error) {

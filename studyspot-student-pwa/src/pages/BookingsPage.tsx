@@ -33,7 +33,7 @@ export default function BookingsPage({ setIsAuthenticated }: BookingsPageProps) 
 
   const fetchBookings = async () => {
     try {
-      const response = await api.get('/bookings/my-bookings');
+      const response = await api.get('/api/bookings/my-bookings');
       setBookings(response.data.data || []);
     } catch (error) {
       console.error('Failed to fetch bookings:', error);

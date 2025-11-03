@@ -185,7 +185,7 @@ export default function RewardsPage({ setIsAuthenticated }: RewardsPageProps) {
     }
 
     try {
-      await api.post('/rewards/redeem-coupon', { couponId });
+      await api.post('/api/rewards/redeem-coupon', { couponId });
       setRewards({ ...rewards, points: rewards.points - pointsRequired });
       setCoupons(coupons.map(c => c.id === couponId ? { ...c, redeemed: true } : c));
       alert('Coupon redeemed successfully!');

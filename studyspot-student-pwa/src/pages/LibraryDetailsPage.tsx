@@ -75,7 +75,7 @@ export default function LibraryDetailsPage({ setIsAuthenticated }: LibraryDetail
 
   const handleBooking = async () => {
     try {
-      await api.post('/bookings', {
+      await api.post('/api/bookings', {
         libraryId: id,
         ...bookingData,
       });

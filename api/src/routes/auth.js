@@ -32,7 +32,7 @@ router.post('/register', [
   body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters long'),
   body('firstName').trim().isLength({ min: 1 }).withMessage('First name is required'),
   body('lastName').trim().isLength({ min: 1 }).withMessage('Last name is required'),
-  body('phone').optional().isMobilePhone(),
+  body('phone').optional().matches(/^[0-9]{10}$/).withMessage('Phone must be 10 digits'),
   body('role').isIn(['student', 'library_staff', 'library_owner', 'branch_manager', 'front_desk_staff', 'facility_manager', 'finance_manager', 'analytics_manager', 'super_admin', 'platform_support']).withMessage('Invalid role'),
   body('tenantId').optional().isUUID()
 ], asyncHandler(async (req, res) => {
