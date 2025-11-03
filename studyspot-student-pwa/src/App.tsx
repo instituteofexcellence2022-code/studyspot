@@ -169,26 +169,26 @@ function App() {
 
           {/* Protected Routes */}
           <Route path="/dashboard" element={isAuthenticated ? <DashboardPageEnhanced setIsAuthenticated={setIsAuthenticated} darkMode={darkMode} setDarkMode={setDarkMode} /> : <Navigate to="/login" />} />
-          <Route path="/libraries" element={isAuthenticated ? <LibrariesPageEnhanced setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/login" />} />
-          <Route path="/libraries/:id" element={isAuthenticated ? <LibraryDetailsPageEnhanced setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/login" />} />
-          <Route path="/bookings" element={isAuthenticated ? <BookingsPage setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/login" />} />
-          <Route path="/profile" element={isAuthenticated ? <ProfilePageEnhanced setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/login" />} />
-          <Route path="/qr-scanner" element={isAuthenticated ? <QRScannerPage setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/login" />} />
-          <Route path="/attendance" element={isAuthenticated ? <AttendancePage setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/login" />} />
-          <Route path="/study-timer" element={isAuthenticated ? <StudyTimerPage setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/login" />} />
-          <Route path="/rewards" element={isAuthenticated ? <RewardsPage setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/login" />} />
-          <Route path="/payments" element={isAuthenticated ? <PaymentsPage setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/login" />} />
-          <Route path="/resources" element={isAuthenticated ? <ResourcesPage setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/login" />} />
-          <Route path="/issues" element={isAuthenticated ? <IssuesPage setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/login" />} />
-          <Route path="/support" element={isAuthenticated ? <SupportPage setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/login" />} />
-          <Route path="/announcements" element={isAuthenticated ? <AnnouncementsPage setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/login" />} />
-          <Route path="/referral" element={isAuthenticated ? <ReferralPage setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/login" />} />
-          <Route path="/analytics" element={isAuthenticated ? <AnalyticsPage setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/login" />} />
-          <Route path="/tasks-goals" element={isAuthenticated ? <TasksGoalsPage setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/login" />} />
-          <Route path="/community" element={isAuthenticated ? <CommunityPage setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/login" />} />
-          <Route path="/favorites" element={isAuthenticated ? <FavoritesPage setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/login" />} />
-          <Route path="/manage-bookings" element={isAuthenticated ? <ManageBookingsPage setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/login" />} />
-          <Route path="/reviews" element={isAuthenticated ? <ReviewsPage setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/login" />} />
+          <Route path="/libraries" element={isAuthenticated ? <LibrariesPageEnhanced setIsAuthenticated={setIsAuthenticated} darkMode={darkMode} setDarkMode={setDarkMode} /> : <Navigate to="/login" />} />
+          <Route path="/libraries/:id" element={isAuthenticated ? <LibraryDetailsPageEnhanced setIsAuthenticated={setIsAuthenticated} darkMode={darkMode} setDarkMode={setDarkMode} /> : <Navigate to="/login" />} />
+          <Route path="/bookings" element={isAuthenticated ? <BookingsPage setIsAuthenticated={setIsAuthenticated} darkMode={darkMode} setDarkMode={setDarkMode} /> : <Navigate to="/login" />} />
+          <Route path="/profile" element={isAuthenticated ? <ProfilePageEnhanced setIsAuthenticated={setIsAuthenticated} darkMode={darkMode} setDarkMode={setDarkMode} /> : <Navigate to="/login" />} />
+          <Route path="/qr-scanner" element={isAuthenticated ? <QRScannerPage setIsAuthenticated={setIsAuthenticated} darkMode={darkMode} setDarkMode={setDarkMode} /> : <Navigate to="/login" />} />
+          <Route path="/attendance" element={isAuthenticated ? <AttendancePage setIsAuthenticated={setIsAuthenticated} darkMode={darkMode} setDarkMode={setDarkMode} /> : <Navigate to="/login" />} />
+          <Route path="/study-timer" element={isAuthenticated ? <StudyTimerPage setIsAuthenticated={setIsAuthenticated} darkMode={darkMode} setDarkMode={setDarkMode} /> : <Navigate to="/login" />} />
+          <Route path="/rewards" element={isAuthenticated ? <RewardsPage setIsAuthenticated={setIsAuthenticated} darkMode={darkMode} setDarkMode={setDarkMode} /> : <Navigate to="/login" />} />
+          <Route path="/payments" element={isAuthenticated ? <PaymentsPage setIsAuthenticated={setIsAuthenticated} darkMode={darkMode} setDarkMode={setDarkMode} /> : <Navigate to="/login" />} />
+          <Route path="/resources" element={isAuthenticated ? <ResourcesPage setIsAuthenticated={setIsAuthenticated} darkMode={darkMode} setDarkMode={setDarkMode} /> : <Navigate to="/login" />} />
+          <Route path="/issues" element={isAuthenticated ? <IssuesPage setIsAuthenticated={setIsAuthenticated} darkMode={darkMode} setDarkMode={setDarkMode} /> : <Navigate to="/login" />} />
+          <Route path="/support" element={isAuthenticated ? <SupportPage setIsAuthenticated={setIsAuthenticated} darkMode={darkMode} setDarkMode={setDarkMode} /> : <Navigate to="/login" />} />
+          <Route path="/announcements" element={isAuthenticated ? <AnnouncementsPage setIsAuthenticated={setIsAuthenticated} darkMode={darkMode} setDarkMode={setDarkMode} /> : <Navigate to="/login" />} />
+          <Route path="/referral" element={isAuthenticated ? <ReferralPage setIsAuthenticated={setIsAuthenticated} darkMode={darkMode} setDarkMode={setDarkMode} /> : <Navigate to="/login" />} />
+          <Route path="/analytics" element={isAuthenticated ? <AnalyticsPage setIsAuthenticated={setIsAuthenticated} darkMode={darkMode} setDarkMode={setDarkMode} /> : <Navigate to="/login" />} />
+          <Route path="/tasks-goals" element={isAuthenticated ? <TasksGoalsPage setIsAuthenticated={setIsAuthenticated} darkMode={darkMode} setDarkMode={setDarkMode} /> : <Navigate to="/login" />} />
+          <Route path="/community" element={isAuthenticated ? <CommunityPage setIsAuthenticated={setIsAuthenticated} darkMode={darkMode} setDarkMode={setDarkMode} /> : <Navigate to="/login" />} />
+          <Route path="/favorites" element={isAuthenticated ? <FavoritesPage setIsAuthenticated={setIsAuthenticated} darkMode={darkMode} setDarkMode={setDarkMode} /> : <Navigate to="/login" />} />
+          <Route path="/manage-bookings" element={isAuthenticated ? <ManageBookingsPage setIsAuthenticated={setIsAuthenticated} darkMode={darkMode} setDarkMode={setDarkMode} /> : <Navigate to="/login" />} />
+          <Route path="/reviews" element={isAuthenticated ? <ReviewsPage setIsAuthenticated={setIsAuthenticated} darkMode={darkMode} setDarkMode={setDarkMode} /> : <Navigate to="/login" />} />
 
           {/* Default Route */}
           <Route path="/" element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} />} />
