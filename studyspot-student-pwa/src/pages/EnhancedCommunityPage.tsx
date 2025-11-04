@@ -83,6 +83,7 @@ interface Community {
   is_active: boolean;
   created_at: string;
   is_joined?: boolean; // Client-side flag
+  privacy_mode?: boolean; // Privacy mode for library groups (hide student names)
 }
 
 interface ChatMessage {
@@ -97,6 +98,7 @@ interface ChatMessage {
   file_type?: string;
   created_at: string;
   is_me?: boolean; // Client-side flag
+  privacyMode?: boolean; // Privacy mode enabled for this group
 }
 
 export default function EnhancedCommunityPage({ setIsAuthenticated, darkMode, setDarkMode }: any) {
@@ -345,12 +347,22 @@ export default function EnhancedCommunityPage({ setIsAuthenticated, darkMode, se
 
   const fetchMessages = async (communityId: string) => {
     try {
-      const response = await api.get(`/api/communities/${communityId}/messages`);
+      // Pass userRole=student so backend knows to apply privacy mode if enabled
+      const response = await api.get(`/api/communities/${communityId}/messages?userRole=student`);
       const msgs = response.data?.data || getMockMessages();
+      const privacyMode = response.data?.privacyMode || false;
+      
       setMessages(msgs.map((m: ChatMessage) => ({
         ...m,
         is_me: m.user_id === (user?.id || 'current-user'),
+        privacyMode, // Pass privacy mode to each message
       })));
+      
+      // Update community with privacy mode
+      if (selectedCommunity) {
+        setSelectedCommunity({ ...selectedCommunity, privacy_mode: privacyMode });
+      }
+      
       scrollToBottom();
     } catch (error) {
       console.error('Error fetching messages:', error);
@@ -379,6 +391,7 @@ export default function EnhancedCommunityPage({ setIsAuthenticated, darkMode, se
         userName: user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : 'Student',
         message: newMessage,
         messageType: 'text',
+        userRole: 'student', // Pass userRole so backend knows to apply privacy mode
       });
       
       setNewMessage('');
@@ -618,9 +631,19 @@ export default function EnhancedCommunityPage({ setIsAuthenticated, darkMode, se
               <Typography variant="h6" fontWeight="600">
                 {selectedCommunity?.name}
               </Typography>
-              <Typography variant="caption" color="text.secondary">
-                {selectedCommunity?.member_count} members • {connected ? 'Online' : 'Offline'}
-              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Typography variant="caption" color="text.secondary">
+                  {selectedCommunity?.member_count} members • {connected ? 'Online' : 'Offline'}
+                </Typography>
+                {selectedCommunity?.privacy_mode && selectedCommunity?.type === 'group' && (
+                  <Chip
+                    label="🔒 Privacy Mode"
+                    size="small"
+                    color="warning"
+                    sx={{ height: 18, fontSize: '0.65rem' }}
+                  />
+                )}
+              </Box>
             </Box>
             <IconButton>
               <MoreVert />
