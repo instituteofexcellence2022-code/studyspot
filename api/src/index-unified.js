@@ -298,16 +298,8 @@ async function startServer() {
     // ========================================
     try {
       logger.info('Connecting to PostgreSQL database...');
-      // Try multi-provider database first, fallback to single provider
-      try {
-        await connectPrimaryDatabase();
-        await connectReadReplica().catch(() => {
-          logger.warn('⚠️  Read replica not configured, using primary only');
-        });
-      } catch (error) {
-        logger.warn('⚠️  Multi-provider database failed, trying single provider:', error.message);
-        await connectDatabase();
-      }
+      // Use single provider database (multi-provider is optional)
+      await connectDatabase();
       
       // Verify database health
       const dbHealth = await checkDatabaseHealth();
@@ -337,13 +329,8 @@ async function startServer() {
     // ========================================
     try {
       logger.info('Connecting to Redis...');
-      // Try multi-provider Redis first, fallback to single provider
-      try {
-        await connectAllRedis();
-      } catch (error) {
-        logger.warn('⚠️  Multi-provider Redis failed, trying single provider:', error.message);
-        await connectRedis();
-      }
+      // Use single provider Redis (multi-provider is optional)
+      await connectRedis();
       logger.info('✅ Redis connected successfully (caching enabled)');
     } catch (redisError) {
       console.warn('⚠️  Redis connection failed - caching disabled');
