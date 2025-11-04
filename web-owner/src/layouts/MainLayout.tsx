@@ -89,7 +89,7 @@ const MainLayout: React.FC = () => {
         <AppBar
           position="fixed"
           sx={{
-            zIndex: theme.zIndex.drawer - 1,
+            zIndex: theme.zIndex.drawer + 1,
             width: sidebarOpen && !isMobile ? 'calc(100% - 280px)' : '100%',
             marginLeft: sidebarOpen && !isMobile ? '280px' : 0,
             transition: theme.transitions.create(['margin', 'width'], {
