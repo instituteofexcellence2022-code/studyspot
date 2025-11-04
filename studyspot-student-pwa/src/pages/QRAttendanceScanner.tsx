@@ -78,6 +78,8 @@ export default function QRAttendanceScanner({ darkMode, setDarkMode }: any) {
   const [currentDuration, setCurrentDuration] = useState('0h 0m');
   const [manualQRDialog, setManualQRDialog] = useState(false);
   const [manualQRText, setManualQRText] = useState('');
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [cameraError, setCameraError] = useState(false);
 
   useEffect(() => {
     fetchAttendanceStatus();
@@ -146,19 +148,35 @@ export default function QRAttendanceScanner({ darkMode, setDarkMode }: any) {
 
   const startScanning = () => {
     setScanning(true);
+    setCameraError(false);
 
-    const qrScanner = new Html5QrcodeScanner(
-      'qr-reader',
-      {
-        fps: 10,
-        qrbox: { width: 250, height: 250 },
-        aspectRatio: 1.0,
-      },
-      false
-    );
+    try {
+      const qrScanner = new Html5QrcodeScanner(
+        'qr-reader',
+        {
+          fps: 10,
+          qrbox: { width: 250, height: 250 },
+          aspectRatio: 1.0,
+          rememberLastUsedCamera: true,
+        },
+        false
+      );
 
-    qrScanner.render(onScanSuccess, onScanError);
-    setScanner(qrScanner);
+      qrScanner.render(onScanSuccess, (errorMessage) => {
+        // Camera permission or access errors
+        if (errorMessage.includes('NotAllowedError') || errorMessage.includes('NotFoundError')) {
+          setCameraError(true);
+          toast.error('📷 Camera access denied or not available. Please use manual entry or upload option.');
+        }
+      });
+      
+      setScanner(qrScanner);
+    } catch (error) {
+      console.error('Error starting scanner:', error);
+      setCameraError(true);
+      toast.error('Failed to start camera. Please use manual entry option.');
+      setScanning(false);
+    }
   };
 
   const stopScanning = () => {
@@ -269,6 +287,26 @@ export default function QRAttendanceScanner({ darkMode, setDarkMode }: any) {
     setManualQRText('');
   };
 
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const { Html5Qrcode } = await import('html5-qrcode');
+      const html5QrCode = new Html5Qrcode('temp-qr-reader');
+      
+      const decodedText = await html5QrCode.scanFile(file, false);
+      console.log('📸 QR Code decoded from image:', decodedText);
+      
+      onScanSuccess(decodedText);
+      setUploadDialogOpen(false);
+      toast.success('QR code detected from image!');
+    } catch (error) {
+      console.error('Error reading QR from file:', error);
+      toast.error('Could not detect QR code in image. Please try again or use manual entry.');
+    }
+  };
+
   return (
     <StudyFocusedLayout darkMode={darkMode} setDarkMode={setDarkMode}>
       <Container maxWidth="md" sx={{ py: 4 }}>
@@ -346,39 +384,79 @@ export default function QRAttendanceScanner({ darkMode, setDarkMode }: any) {
           </Card>
         )}
 
-        {/* Scan Button */}
+        {/* Scan Options */}
         {!scanning ? (
           <Card sx={{ mb: 3 }}>
-            <CardContent sx={{ textAlign: 'center', py: 4 }}>
-              <Button
-                variant="contained"
-                size="large"
-                startIcon={<ScanIcon />}
-                onClick={startScanning}
-                sx={{
-                  py: 2,
-                  px: 4,
-                  fontSize: '1.1rem',
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                }}
-              >
-                {activeSession ? 'Scan to Check-Out' : 'Scan to Check-In'}
-              </Button>
+            <CardContent sx={{ py: 4 }}>
+              {/* Camera Scan Button */}
+              <Box sx={{ textAlign: 'center', mb: 3 }}>
+                <Button
+                  variant="contained"
+                  size="large"
+                  startIcon={<CameraIcon />}
+                  onClick={startScanning}
+                  sx={{
+                    py: 2,
+                    px: 4,
+                    fontSize: '1.1rem',
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  }}
+                >
+                  {activeSession ? 'Scan to Check-Out' : 'Scan to Check-In'}
+                </Button>
 
-              <Typography variant="caption" display="block" color="text.secondary" sx={{ mt: 2 }}>
-                {activeSession
-                  ? '📍 Scan the RED QR code at library exit'
-                  : '📍 Scan the GREEN QR code at library entrance'}
+                <Typography variant="caption" display="block" color="text.secondary" sx={{ mt: 2 }}>
+                  {activeSession
+                    ? '📍 Scan the RED QR code at library exit'
+                    : '📍 Scan the GREEN QR code at library entrance'}
+                </Typography>
+              </Box>
+
+              <Divider sx={{ my: 2 }}>
+                <Chip label="OR" size="small" />
+              </Divider>
+
+              {/* Alternative Methods for Laptop Users */}
+              <Alert severity="info" sx={{ mb: 2 }}>
+                <Typography variant="body2" fontWeight="600">
+                  💻 Using a Laptop?
+                </Typography>
+                <Typography variant="caption">
+                  Camera might not work well. Use the options below instead:
+                </Typography>
+              </Alert>
+
+              <Stack spacing={2}>
+                {/* Upload QR Image */}
+                <Button
+                  variant="outlined"
+                  fullWidth
+                  component="label"
+                  startIcon={<CameraIcon />}
+                >
+                  📸 Upload QR Code Screenshot
+                  <input
+                    type="file"
+                    hidden
+                    accept="image/*"
+                    onChange={handleFileUpload}
+                  />
+                </Button>
+
+                {/* Manual Entry */}
+                <Button
+                  variant="outlined"
+                  fullWidth
+                  onClick={() => setManualQRDialog(true)}
+                  startIcon={<ScanIcon />}
+                >
+                  ⌨️ Enter QR Code Manually
+                </Button>
+              </Stack>
+
+              <Typography variant="caption" display="block" color="text.secondary" sx={{ mt: 2, textAlign: 'center' }}>
+                💡 Tip: Take a photo of the QR code and upload it, or ask library staff for the code text
               </Typography>
-
-              <Button
-                size="small"
-                variant="text"
-                onClick={() => setManualQRDialog(true)}
-                sx={{ mt: 1 }}
-              >
-                Enter QR Code Manually
-              </Button>
             </CardContent>
           </Card>
         ) : (
@@ -419,9 +497,31 @@ export default function QRAttendanceScanner({ darkMode, setDarkMode }: any) {
                   </Typography>
                 </Box>
               )}
+
+              {cameraError && (
+                <Alert severity="warning" sx={{ mt: 2 }}>
+                  <Typography variant="body2" fontWeight="600">
+                    📷 Camera Not Available
+                  </Typography>
+                  <Typography variant="caption">
+                    Your camera couldn't be accessed. Please use the "Upload Screenshot" or "Manual Entry" options below.
+                  </Typography>
+                  <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+                    <Button size="small" onClick={stopScanning} variant="outlined">
+                      Close Scanner
+                    </Button>
+                    <Button size="small" onClick={() => setManualQRDialog(true)} variant="contained">
+                      Manual Entry
+                    </Button>
+                  </Stack>
+                </Alert>
+              )}
             </CardContent>
           </Card>
         )}
+
+        {/* Hidden element for file scanning */}
+        <div id="temp-qr-reader" style={{ display: 'none' }}></div>
 
         {/* Attendance History */}
         <Card>
