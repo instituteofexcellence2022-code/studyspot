@@ -735,13 +735,70 @@ fastify.post('/api/v1/auth/verify', async (request, reply) => {
 });
 
 // ============================================
-// START SERVER
+// START SERVER WITH WEBSOCKET SUPPORT
 // ============================================
 
 const start = async () => {
   try {
     await fastify.listen({ port: PORT, host: '0.0.0.0' });
     logger.info(`🔐 Auth Service running on port ${PORT}`);
+    
+    // ============================================
+    // 🔴 WEBSOCKET SERVER INITIALIZATION
+    // ============================================
+    const io = new SocketIOServer(fastify.server, {
+      cors: {
+        origin: [
+          'http://localhost:3000',
+          'http://localhost:3001',
+          'http://localhost:5173',
+          'https://studyspot-librarys.vercel.app',
+          'https://studyspot-student.vercel.app',
+          'https://main.studyspot-student.pages.dev',
+          'https://studyspot-student.pages.dev',
+          /\.vercel\.app$/,
+          /\.pages\.dev$/,
+        ],
+        credentials: true,
+        methods: ['GET', 'POST'],
+      },
+      transports: ['websocket', 'polling'],
+      pingTimeout: 60000,
+      pingInterval: 25000,
+    });
+
+    // Socket connection handlers
+    io.on('connection', (socket) => {
+      console.log('🔌 Client connected:', socket.id);
+      
+      // Join role-based rooms
+      socket.on('join:role', (role: string) => {
+        socket.join(`role:${role}`);
+        console.log(`👤 ${socket.id} joined room: role:${role}`);
+      });
+
+      // Join library-specific room
+      socket.on('join:library', (libraryId: string) => {
+        socket.join(`library:${libraryId}`);
+        console.log(`🏢 ${socket.id} joined room: library:${libraryId}`);
+      });
+
+      // Handle disconnection
+      socket.on('disconnect', () => {
+        console.log('🔌 Client disconnected:', socket.id);
+      });
+
+      // Heartbeat
+      socket.on('ping', () => {
+        socket.emit('pong', { timestamp: new Date().toISOString() });
+      });
+    });
+
+    // Store io instance globally for use in routes
+    (fastify as any).io = io;
+    
+    logger.info(`✅ WebSocket Server running on port ${PORT}`);
+    logger.info(`🔴 Real-time updates: ENABLED`);
   } catch (err) {
     logger.error('Failed to start Auth Service', err);
     process.exit(1);
