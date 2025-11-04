@@ -306,84 +306,91 @@ export default function MessagesInboxPage() {
           </Typography>
         </Paper>
       ) : (
-        <Grid container spacing={3}>
+        <Box sx={{ 
+          display: 'grid', 
+          gridTemplateColumns: { 
+            xs: '1fr', 
+            md: 'repeat(2, 1fr)', 
+            lg: 'repeat(3, 1fr)' 
+          }, 
+          gap: 3 
+        }}>
           {filteredMessages.map((message) => (
-            <Grid key={message.id} item xs={12} md={6} lg={4}>
-              <Card 
-                sx={{ 
-                  border: 2,
-                  borderColor: message.is_read ? 'divider' : 'primary.main',
-                  bgcolor: message.is_read ? 'background.paper' : 'primary.light',
-                  transition: 'all 0.3s',
-                  '&:hover': { boxShadow: 4 },
-                }}
-              >
-                <CardContent>
-                  {/* Header */}
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-                    <Box sx={{ display: 'flex', gap: 1.5, flex: 1 }}>
-                      <Avatar sx={{ bgcolor: 'primary.main' }}>
-                        {message.sender_name[0]}
-                      </Avatar>
-                      <Box sx={{ flex: 1, minWidth: 0 }}>
-                        <Typography variant="subtitle1" fontWeight="600" noWrap>
-                          {message.sender_name}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {new Date(message.created_at).toLocaleString()}
-                        </Typography>
-                      </Box>
+            <Card 
+              key={message.id}
+              sx={{ 
+                border: 2,
+                borderColor: message.is_read ? 'divider' : 'primary.main',
+                bgcolor: message.is_read ? 'background.paper' : 'primary.light',
+                transition: 'all 0.3s',
+                '&:hover': { boxShadow: 4 },
+              }}
+            >
+              <CardContent>
+                {/* Header */}
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                  <Box sx={{ display: 'flex', gap: 1.5, flex: 1 }}>
+                    <Avatar sx={{ bgcolor: 'primary.main' }}>
+                      {message.sender_name[0]}
+                    </Avatar>
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <Typography variant="subtitle1" fontWeight="600" noWrap>
+                        {message.sender_name}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {new Date(message.created_at).toLocaleString()}
+                      </Typography>
                     </Box>
-                    {!message.is_read && (
-                      <Badge color="error" variant="dot" />
-                    )}
                   </Box>
+                  {!message.is_read && (
+                    <Badge color="error" variant="dot" />
+                  )}
+                </Box>
 
-                  {/* Message Content */}
-                  <Typography variant="body2" sx={{ mb: 2, lineHeight: 1.6 }}>
-                    {message.message}
-                  </Typography>
+                {/* Message Content */}
+                <Typography variant="body2" sx={{ mb: 2, lineHeight: 1.6 }}>
+                  {message.message}
+                </Typography>
 
-                  {/* Actions */}
-                  <Stack direction="row" spacing={1}>
-                    <Button
-                      size="small"
-                      variant="contained"
-                      startIcon={<Reply />}
-                      onClick={() => {
-                        setSelectedMessage(message);
-                        setReplyDialogOpen(true);
-                      }}
-                      fullWidth
-                    >
-                      Reply
-                    </Button>
-                    {!message.is_read && (
-                      <Tooltip title="Mark as read">
-                        <IconButton 
-                          size="small"
-                          onClick={() => handleMarkAsRead(message.id)}
-                          color="primary"
-                        >
-                          <MarkEmailRead fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                    )}
-                    <Tooltip title="Delete">
+                {/* Actions */}
+                <Stack direction="row" spacing={1}>
+                  <Button
+                    size="small"
+                    variant="contained"
+                    startIcon={<Reply />}
+                    onClick={() => {
+                      setSelectedMessage(message);
+                      setReplyDialogOpen(true);
+                    }}
+                    fullWidth
+                  >
+                    Reply
+                  </Button>
+                  {!message.is_read && (
+                    <Tooltip title="Mark as read">
                       <IconButton 
                         size="small"
-                        onClick={() => handleDelete(message.id)}
-                        color="error"
+                        onClick={() => handleMarkAsRead(message.id)}
+                        color="primary"
                       >
-                        <Delete fontSize="small" />
+                        <MarkEmailRead fontSize="small" />
                       </IconButton>
                     </Tooltip>
-                  </Stack>
-                </CardContent>
-              </Card>
-            </Grid>
+                  )}
+                  <Tooltip title="Delete">
+                    <IconButton 
+                      size="small"
+                      onClick={() => handleDelete(message.id)}
+                      color="error"
+                    >
+                      <Delete fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                </Stack>
+              </CardContent>
+            </Card>
           ))}
-        </Grid>
+        </Box>
       )}
 
       {/* Reply Dialog */}
