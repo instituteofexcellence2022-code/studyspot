@@ -27,6 +27,7 @@ import {
   Checkbox,
   Tabs,
   Tab,
+  Tooltip,
 } from '@mui/material';
 import {
   Search,
@@ -49,6 +50,7 @@ import {
   Schedule,
   Room,
   EventSeat,
+  LibraryBooks,
 } from '@mui/icons-material';
 import StudyFocusedLayout from '../components/StudyFocusedLayout';
 import { gradients } from '../theme/colors';
