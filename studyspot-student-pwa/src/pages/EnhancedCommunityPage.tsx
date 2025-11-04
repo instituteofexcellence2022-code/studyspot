@@ -356,9 +356,11 @@ export default function EnhancedCommunityPage({ setIsAuthenticated, darkMode, se
     try {
       const response = await api.get(`/api/communities/${communityId}/privacy/${user?.id || 'student-001'}`);
       setMyPrivacyEnabled(response.data?.privacyEnabled || false);
-    } catch (error) {
-      console.error('Error fetching privacy preference:', error);
+      console.log('✅ Privacy preference fetched:', response.data?.privacyEnabled);
+    } catch (error: any) {
+      console.error('❌ Error fetching privacy preference:', error.response?.data || error.message);
       setMyPrivacyEnabled(false);
+      // Don't show error to user - just default to false
     }
   };
 
@@ -368,10 +370,15 @@ export default function EnhancedCommunityPage({ setIsAuthenticated, darkMode, se
     const newPrivacyState = !myPrivacyEnabled;
 
     try {
-      await api.put(`/api/communities/${selectedCommunity.id}/privacy`, {
+      console.log('🔄 Toggling privacy to:', newPrivacyState);
+      console.log('📍 API URL:', `${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/communities/${selectedCommunity.id}/privacy`);
+      
+      const response = await api.put(`/api/communities/${selectedCommunity.id}/privacy`, {
         userId: user?.id || 'student-001',
         privacyEnabled: newPrivacyState,
       });
+
+      console.log('✅ Privacy updated:', response.data);
 
       setMyPrivacyEnabled(newPrivacyState);
       setPrivacyMenuAnchor(null);
@@ -380,9 +387,20 @@ export default function EnhancedCommunityPage({ setIsAuthenticated, darkMode, se
           ? '🔒 Privacy enabled! You will appear as "Student X" to others.' 
           : '✅ Privacy disabled! Your real name will be shown.'
       );
-    } catch (error) {
-      console.error('Error toggling privacy:', error);
-      toast.error('Failed to update privacy setting');
+    } catch (error: any) {
+      console.error('❌ Error toggling privacy:', error.response?.data || error.message);
+      console.error('Full error:', error);
+      
+      // More specific error messages
+      if (error.response?.status === 404) {
+        toast.error('Privacy feature not available yet. Please contact support.');
+      } else if (error.response?.status === 500) {
+        toast.error('Server error. Database might need to be updated.');
+      } else if (error.message?.includes('Network Error')) {
+        toast.error('Cannot connect to server. Please check your internet connection.');
+      } else {
+        toast.error(`Failed to update privacy: ${error.response?.data?.error || error.message || 'Unknown error'}`);
+      }
     }
   };
 
