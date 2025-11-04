@@ -36,6 +36,8 @@ import { useAppDispatch, useAppSelector } from '../../hooks/redux';
 import { fetchLibraryById, fetchLibrarySeats } from '../../store/slices/librarySlice';
 import { ROUTES } from '../../constants';
 import { Library, LibraryStatus } from '../../types';
+import { useLibrarySocket } from '../../hooks/useSocket';
+import { toast } from 'react-toastify';
 
 interface LibraryDetailsProps {
   libraryId: string;
@@ -45,10 +47,76 @@ const LibraryDetails: React.FC<LibraryDetailsProps> = ({ libraryId }) => {
   const dispatch = useAppDispatch();
   const { selectedLibrary, librarySeats, isLoading, error } = useAppSelector((state) => state.library);
 
+  // 🔴 NEW: Real-time WebSocket connection for this specific library
+  const { socket, connected } = useLibrarySocket(libraryId);
+
   useEffect(() => {
     dispatch(fetchLibraryById(libraryId));
     dispatch(fetchLibrarySeats(libraryId));
   }, [dispatch, libraryId]);
+
+  // 🔴 NEW: Real-time event listeners for library-specific updates
+  useEffect(() => {
+    if (!socket || !connected) return;
+
+    console.log('📡 [Library Details] Setting up real-time listeners for library:', libraryId);
+
+    // Pricing updated for this library
+    socket.on('pricing:updated', (data) => {
+      if (data.libraryId === libraryId) {
+        console.log('🔔 [Real-time] Library pricing updated:', data);
+        toast.info('Library pricing has been updated!', {
+          position: 'top-right',
+          autoClose: 3000,
+        });
+        // Refresh library data
+        dispatch(fetchLibraryById(libraryId));
+      }
+    });
+
+    // Library information updated
+    socket.on('library:updated', (library) => {
+      if (library.id === libraryId) {
+        console.log('🔔 [Real-time] Library information updated:', library);
+        toast.success('Library information has been updated!', {
+          position: 'top-right',
+          autoClose: 3000,
+        });
+        // Refresh library data
+        dispatch(fetchLibraryById(libraryId));
+      }
+    });
+
+    // Seat availability changed
+    socket.on('seat:availability', (data) => {
+      if (data.libraryId === libraryId) {
+        console.log('🔔 [Real-time] Seat availability changed:', data);
+        // Refresh seats
+        dispatch(fetchLibrarySeats(libraryId));
+      }
+    });
+
+    // New booking for this library
+    socket.on('booking:created', (booking) => {
+      if (booking.libraryId === libraryId) {
+        console.log('🔔 [Real-time] New booking for this library:', booking);
+        toast.success(`New booking received for ${selectedLibrary?.name || 'this library'}!`, {
+          position: 'top-right',
+          autoClose: 3000,
+        });
+        // Refresh seats to show updated availability
+        dispatch(fetchLibrarySeats(libraryId));
+      }
+    });
+
+    // Cleanup
+    return () => {
+      socket.off('pricing:updated');
+      socket.off('library:updated');
+      socket.off('seat:availability');
+      socket.off('booking:created');
+    };
+  }, [socket, connected, libraryId, dispatch, selectedLibrary]);
 
   const getStatusColor = (status: LibraryStatus) => {
     switch (status) {

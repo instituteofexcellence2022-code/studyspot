@@ -11,10 +11,12 @@ import {
   LibraryBooks, EventSeat, People, TrendingUp, AttachMoney,
   AccessTime, Group, CalendarToday, Add as AddIcon,
   Notifications as NotificationIcon, CheckCircle, Warning,
-  Refresh, ArrowForward, Close, Info,
+  Refresh, ArrowForward, Close, Info, Wifi, WifiOff,
 } from '@mui/icons-material';
 import { useAppSelector } from '../../hooks/redux';
 import { ROUTES } from '../../constants';
+import { useSocket } from '../../hooks/useSocket';
+import { toast } from 'react-toastify';
 
 const DashboardPageEnhanced: React.FC = () => {
   const { user } = useAppSelector((state) => state.auth);
@@ -27,6 +29,9 @@ const DashboardPageEnhanced: React.FC = () => {
   const [lastRefresh, setLastRefresh] = useState(new Date());
   const [autoRefresh, setAutoRefresh] = useState(true);
 
+  // 🔴 NEW: Real-time WebSocket connection
+  const { socket, connected } = useSocket('library_owner');
+
   useEffect(() => {
     if (autoRefresh) {
       const interval = setInterval(() => {
@@ -35,6 +40,51 @@ const DashboardPageEnhanced: React.FC = () => {
       return () => clearInterval(interval);
     }
   }, [autoRefresh]);
+
+  // 🔴 NEW: Real-time event listeners for dashboard updates
+  useEffect(() => {
+    if (!socket || !connected) return;
+
+    console.log('📡 [Owner Dashboard] Setting up real-time listeners');
+
+    // New booking created
+    socket.on('booking:created', (booking) => {
+      console.log('🔔 [Real-time] New booking on dashboard:', booking);
+      toast.success(`🎉 New booking received!`, {
+        position: 'top-right',
+        autoClose: 3000,
+      });
+      // Refresh stats would be handled by Redux or state update
+      setLastRefresh(new Date());
+    });
+
+    // Pricing updated
+    socket.on('pricing:updated', (data) => {
+      console.log('🔔 [Real-time] Pricing updated:', data);
+      toast.info('Library pricing has been updated', {
+        position: 'top-right',
+        autoClose: 3000,
+      });
+      setLastRefresh(new Date());
+    });
+
+    // Library updated
+    socket.on('library:updated', (library) => {
+      console.log('🔔 [Real-time] Library updated:', library);
+      toast.info('Library information has been updated', {
+        position: 'top-right',
+        autoClose: 3000,
+      });
+      setLastRefresh(new Date());
+    });
+
+    // Cleanup
+    return () => {
+      socket.off('booking:created');
+      socket.off('pricing:updated');
+      socket.off('library:updated');
+    };
+  }, [socket, connected]);
 
   // Enhanced stats with trends and navigation
   const stats = [
@@ -287,9 +337,30 @@ const DashboardPageEnhanced: React.FC = () => {
             <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
               Last updated: {lastRefresh.toLocaleTimeString()}
               {autoRefresh && ' • Auto-refresh ON'}
+              {connected && ' • Real-time updates active'}
       </Typography>
           </Box>
           <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+            {connected ? (
+              <Tooltip title="Real-time updates are active">
+                <Chip
+                  icon={<Wifi />}
+                  label="Live"
+                  color="success"
+                  size="small"
+                  sx={{ fontWeight: 600 }}
+                />
+              </Tooltip>
+            ) : (
+              <Tooltip title="Connecting to real-time server...">
+                <Chip
+                  icon={<WifiOff />}
+                  label="Offline"
+                  color="default"
+                  size="small"
+                />
+              </Tooltip>
+            )}
             <Tooltip title={autoRefresh ? 'Auto-refresh ON' : 'Auto-refresh OFF'}>
               <Chip
                 label={autoRefresh ? 'Auto' : 'Manual'}
