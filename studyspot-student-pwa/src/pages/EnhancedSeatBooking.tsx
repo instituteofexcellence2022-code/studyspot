@@ -173,7 +173,7 @@ const EnhancedSeatBooking: React.FC<EnhancedSeatBookingProps> = ({
   const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
   const [selectedSeat, setSelectedSeat] = useState<LibrarySeat | null>(null);
   const [favoriteSeats, setFavoriteSeats] = useState<string[]>([]);
-  const [layoutCreated, setLayoutCreated] = useState(false);
+  const [layoutCreated, setLayoutCreated] = useState(true); // Auto-start wizard
   const [showFilters, setShowFilters] = useState(false);
   const [selectedZone, setSelectedZone] = useState<string>('all');
   
@@ -227,6 +227,11 @@ const EnhancedSeatBooking: React.FC<EnhancedSeatBookingProps> = ({
   const { user } = useAuth();
 
   const steps = ['Select Plan & Date', 'Choose Seats', 'Add-ons & Options', 'Payment', 'Confirmation'];
+
+  // Auto-initialize wizard on mount
+  useEffect(() => {
+    createLibraryLayout();
+  }, []); // Run once on mount
 
   // Load fee plans from library
   useEffect(() => {
