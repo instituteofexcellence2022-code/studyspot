@@ -25,7 +25,12 @@ const PORT = parseInt(process.env.AUTH_SERVICE_PORT || '3001');
 // ============================================
 
 fastify.register(cors, {
-  origin: process.env.CORS_ORIGIN?.split(',') || ['http://localhost:3002'],
+  origin: process.env.CORS_ORIGIN?.split(',') || [
+    'http://localhost:3000',  // Owner Portal
+    'http://localhost:3001',  // Student PWA  
+    'http://localhost:3002',  // Legacy
+    'http://localhost:5173',  // Vite dev server
+  ],
   credentials: true,
 });
 
@@ -250,7 +255,241 @@ fastify.post('/api/v1/auth/student/register', async (request, reply) => {
   }
 });
 
-// Student login
+// Universal login endpoint (works for both admin and students)
+fastify.post('/api/auth/login', async (request, reply) => {
+  try {
+    const { email, password } = request.body as { email: string; password: string };
+
+    // Validate input
+    if (!email || !password) {
+      return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.REQUIRED_FIELD_MISSING,
+          message: 'Email and password are required',
+        },
+      });
+    }
+
+    // Find user in admin_users table (works for all user types)
+    const result = await coreDb.query(
+      'SELECT * FROM admin_users WHERE email = $1',
+      [email.toLowerCase()]
+    );
+
+    if (!result.rows.length) {
+      return reply.status(HTTP_STATUS.UNAUTHORIZED).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.INVALID_CREDENTIALS,
+          message: 'Invalid email or password',
+        },
+      });
+    }
+
+    const user = result.rows[0];
+
+    // Verify password
+    const isValidPassword = await bcrypt.compare(password, user.password_hash);
+    if (!isValidPassword) {
+      return reply.status(HTTP_STATUS.UNAUTHORIZED).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.INVALID_CREDENTIALS,
+          message: 'Invalid email or password',
+        },
+      });
+    }
+
+    // Check if user is active
+    if (!user.is_active) {
+      return reply.status(HTTP_STATUS.UNAUTHORIZED).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.UNAUTHORIZED,
+          message: 'Account is inactive',
+        },
+      });
+    }
+
+    // Generate tokens
+    const accessToken = generateAccessToken(user);
+    const refreshToken = generateRefreshToken(user);
+
+    // Store refresh token
+    await coreDb.query(
+      `INSERT INTO refresh_tokens (user_id, user_type, token, expires_at)
+       VALUES ($1, $2, $3, NOW() + INTERVAL '7 days')`,
+      [user.id, user.role || 'student', refreshToken]
+    );
+
+    // Update last login
+    await coreDb.query(
+      'UPDATE admin_users SET last_login_at = NOW(), last_login_ip = $1 WHERE id = $2',
+      [request.ip, user.id]
+    );
+
+    // Create audit log
+    await coreDb.query(
+      `INSERT INTO audit_logs (user_id, user_type, action, ip_address)
+       VALUES ($1, $2, $3, $4)`,
+      [user.id, user.role || 'student', 'login', request.ip]
+    );
+
+    // Remove sensitive data
+    const { password_hash, ...safeUser } = user;
+
+    return {
+      success: true,
+      data: {
+        user: {
+          id: safeUser.id,
+          email: safeUser.email,
+          firstName: safeUser.first_name,
+          lastName: safeUser.last_name,
+          role: safeUser.role,
+          tenantId: safeUser.tenant_id,
+          status: safeUser.is_active ? 'active' : 'inactive',
+          createdAt: safeUser.created_at,
+          updatedAt: safeUser.updated_at,
+        },
+        token: accessToken,
+        tokens: {
+          accessToken,
+          refreshToken,
+        },
+      },
+      message: 'Login successful',
+    };
+  } catch (error: any) {
+    logger.error('Login error:', error);
+    return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
+      success: false,
+      error: {
+        code: ERROR_CODES.SERVER_ERROR,
+        message: 'Login failed',
+      },
+    });
+  }
+});
+
+// Universal register endpoint (works for both admin and students)
+fastify.post('/api/auth/register', async (request, reply) => {
+  try {
+    const { firstName, lastName, email, phone, password, role } = request.body as any;
+
+    // Validate input
+    if (!firstName || !lastName || !email || !password) {
+      return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.REQUIRED_FIELD_MISSING,
+          message: 'First name, last name, email, and password are required',
+        },
+      });
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.VALIDATION_ERROR,
+          message: 'Invalid email format',
+        },
+      });
+    }
+
+    // Check if user already exists
+    const existingUser = await coreDb.query(
+      'SELECT id FROM admin_users WHERE email = $1',
+      [email.toLowerCase()]
+    );
+
+    if (existingUser.rows.length > 0) {
+      return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.VALIDATION_ERROR,
+          message: 'User with this email already exists',
+        },
+      });
+    }
+
+    // Hash password
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    // Determine user role (default to student if not specified)
+    const userRole = role || 'student';
+
+    // Create user
+    const result = await coreDb.query(
+      `INSERT INTO admin_users (email, password_hash, first_name, last_name, role, is_active, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
+       RETURNING id, email, first_name, last_name, role, is_active, created_at, updated_at`,
+      [email.toLowerCase(), passwordHash, firstName, lastName, userRole, true]
+    );
+
+    const user = result.rows[0];
+
+    // Generate tokens for immediate login
+    const accessToken = generateAccessToken(user);
+    const refreshToken = generateRefreshToken(user);
+
+    // Store refresh token
+    await coreDb.query(
+      `INSERT INTO refresh_tokens (user_id, user_type, token, expires_at)
+       VALUES ($1, $2, $3, NOW() + INTERVAL '7 days')`,
+      [user.id, userRole, refreshToken]
+    );
+
+    return {
+      success: true,
+      data: {
+        user: {
+          id: user.id,
+          email: user.email,
+          firstName: user.first_name,
+          lastName: user.last_name,
+          role: user.role,
+          phone: phone || null,
+          status: user.is_active ? 'active' : 'inactive',
+          createdAt: user.created_at,
+          updatedAt: user.updated_at,
+        },
+        token: accessToken,
+        tokens: {
+          accessToken,
+          refreshToken,
+        },
+      },
+      message: 'Registration successful',
+    };
+  } catch (error: any) {
+    logger.error('Register error:', error);
+    
+    if (error.code === '23505') { // Unique violation
+      return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.VALIDATION_ERROR,
+          message: 'Email already exists',
+        },
+      });
+    }
+    
+    return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
+      success: false,
+      error: {
+        code: ERROR_CODES.SERVER_ERROR,
+        message: 'Registration failed',
+      },
+    });
+  }
+});
+
+// Student login (legacy - redirects to universal endpoint)
 fastify.post('/api/v1/auth/student/login', async (request, reply) => {
   try {
     const { email, password } = request.body as { email: string; password: string };
