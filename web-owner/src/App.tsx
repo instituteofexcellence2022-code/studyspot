@@ -109,7 +109,7 @@ const OfflinePaymentPage = lazy(() => import('./pages/offline-payments/OfflinePa
 const MessagesInboxPage = lazy(() => import('./pages/messages/MessagesInboxPage'));
 
 // Community/Groups
-const LibraryGroupsPage = lazy(() => import('./pages/community/LibraryGroupsPage'));
+const LibraryGroupsPage = lazy(() => import('./pages/community/EnhancedLibraryGroupsPage'));
 
 // Profile
 const ProfilePage = lazy(() => import('./pages/profile/ProfilePage'));
