@@ -553,11 +553,12 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
 
   const drawerContent = (
     <Box sx={{ 
-      height: '100%', 
+      height: '100vh', 
       display: 'flex', 
       flexDirection: 'column', 
       bgcolor: 'background.default',
       background: `linear-gradient(180deg, ${alpha(theme.palette.primary.main, 0.02)} 0%, ${theme.palette.background.default} 100%)`,
+      overflow: 'hidden', // Prevent content from overflowing the drawer
     }}>
       {/* Enhanced Header with Branding */}
       <Box 
@@ -771,22 +772,29 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
 
       {/* Enhanced Navigation Sections */}
       <Box sx={{ 
-        flexGrow: 1, 
+        flex: 1,
         overflowY: 'auto', 
+        overflowX: 'hidden',
         py: 1,
-        minHeight: 0, // Important: allows flex child to shrink
+        pb: 2, // Extra bottom padding to prevent last item from being cut off
+        minHeight: 0, // Critical: allows flex child to shrink below content size
+        maxHeight: '100%', // Ensure it doesn't exceed parent
         '&::-webkit-scrollbar': {
-          width: '4px',
+          width: '6px',
         },
         '&::-webkit-scrollbar-track': {
           background: alpha(theme.palette.primary.main, 0.05),
-          borderRadius: '2px',
+          borderRadius: '3px',
+          margin: '4px 0',
         },
         '&::-webkit-scrollbar-thumb': {
-          background: alpha(theme.palette.primary.main, 0.2),
-          borderRadius: '2px',
+          background: alpha(theme.palette.primary.main, 0.25),
+          borderRadius: '3px',
           '&:hover': {
-            background: alpha(theme.palette.primary.main, 0.3),
+            background: alpha(theme.palette.primary.main, 0.4),
+          },
+          '&:active': {
+            background: alpha(theme.palette.primary.main, 0.5),
           },
         },
       }}>
@@ -886,15 +894,17 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
       {/* Compact Footer Actions */}
       <Box 
         sx={{ 
-          p: 2, // Increased from 1.5 to 2
-          pb: 2.5, // Extra bottom padding
+          p: 2,
+          pb: 2.5,
           borderTop: 1, 
           borderColor: alpha(theme.palette.primary.main, 0.1),
-          background: `linear-gradient(180deg, ${alpha(theme.palette.background.default, 0.8)} 0%, ${alpha(theme.palette.primary.main, 0.02)} 100%)`,
+          background: `linear-gradient(180deg, ${alpha(theme.palette.background.default, 0.95)} 0%, ${alpha(theme.palette.primary.main, 0.03)} 100%)`,
           backdropFilter: 'blur(10px)',
-          flexShrink: 0, // Prevent shrinking
-          position: 'relative', // Ensure proper positioning
-          zIndex: 1, // Ensure it stays above other content
+          flexShrink: 0, // Critical: prevent footer from shrinking
+          position: 'sticky', // Sticky positioning to always stay at bottom
+          bottom: 0,
+          zIndex: 10, // Higher z-index to ensure it stays above scrollable content
+          boxShadow: `0 -4px 12px ${alpha(theme.palette.primary.main, 0.08)}`,
         }}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -963,8 +973,10 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
           borderRight: `1px solid ${theme.palette.divider}`,
           position: 'fixed',
           height: '100vh',
+          maxHeight: '100vh', // Prevent drawer from exceeding viewport
+          overflow: 'hidden', // Prevent overall drawer overflow
           zIndex: theme.zIndex.drawer,
-          boxShadow: '0 8px 24px rgba(0,0,0,0.1)',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
           background: theme.palette.background.paper,
           top: 0,
           left: 0,
