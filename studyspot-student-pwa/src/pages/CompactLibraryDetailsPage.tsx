@@ -78,7 +78,7 @@ import {
 import StudyFocusedLayout from '../components/StudyFocusedLayout';
 import { gradients } from '../theme/colors';
 import api from '../services/api';
-import EnhancedSeatBooking from './EnhancedSeatBooking';
+import StreamlinedSeatBooking from './StreamlinedSeatBooking';
 import { toast } from 'react-toastify';
 
 interface Library {
@@ -713,7 +713,7 @@ export default function CompactLibraryDetailsPage({ setIsAuthenticated, darkMode
               {/* Book Seats Tab - Direct Wizard Display */}
               {tab === 2 && (
                 <Box>
-                  <EnhancedSeatBooking
+                  <StreamlinedSeatBooking
                     darkMode={darkMode} 
                     setDarkMode={setDarkMode}
                     libraryId={library.id}
