@@ -56,6 +56,7 @@ import {
 import StudyFocusedLayout from '../components/StudyFocusedLayout';
 import { gradients } from '../theme/colors';
 import api from '../services/api';
+import SeatBookingPage from './SeatBookingPage';
 
 interface Library {
   id: string;
@@ -402,11 +403,12 @@ export default function LibraryDetailsEnhancedV2({ setIsAuthenticated, darkMode,
               </CardContent>
             </Card>
 
-            {/* Tabs: About, Amenities, Rules, Reviews */}
+            {/* Tabs: About, Amenities, Book Seats, Rules, Reviews */}
             <Card sx={{ borderRadius: 3 }}>
-              <Tabs value={tab} onChange={(e, v) => setTab(v)} sx={{ px: 2 }}>
+              <Tabs value={tab} onChange={(e, v) => setTab(v)} sx={{ px: 2 }} variant="scrollable" scrollButtons="auto">
                 <Tab label="About" />
                 <Tab label="Amenities" />
+                <Tab label="🪑 Book Seats" icon={<EventSeat />} iconPosition="start" />
                 <Tab label="Rules" />
                 <Tab label={`Reviews (${reviews.length})`} />
               </Tabs>
@@ -439,8 +441,21 @@ export default function LibraryDetailsEnhancedV2({ setIsAuthenticated, darkMode,
                   </Grid>
                 )}
 
-                {/* Rules Tab */}
+                {/* Book Seats Tab */}
                 {tab === 2 && (
+                  <Box sx={{ mt: -3 }}>
+                    <SeatBookingPage 
+                      darkMode={darkMode} 
+                      setDarkMode={setDarkMode}
+                      libraryId={library.id}
+                      libraryName={library.name}
+                      embedded={true}
+                    />
+                  </Box>
+                )}
+
+                {/* Rules Tab */}
+                {tab === 3 && (
                   <List>
                     {library.rules.map((rule, index) => (
                       <ListItem key={index}>
@@ -457,7 +472,7 @@ export default function LibraryDetailsEnhancedV2({ setIsAuthenticated, darkMode,
                 )}
 
                 {/* Reviews Tab */}
-                {tab === 3 && (
+                {tab === 4 && (
                   <Box>
                     {reviews.map((review) => (
                       <Paper key={review.id} sx={{ p: 2, mb: 2, bgcolor: 'action.hover', borderRadius: 2 }}>
