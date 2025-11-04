@@ -73,7 +73,7 @@ export default function LibraryGroupsPage() {
     setLoading(true);
     try {
       const libraryId = localStorage.getItem('currentLibraryId') || '1';
-      const response = await axios.get(`${API_BASE_URL}/api/groups/library/${libraryId}`);
+      const response = await axios.get<{ success: boolean; data: LibraryGroup[] }>(`${API_BASE_URL}/api/groups/library/${libraryId}`);
       setGroups(response.data?.data || getMockGroups());
     } catch (error) {
       console.error('Error fetching groups:', error);
@@ -159,65 +159,71 @@ export default function LibraryGroupsPage() {
       </Box>
 
       {/* Groups List */}
-      <Grid container spacing={3}>
+      <Box sx={{ 
+        display: 'grid', 
+        gridTemplateColumns: { 
+          xs: '1fr', 
+          md: 'repeat(2, 1fr)', 
+          lg: 'repeat(3, 1fr)' 
+        }, 
+        gap: 3 
+      }}>
         {groups.map((group) => (
-          <Grid item xs={12} md={6} lg={4} key={group.id}>
-            <Card>
-              <CardContent>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-                  <Box sx={{ display: 'flex', gap: 2, flex: 1 }}>
-                    <Avatar sx={{ bgcolor: 'success.main', width: 56, height: 56 }}>
-                      <Group />
-                    </Avatar>
-                    <Box sx={{ flex: 1, minWidth: 0 }}>
-                      <Typography variant="h6" fontWeight="600" noWrap>
-                        {group.name}
-                      </Typography>
-                      <Chip 
-                        label={`${group.member_count} members`} 
-                        size="small"
-                        icon={<People />}
-                        sx={{ mt: 0.5 }}
-                      />
-                    </Box>
+          <Card key={group.id}>
+            <CardContent>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                <Box sx={{ display: 'flex', gap: 2, flex: 1 }}>
+                  <Avatar sx={{ bgcolor: 'success.main', width: 56, height: 56 }}>
+                    <Group />
+                  </Avatar>
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography variant="h6" fontWeight="600" noWrap>
+                      {group.name}
+                    </Typography>
+                    <Chip 
+                      label={`${group.member_count} members`} 
+                      size="small"
+                      icon={<People />}
+                      sx={{ mt: 0.5 }}
+                    />
                   </Box>
-                  <IconButton size="small" onClick={() => handleDeleteGroup(group.id)} color="error">
-                    <Delete />
-                  </IconButton>
                 </Box>
+                <IconButton size="small" onClick={() => handleDeleteGroup(group.id)} color="error">
+                  <Delete />
+                </IconButton>
+              </Box>
 
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                  {group.description}
-                </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                {group.description}
+              </Typography>
 
-                <Stack spacing={1}>
-                  <Box sx={{ display: 'flex', gap: 1 }}>
-                    <Chip 
-                      label={group.is_private ? 'Private' : 'Public'} 
-                      size="small"
-                      icon={group.is_private ? <VisibilityOff /> : <Visibility />}
-                      color={group.is_private ? 'warning' : 'success'}
-                    />
-                    <Chip 
-                      label={group.is_active ? 'Active' : 'Inactive'} 
-                      size="small"
-                      color={group.is_active ? 'success' : 'default'}
-                    />
-                  </Box>
-                  <Button
-                    variant="outlined"
+              <Stack spacing={1}>
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                  <Chip 
+                    label={group.is_private ? 'Private' : 'Public'} 
                     size="small"
-                    startIcon={<Chat />}
-                    fullWidth
-                  >
-                    View Messages
-                  </Button>
-                </Stack>
-              </CardContent>
-            </Card>
-          </Grid>
+                    icon={group.is_private ? <VisibilityOff /> : <Visibility />}
+                    color={group.is_private ? 'warning' : 'success'}
+                  />
+                  <Chip 
+                    label={group.is_active ? 'Active' : 'Inactive'} 
+                    size="small"
+                    color={group.is_active ? 'success' : 'default'}
+                  />
+                </Box>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<Chat />}
+                  fullWidth
+                >
+                  View Messages
+                </Button>
+              </Stack>
+            </CardContent>
+          </Card>
         ))}
-      </Grid>
+      </Box>
 
       {/* Create Group Dialog */}
       <Dialog open={createDialogOpen} onClose={() => setCreateDialogOpen(false)} maxWidth="sm" fullWidth>
