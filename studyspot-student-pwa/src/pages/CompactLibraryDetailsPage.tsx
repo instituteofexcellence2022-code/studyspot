@@ -87,6 +87,7 @@ import { gradients } from '../theme/colors';
 import api from '../services/api';
 import StreamlinedSeatBooking from './StreamlinedSeatBooking';
 import { toast } from 'react-toastify';
+import { useAuth } from '../contexts/AuthContext';
 
 interface Library {
   id: string;
@@ -138,6 +139,7 @@ export default function CompactLibraryDetailsPage({ setIsAuthenticated, darkMode
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const { user } = useAuth();
   
   const [loading, setLoading] = useState(true);
   const [library, setLibrary] = useState<Library | null>(null);
@@ -289,19 +291,19 @@ export default function CompactLibraryDetailsPage({ setIsAuthenticated, darkMode
     }
 
     try {
-      // TODO: Implement actual message sending API
-      // await api.post('/api/messages/send', {
-      //   libraryId: id,
-      //   message: messageText,
-      // });
-      
-      // For now, simulate sending
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await api.post('/api/messages/send', {
+        libraryId: id,
+        senderId: user?.id || 'student-001',
+        senderName: user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : 'Student',
+        senderRole: 'student',
+        message: messageText,
+      });
       
       toast.success('Message sent to library owner!');
       setMessageDialogOpen(false);
       setMessageText('');
     } catch (error) {
+      console.error('Error sending message:', error);
       toast.error('Failed to send message. Please try again.');
     }
   };

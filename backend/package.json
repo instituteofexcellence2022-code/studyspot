@@ -17,6 +17,7 @@
     "start:booking": "ts-node src/services/booking-service/index.ts",
     "start:credit": "ts-node src/services/credit-service/index.ts",
     "start:subscription": "ts-node src/services/subscription-service/index.ts",
+    "start:message": "ts-node src/services/message-service/index.ts",
     "start:messaging": "ts-node src/services/messaging-service/index.ts",
     "start:analytics": "ts-node src/services/analytics-service/index.ts",
     "start:all": "START_ALL_SERVICES.bat",

@@ -105,6 +105,9 @@ const IssueManagementPage = lazy(() => import('./pages/issues/IssueManagementPag
 const ReferralDiscountManagementPage = lazy(() => import('./pages/referral/ReferralDiscountManagementPage'));
 const OfflinePaymentPage = lazy(() => import('./pages/offline-payments/OfflinePaymentPage'));
 
+// Messages
+const MessagesInboxPage = lazy(() => import('./pages/messages/MessagesInboxPage'));
+
 // Profile
 const ProfilePage = lazy(() => import('./pages/profile/ProfilePage'));
 const SettingsPage = lazy(() => import('./pages/settings/SettingsPage'));
@@ -350,6 +353,11 @@ const AppContent: React.FC = () => {
               {/* ============================================ */}
               <Route path="/referral-discounts" element={<ReferralDiscountManagementPage />} />
               <Route path="/offline-payments" element={<OfflinePaymentPage />} />
+
+              {/* ============================================ */}
+              {/* MESSAGES & COMMUNICATION */}
+              {/* ============================================ */}
+              <Route path="/messages" element={<MessagesInboxPage />} />
 
               {/* ============================================ */}
               {/* PROFILE & SETTINGS */}
