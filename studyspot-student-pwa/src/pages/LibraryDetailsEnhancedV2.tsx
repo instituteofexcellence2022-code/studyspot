@@ -57,6 +57,7 @@ import StudyFocusedLayout from '../components/StudyFocusedLayout';
 import { gradients } from '../theme/colors';
 import api from '../services/api';
 import SeatBookingPage from './SeatBookingPage';
+import EnhancedSeatBooking from './EnhancedSeatBooking';
 
 interface Library {
   id: string;
@@ -444,7 +445,7 @@ export default function LibraryDetailsEnhancedV2({ setIsAuthenticated, darkMode,
                 {/* Book Seats Tab */}
                 {tab === 2 && (
                   <Box sx={{ mt: -3 }}>
-                    <SeatBookingPage 
+                    <EnhancedSeatBooking
                       darkMode={darkMode} 
                       setDarkMode={setDarkMode}
                       libraryId={library.id}
