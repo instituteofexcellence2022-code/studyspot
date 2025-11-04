@@ -310,6 +310,9 @@ fastify.get('/api/communities/all', async (request, reply) => {
 /**
  * Join a community/group
  * POST /api/communities/:id/join
+ * 
+ * For groups: Only customers (students who have booked) can join
+ * For communities: Anyone can join
  */
 fastify.post('/api/communities/:id/join', async (request, reply) => {
   try {
@@ -318,6 +321,42 @@ fastify.post('/api/communities/:id/join', async (request, reply) => {
 
     if (!userId) {
       return reply.code(400).send({ error: 'User ID required' });
+    }
+
+    // Get community/group details
+    const { data: community } = await supabase
+      .from('communities')
+      .select('type, library_id')
+      .eq('id', id)
+      .single();
+
+    if (!community) {
+      return reply.code(404).send({ error: 'Community/Group not found' });
+    }
+
+    // ✅ VALIDATION: For library groups, verify student is a customer
+    if (community.type === 'group' && community.library_id) {
+      const { data: bookings, error: bookingError } = await supabase
+        .from('bookings')
+        .select('id')
+        .eq('library_id', community.library_id)
+        .eq('user_id', userId)
+        .limit(1);
+
+      if (bookingError) {
+        logger.error('Error checking bookings:', bookingError);
+        return reply.code(500).send({ error: 'Failed to verify booking history' });
+      }
+
+      if (!bookings || bookings.length === 0) {
+        logger.warn(`Non-customer tried to join group: userId=${userId}, groupId=${id}`);
+        return reply.code(403).send({ 
+          error: 'Not eligible to join',
+          message: 'You must book this library at least once before joining the group'
+        });
+      }
+
+      logger.info(`✅ Customer verified for group join: userId=${userId}`);
     }
 
     // Check if already a member
@@ -345,7 +384,7 @@ fastify.post('/api/communities/:id/join', async (request, reply) => {
 
     if (memberError) {
       logger.error('Error adding member:', memberError);
-      return reply.code(500).send({ error: 'Failed to join community' });
+      return reply.code(500).send({ error: 'Failed to join' });
     }
 
     // Increment member count
@@ -362,13 +401,16 @@ fastify.post('/api/communities/:id/join', async (request, reply) => {
       io.to(`community:${id}`).emit('member:joined', { userId, userName, communityId: id });
     }
 
+    const isGroup = community.type === 'group';
+    logger.info(`✅ User joined ${isGroup ? 'group' : 'community'}: ${id}`);
+
     return reply.send({
       success: true,
-      message: 'Joined successfully',
+      message: `Joined ${isGroup ? 'group' : 'community'} successfully`,
       data: updated,
     });
   } catch (error) {
-    logger.error('Error joining community:', error);
+    logger.error('Error joining:', error);
     return reply.code(500).send({ error: 'Internal server error' });
   }
 });
@@ -785,14 +827,37 @@ fastify.delete('/api/communities/:id', async (request, reply) => {
 /**
  * Add student to group (Owner action)
  * POST /api/communities/:id/add-member
+ * 
+ * RESTRICTION: Only students who have booked the library can be added
  */
 fastify.post('/api/communities/:id/add-member', async (request, reply) => {
   try {
     const { id } = request.params as any;
-    const { userId, userName, addedBy } = request.body as any;
+    const { userId, userName, addedBy, libraryId } = request.body as any;
 
-    if (!userId) {
-      return reply.code(400).send({ error: 'User ID required' });
+    if (!userId || !libraryId) {
+      return reply.code(400).send({ error: 'User ID and Library ID required' });
+    }
+
+    // ✅ VALIDATION: Check if student has booked this library at least once
+    const { data: bookings, error: bookingError } = await supabase
+      .from('bookings')
+      .select('id')
+      .eq('library_id', libraryId)
+      .eq('user_id', userId)
+      .limit(1);
+
+    if (bookingError) {
+      logger.error('Error checking bookings:', bookingError);
+      return reply.code(500).send({ error: 'Failed to verify student booking history' });
+    }
+
+    if (!bookings || bookings.length === 0) {
+      logger.warn(`Attempt to add non-customer: userId=${userId}, libraryId=${libraryId}`);
+      return reply.code(403).send({ 
+        error: 'Student has not booked your library',
+        message: 'You can only add students who have booked your library at least once'
+      });
     }
 
     // Check if already a member
@@ -839,9 +904,11 @@ fastify.post('/api/communities/:id/add-member', async (request, reply) => {
       io.to(`community:${id}`).emit('member:added', { userId, userName });
     }
 
+    logger.info(`✅ Added customer ${userName} (${userId}) to group ${id}`);
+
     return reply.code(201).send({
       success: true,
-      message: 'Member added successfully',
+      message: 'Customer added successfully',
       data: newMember,
     });
   } catch (error) {
@@ -1103,26 +1170,56 @@ fastify.post('/api/communities/join/:inviteCode', async (request, reply) => {
 
 /**
  * Get all students (for owner to add to group)
- * GET /api/students/search
+ * GET /api/students/search?libraryId=xxx&q=search
+ * 
+ * ONLY returns students who have booked the library at least once
  */
 fastify.get('/api/students/search', async (request, reply) => {
   try {
     const { q, libraryId } = request.query as any;
 
+    // Library ID is REQUIRED - owners can only add their customers
+    if (!libraryId) {
+      return reply.code(400).send({ 
+        error: 'Library ID is required',
+        message: 'You can only add students who have booked your library'
+      });
+    }
+
+    // First, get all students who have booked this library (at least once)
+    const { data: bookings, error: bookingError } = await supabase
+      .from('bookings')
+      .select('user_id')
+      .eq('library_id', libraryId)
+      .not('user_id', 'is', null);
+
+    if (bookingError) {
+      logger.error('Error fetching bookings:', bookingError);
+      return reply.code(500).send({ error: 'Failed to fetch student bookings' });
+    }
+
+    // Extract unique user IDs who have booked
+    const customerIds = [...new Set(bookings?.map((b: any) => b.user_id) || [])];
+
+    if (customerIds.length === 0) {
+      // No students have booked this library yet
+      return reply.send({
+        success: true,
+        data: [],
+        message: 'No students have booked your library yet'
+      });
+    }
+
+    // Now get student details for those who have booked
     let query = supabase
       .from('users')
       .select('id, first_name, last_name, email, phone')
-      .eq('role', 'student');
+      .eq('role', 'student')
+      .in('id', customerIds); // ONLY customers who have booked
 
-    if (q) {
+    // Apply search filter if provided
+    if (q && q.trim()) {
       query = query.or(`first_name.ilike.%${q}%,last_name.ilike.%${q}%,email.ilike.%${q}%`);
-    }
-
-    if (libraryId) {
-      // Filter students who have bookings at this library
-      query = query.in('id', 
-        supabase.from('bookings').select('user_id').eq('library_id', libraryId)
-      );
     }
 
     const { data: students, error } = await query.limit(50);
@@ -1132,9 +1229,12 @@ fastify.get('/api/students/search', async (request, reply) => {
       return reply.code(500).send({ error: 'Failed to search students' });
     }
 
+    logger.info(`Found ${students?.length || 0} customers for library ${libraryId}`);
+
     return reply.send({
       success: true,
       data: students || [],
+      message: students?.length === 0 ? 'No matching students found' : undefined
     });
   } catch (error) {
     logger.error('Error searching students:', error);
