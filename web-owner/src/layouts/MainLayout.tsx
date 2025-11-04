@@ -76,6 +76,7 @@ const MainLayout: React.FC = () => {
           flexGrow: 1,
           display: 'flex',
           flexDirection: 'column',
+          minHeight: '100vh',
           transition: theme.transitions.create(['margin', 'width'], {
             easing: theme.transitions.easing.sharp,
             duration: theme.transitions.duration.leavingScreen,
@@ -231,7 +232,9 @@ const MainLayout: React.FC = () => {
           sx={{
             flexGrow: 1,
             p: 3,
-            mt: 8, // Account for AppBar height
+            mt: 8, // Account for AppBar height (64px default + margin)
+            minHeight: 'calc(100vh - 64px)', // Ensure content area takes full height
+            backgroundColor: theme.palette.mode === 'dark' ? '#121212' : '#f5f5f5',
           }}
         >
           <Outlet />
