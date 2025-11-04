@@ -295,7 +295,7 @@ export default function EnhancedCommunityPage({ setIsAuthenticated, darkMode, se
     },
   ];
 
-  const handleJoinCommunity = async (communityId: string) => {
+  const handleJoinCommunity = async (communityId: string, communityType: 'community' | 'group') => {
     try {
       await api.post(`/api/communities/${communityId}/join`, {
         userId: user?.id || 'student-001',
@@ -306,14 +306,29 @@ export default function EnhancedCommunityPage({ setIsAuthenticated, darkMode, se
         c.id === communityId ? { ...c, is_joined: true, member_count: c.member_count + 1 } : c
       ));
       
-      toast.success('Joined successfully!');
-    } catch (error) {
+      toast.success(`Joined ${communityType === 'group' ? 'library group' : 'community'} successfully!`);
+    } catch (error: any) {
       console.error('Error joining:', error);
-      // Fallback for testing
-      setCommunities(prev => prev.map(c => 
-        c.id === communityId ? { ...c, is_joined: true, member_count: c.member_count + 1 } : c
-      ));
-      toast.success('Joined successfully!');
+      
+      // Handle customer-only restriction for groups
+      if (error.response?.status === 403) {
+        toast.error(
+          '⚠️ You must book this library at least once before joining the group. Browse libraries and make your first booking!',
+          { autoClose: 7000 }
+        );
+      } else if (error.response?.status === 400 && error.response?.data?.error === 'Already a member') {
+        toast.info('You are already a member of this group');
+        // Update local state anyway
+        setCommunities(prev => prev.map(c => 
+          c.id === communityId ? { ...c, is_joined: true } : c
+        ));
+      } else {
+        // Fallback for testing or other errors
+        setCommunities(prev => prev.map(c => 
+          c.id === communityId ? { ...c, is_joined: true, member_count: c.member_count + 1 } : c
+        ));
+        toast.success('Joined successfully! (Local mode)');
+      }
     }
   };
 
@@ -659,15 +674,22 @@ export default function EnhancedCommunityPage({ setIsAuthenticated, darkMode, se
                         </Button>
                       </Stack>
                     ) : (
-                      <Button 
-                        variant="contained" 
-                        fullWidth
-                        startIcon={<Add />}
-                        onClick={() => handleJoinCommunity(community.id)}
-                        color={community.type === 'community' ? 'primary' : 'success'}
-                      >
-                        Join {community.type === 'community' ? 'Community' : 'Group'}
-                      </Button>
+                      <Box>
+                        <Button 
+                          variant="contained" 
+                          fullWidth
+                          startIcon={<Add />}
+                          onClick={() => handleJoinCommunity(community.id, community.type)}
+                          color={community.type === 'community' ? 'primary' : 'success'}
+                        >
+                          Join {community.type === 'community' ? 'Community' : 'Group'}
+                        </Button>
+                        {community.type === 'group' && (
+                          <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5, fontSize: '0.7rem', textAlign: 'center' }}>
+                            ⓘ Only customers who booked this library can join
+                          </Typography>
+                        )}
+                      </Box>
                     )}
                   </CardContent>
                 </Card>

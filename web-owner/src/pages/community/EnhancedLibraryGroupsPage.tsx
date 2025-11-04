@@ -251,11 +251,13 @@ export default function EnhancedLibraryGroupsPage() {
 
     try {
       const ownerId = localStorage.getItem('userId') || 'owner-001';
+      const libraryId = localStorage.getItem('currentLibraryId') || '1';
       
       await axios.post(`${API_BASE_URL}/api/communities/${selectedGroup.id}/add-member`, {
         userId: studentId,
         userName: studentName,
         addedBy: ownerId,
+        libraryId, // Required: To validate student has booked this library
       });
 
       toast.success(`${studentName} added to group!`);
@@ -265,7 +267,13 @@ export default function EnhancedLibraryGroupsPage() {
       fetchMembers(selectedGroup.id);
     } catch (error: any) {
       console.error('Error adding member:', error);
-      toast.error(error.response?.data?.error || 'Failed to add member');
+      
+      // Show specific error messages
+      if (error.response?.status === 403) {
+        toast.error('⚠️ This student has not booked your library yet. Only customers can be added to groups.');
+      } else {
+        toast.error(error.response?.data?.message || error.response?.data?.error || 'Failed to add member');
+      }
     }
   };
 
@@ -644,13 +652,18 @@ export default function EnhancedLibraryGroupsPage() {
       <Dialog open={addMemberDialogOpen} onClose={() => setAddMemberDialogOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Add Student to Group</DialogTitle>
         <DialogContent>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Search for students from your library and add them to the group
-          </Typography>
+          <Alert severity="info" sx={{ mb: 2 }}>
+            <Typography variant="body2" fontWeight="600">
+              👥 Only Your Customers
+            </Typography>
+            <Typography variant="caption">
+              You can only add students who have booked your library at least once. This ensures the group remains exclusive to your customers.
+            </Typography>
+          </Alert>
 
           <TextField
             fullWidth
-            placeholder="Search by name, email, or phone..."
+            placeholder="Search your customers by name, email, or phone..."
             value={searchQuery}
             onChange={(e) => {
               setSearchQuery(e.target.value);
@@ -664,30 +677,54 @@ export default function EnhancedLibraryGroupsPage() {
               ),
             }}
             margin="normal"
+            helperText="Only students who have booked your library will appear in results"
           />
 
+          {searchQuery && students.length === 0 && (
+            <Alert severity="warning" sx={{ mt: 2 }}>
+              <Typography variant="body2">
+                No customers found matching "{searchQuery}"
+              </Typography>
+              <Typography variant="caption" display="block" sx={{ mt: 0.5 }}>
+                Remember: Only students who have booked your library can be added.
+              </Typography>
+            </Alert>
+          )}
+
           {students.length > 0 && (
-            <List sx={{ mt: 2 }}>
-              {students.map((student) => (
-                <ListItem key={student.id} sx={{ bgcolor: 'action.hover', mb: 1, borderRadius: 1 }}>
-                  <ListItemAvatar>
-                    <Avatar>{student.first_name[0]}{student.last_name[0]}</Avatar>
-                  </ListItemAvatar>
-                  <ListItemText
-                    primary={`${student.first_name} ${student.last_name}`}
-                    secondary={student.email}
-                  />
-                  <Button
-                    size="small"
-                    variant="contained"
-                    startIcon={<Add />}
-                    onClick={() => handleAddMember(student.id, `${student.first_name} ${student.last_name}`)}
-                  >
-                    Add
-                  </Button>
-                </ListItem>
-              ))}
-            </List>
+            <>
+              <Typography variant="caption" color="success.main" sx={{ display: 'block', mt: 2, mb: 1 }}>
+                ✅ Found {students.length} customer{students.length > 1 ? 's' : ''} who have booked your library:
+              </Typography>
+              <List sx={{ mt: 1 }}>
+                {students.map((student) => (
+                  <ListItem key={student.id} sx={{ bgcolor: 'action.hover', mb: 1, borderRadius: 1 }}>
+                    <ListItemAvatar>
+                      <Avatar sx={{ bgcolor: 'success.main' }}>
+                        {student.first_name[0]}{student.last_name[0]}
+                      </Avatar>
+                    </ListItemAvatar>
+                    <ListItemText
+                      primary={`${student.first_name} ${student.last_name}`}
+                      secondary={
+                        <>
+                          {student.email}
+                          <Chip label="Customer" size="small" color="success" sx={{ ml: 1, height: 16, fontSize: '0.65rem' }} />
+                        </>
+                      }
+                    />
+                    <Button
+                      size="small"
+                      variant="contained"
+                      startIcon={<Add />}
+                      onClick={() => handleAddMember(student.id, `${student.first_name} ${student.last_name}`)}
+                    >
+                      Add
+                    </Button>
+                  </ListItem>
+                ))}
+              </List>
+            </>
           )}
         </DialogContent>
         <DialogActions>
