@@ -18,6 +18,7 @@ import BookingsPage from './pages/BookingsPage';
 import ProfilePageEnhanced from './pages/ProfilePageEnhanced';
 import QRScannerPage from './pages/QRScannerPage';
 import AttendancePage from './pages/AttendancePage';
+import QRAttendanceScanner from './pages/QRAttendanceScanner';
 import StudyTimerPage from './pages/StudyTimerPage';
 import RewardsPage from './pages/RewardsPage';
 import PaymentsPage from './pages/PaymentsPage';
@@ -151,7 +152,7 @@ function App() {
               path="/attendance"
               element={
                 <ProtectedRoute>
-                  <AttendancePage darkMode={darkMode} setDarkMode={setDarkMode} />
+                  <QRAttendanceScanner darkMode={darkMode} setDarkMode={setDarkMode} />
                 </ProtectedRoute>
               }
             />
