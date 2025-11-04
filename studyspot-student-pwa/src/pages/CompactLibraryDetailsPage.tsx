@@ -24,25 +24,17 @@ import {
   Rating,
   IconButton,
   Paper,
-  Tabs,
-  Tab,
   Avatar,
-  List,
-  ListItem,
-  ListItemText,
   Divider,
   Skeleton,
   Stack,
   Accordion,
   AccordionSummary,
   AccordionDetails,
-  LinearProgress,
   Fab,
   Tooltip,
-  Badge,
   useMediaQuery,
   useTheme,
-  Collapse,
 } from '@mui/material';
 import {
   ArrowBack,
@@ -138,9 +130,7 @@ export default function CompactLibraryDetailsPage({ setIsAuthenticated, darkMode
   const [loading, setLoading] = useState(true);
   const [library, setLibrary] = useState<Library | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
-  const [tab, setTab] = useState(0);
   const [currentImage, setCurrentImage] = useState(0);
-  const [showBooking, setShowBooking] = useState(false);
 
   useEffect(() => {
     fetchLibraryDetails();
@@ -568,7 +558,10 @@ export default function CompactLibraryDetailsPage({ setIsAuthenticated, darkMode
                 <Button 
                   variant="contained" 
                   size="large"
-                  onClick={() => setTab(2)}
+                  onClick={() => {
+                    const bookingSection = document.getElementById('booking-section');
+                    bookingSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }}
                   sx={{ 
                     fontWeight: 'bold',
                     px: 3,
@@ -587,94 +580,76 @@ export default function CompactLibraryDetailsPage({ setIsAuthenticated, darkMode
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <Info fontSize="small" color="primary" />
                 <Typography variant="body2" fontWeight="600">
-                  Contact & Location
+                  Library Details
                 </Typography>
               </Box>
             </AccordionSummary>
             <AccordionDetails>
-              <Stack spacing={1.5}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <LocationOn fontSize="small" color="action" />
-                  <Typography variant="body2">
-                    {library.address}, {library.city} - {library.pincode}
-                  </Typography>
-                </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Schedule fontSize="small" color="action" />
-                  <Typography variant="body2">{library.operatingHours}</Typography>
-                </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <AccessTime fontSize="small" color="action" />
-                  <Typography variant="body2">Peak Hours: {library.peakHours}</Typography>
-                </Box>
-                <Stack direction="row" spacing={1}>
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    startIcon={<Phone />}
-                    href={`tel:${library.phone}`}
-                    fullWidth
-                  >
-                    Call
-                  </Button>
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    startIcon={<Email />}
-                    href={`mailto:${library.email}`}
-                    fullWidth
-                  >
-                    Email
-                  </Button>
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    startIcon={<Navigation />}
-                    fullWidth
-                  >
-                    Navigate
-                  </Button>
-                </Stack>
-              </Stack>
-            </AccordionDetails>
-          </Accordion>
-
-          {/* Tabs */}
-          <Card sx={{ borderRadius: 2 }}>
-            <Tabs 
-              value={tab} 
-              onChange={(e, v) => setTab(v)} 
-              variant="scrollable" 
-              scrollButtons="auto"
-              sx={{ 
-                px: 1,
-                minHeight: 44,
-                '& .MuiTab-root': {
-                  minHeight: 44,
-                  py: 1,
-                },
-              }}
-            >
-              <Tab label="About" />
-              <Tab label="Amenities" />
-              <Tab label="Book Seats" icon={<EventSeat fontSize="small" />} iconPosition="start" />
-              <Tab label="Rules" />
-              <Tab label={`Reviews (${reviews.length})`} />
-            </Tabs>
-
-            <Divider />
-
-            <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
-              {/* About Tab */}
-              {tab === 0 && (
+              <Stack spacing={2}>
+                {/* Contact & Location */}
                 <Box>
-                  <Typography variant="body2" paragraph sx={{ lineHeight: 1.7 }}>
+                  <Typography variant="caption" color="text.secondary" fontWeight="600" display="block" gutterBottom>
+                    📍 CONTACT & LOCATION
+                  </Typography>
+                  <Stack spacing={1}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <LocationOn fontSize="small" color="action" />
+                      <Typography variant="body2">
+                        {library.address}, {library.city} - {library.pincode}
+                      </Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Schedule fontSize="small" color="action" />
+                      <Typography variant="body2">{library.operatingHours}</Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <AccessTime fontSize="small" color="action" />
+                      <Typography variant="body2">Peak Hours: {library.peakHours}</Typography>
+                    </Box>
+                    <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        startIcon={<Phone />}
+                        href={`tel:${library.phone}`}
+                        fullWidth
+                      >
+                        Call
+                      </Button>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        startIcon={<Email />}
+                        href={`mailto:${library.email}`}
+                        fullWidth
+                      >
+                        Email
+                      </Button>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        startIcon={<Navigation />}
+                        fullWidth
+                      >
+                        Navigate
+                      </Button>
+                    </Stack>
+                  </Stack>
+                </Box>
+
+                <Divider />
+
+                {/* About */}
+                <Box>
+                  <Typography variant="caption" color="text.secondary" fontWeight="600" display="block" gutterBottom>
+                    📖 ABOUT
+                  </Typography>
+                  <Typography variant="body2" paragraph sx={{ lineHeight: 1.6, mb: 1.5 }}>
                     {library.fullDescription}
                   </Typography>
                   
-                  <Typography variant="subtitle2" gutterBottom sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    <Star fontSize="small" color="warning" />
-                    Special Features
+                  <Typography variant="caption" color="text.secondary" fontWeight="600" display="block" gutterBottom>
+                    ⭐ SPECIAL FEATURES
                   </Typography>
                   <Stack spacing={0.5}>
                     {library.specialFeatures.map((feature, index) => (
@@ -685,120 +660,143 @@ export default function CompactLibraryDetailsPage({ setIsAuthenticated, darkMode
                     ))}
                   </Stack>
                 </Box>
-              )}
 
-              {/* Amenities Tab */}
-              {tab === 1 && (
-                <Grid container spacing={1.5}>
-                  {library.amenities.map((amenity) => (
-                    <Grid item xs={6} sm={4} md={3} key={amenity}>
-                      <Paper 
-                        sx={{ 
-                          p: 1.5, 
-                          textAlign: 'center', 
-                          bgcolor: 'action.hover', 
-                          borderRadius: 2,
-                          border: 1,
-                          borderColor: 'divider',
-                        }}
-                      >
-                        <Box sx={{ mb: 0.5 }}>
-                          {getAmenityIcon(amenity)}
-                        </Box>
-                        <Typography variant="caption" fontWeight="600">
-                          {amenity}
-                        </Typography>
-                      </Paper>
-                    </Grid>
-                  ))}
-                </Grid>
-              )}
+                <Divider />
 
-              {/* Book Seats Tab */}
-              {tab === 2 && (
-                <Box sx={{ mt: -2 }}>
-                  <EnhancedSeatBooking
-                    darkMode={darkMode} 
-                    setDarkMode={setDarkMode}
-                    libraryId={library.id}
-                    libraryName={library.name}
-                    embedded={true}
-                  />
-                </Box>
-              )}
-
-              {/* Rules Tab */}
-              {tab === 3 && (
-                <List dense sx={{ py: 0 }}>
-                  {library.rules.map((rule, index) => (
-                    <ListItem key={index} sx={{ px: 0, py: 0.5 }}>
-                      <ListItemText 
-                        primary={
-                          <Typography variant="body2" sx={{ display: 'flex', gap: 1 }}>
-                            <Typography component="span" variant="body2" fontWeight="600" color="primary.main">
-                              {index + 1}.
-                            </Typography>
-                            {rule}
-                          </Typography>
-                        }
-                      />
-                    </ListItem>
-                  ))}
-                </List>
-              )}
-
-              {/* Reviews Tab */}
-              {tab === 4 && (
+                {/* Amenities */}
                 <Box>
+                  <Typography variant="caption" color="text.secondary" fontWeight="600" display="block" gutterBottom>
+                    ✨ AMENITIES
+                  </Typography>
+                  <Grid container spacing={1}>
+                    {library.amenities.map((amenity) => (
+                      <Grid item xs={6} sm={4} key={amenity}>
+                        <Paper 
+                          sx={{ 
+                            p: 1, 
+                            textAlign: 'center', 
+                            bgcolor: 'action.hover', 
+                            borderRadius: 1.5,
+                            border: 1,
+                            borderColor: 'divider',
+                          }}
+                        >
+                          <Box sx={{ mb: 0.5 }}>
+                            {getAmenityIcon(amenity)}
+                          </Box>
+                          <Typography variant="caption" fontWeight="600">
+                            {amenity}
+                          </Typography>
+                        </Paper>
+                      </Grid>
+                    ))}
+                  </Grid>
+                </Box>
+
+                <Divider />
+
+                {/* Rules */}
+                <Box>
+                  <Typography variant="caption" color="text.secondary" fontWeight="600" display="block" gutterBottom>
+                    📋 RULES & REGULATIONS
+                  </Typography>
+                  <Stack spacing={0.5}>
+                    {library.rules.map((rule, index) => (
+                      <Box key={index} sx={{ display: 'flex', gap: 1 }}>
+                        <Typography variant="body2" fontWeight="600" color="primary.main" sx={{ minWidth: 20 }}>
+                          {index + 1}.
+                        </Typography>
+                        <Typography variant="body2">{rule}</Typography>
+                      </Box>
+                    ))}
+                  </Stack>
+                </Box>
+
+                <Divider />
+
+                {/* Reviews */}
+                <Box>
+                  <Typography variant="caption" color="text.secondary" fontWeight="600" display="block" gutterBottom>
+                    ⭐ REVIEWS ({reviews.length})
+                  </Typography>
+                  
                   {/* Overall Rating */}
-                  <Paper sx={{ p: 2, mb: 2, bgcolor: 'action.hover', borderRadius: 2, textAlign: 'center' }}>
-                    <Typography variant="h3" fontWeight="bold" color="primary.main">
+                  <Paper sx={{ p: 2, mb: 1.5, bgcolor: 'action.hover', borderRadius: 2, textAlign: 'center' }}>
+                    <Typography variant="h4" fontWeight="bold" color="primary.main">
                       {library.rating}
                     </Typography>
-                    <Rating value={library.rating} readOnly precision={0.1} />
+                    <Rating value={library.rating} readOnly precision={0.1} size="small" />
                     <Typography variant="caption" color="text.secondary" display="block">
                       Based on {library.reviewCount} reviews
                     </Typography>
                   </Paper>
 
                   {/* Individual Reviews */}
-                  <Stack spacing={2}>
+                  <Stack spacing={1.5}>
                     {reviews.map((review) => (
-                      <Paper key={review.id} sx={{ p: 2, bgcolor: 'action.hover', borderRadius: 2 }}>
-                        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5, mb: 1 }}>
-                          <Avatar sx={{ width: 40, height: 40, bgcolor: 'primary.main' }}>
+                      <Paper key={review.id} sx={{ p: 1.5, bgcolor: 'action.hover', borderRadius: 2 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, mb: 0.5 }}>
+                          <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main', fontSize: '0.9rem' }}>
                             {review.userName[0]}
                           </Avatar>
                           <Box sx={{ flex: 1, minWidth: 0 }}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
-                              <Typography variant="body2" fontWeight="600" noWrap>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.3 }}>
+                              <Typography variant="caption" fontWeight="600" noWrap>
                                 {review.userName}
                               </Typography>
                               {review.verified && (
                                 <Tooltip title="Verified Booking">
-                                  <Verified fontSize="small" color="primary" />
+                                  <Verified fontSize="small" color="primary" sx={{ fontSize: 14 }} />
                                 </Tooltip>
                               )}
                             </Box>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                              <Rating value={review.rating} readOnly size="small" />
-                              <Typography variant="caption" color="text.secondary">
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                              <Rating value={review.rating} readOnly size="small" sx={{ fontSize: '0.9rem' }} />
+                              <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
                                 {new Date(review.date).toLocaleDateString()}
                               </Typography>
                             </Box>
                           </Box>
                         </Box>
-                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1, lineHeight: 1.6 }}>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5, lineHeight: 1.5, fontSize: '0.85rem' }}>
                           {review.comment}
                         </Typography>
-                        <Button size="small" startIcon={<ThumbUp fontSize="small" />} sx={{ textTransform: 'none' }}>
+                        <Button size="small" startIcon={<ThumbUp fontSize="small" />} sx={{ textTransform: 'none', fontSize: '0.75rem', py: 0.25 }}>
                           Helpful ({review.helpful})
                         </Button>
                       </Paper>
                     ))}
                   </Stack>
                 </Box>
-              )}
+              </Stack>
+            </AccordionDetails>
+          </Accordion>
+
+          {/* Direct Seat Booking - No Tabs */}
+          <Card id="booking-section" sx={{ borderRadius: 2, scrollMarginTop: '80px' }}>
+            <Box sx={{ 
+              background: gradients.primary, 
+              color: 'white', 
+              py: 1.5, 
+              px: 2,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+            }}>
+              <EventSeat />
+              <Typography variant="h6" fontWeight="bold">
+                Book Your Seats
+              </Typography>
+            </Box>
+            
+            <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
+              <EnhancedSeatBooking
+                darkMode={darkMode} 
+                setDarkMode={setDarkMode}
+                libraryId={library.id}
+                libraryName={library.name}
+                embedded={true}
+              />
             </CardContent>
           </Card>
         </Container>
@@ -808,7 +806,10 @@ export default function CompactLibraryDetailsPage({ setIsAuthenticated, darkMode
           <Fab
             variant="extended"
             color="primary"
-            onClick={() => setTab(2)}
+            onClick={() => {
+              const bookingSection = document.getElementById('booking-section');
+              bookingSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }}
             sx={{
               position: 'fixed',
               bottom: 16,
