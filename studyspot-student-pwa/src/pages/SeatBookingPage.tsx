@@ -74,8 +74,11 @@ import { useSocket } from '../hooks/useSocket';
 import { toast } from 'react-toastify';
 
 interface SeatBookingPageProps {
-  darkMode: boolean;
-  setDarkMode: (value: boolean) => void;
+  darkMode?: boolean;
+  setDarkMode?: (value: boolean) => void;
+  libraryId?: string;
+  libraryName?: string;
+  embedded?: boolean; // When used inside library details
 }
 
 interface LibrarySeat {
@@ -104,7 +107,7 @@ interface LibrarySeat {
   libraryName?: string;
 }
 
-const SeatBookingPage: React.FC<SeatBookingPageProps> = ({ darkMode, setDarkMode }) => {
+const SeatBookingPage: React.FC<SeatBookingPageProps> = ({ darkMode, setDarkMode, libraryId, libraryName, embedded = false }) => {
   const [seats, setSeats] = useState<LibrarySeat[]>([]);
   const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
   const [bookingDuration, setBookingDuration] = useState<'hourly' | 'daily' | 'weekly' | 'monthly'>('monthly');
@@ -249,7 +252,7 @@ const SeatBookingPage: React.FC<SeatBookingPageProps> = ({ darkMode, setDarkMode
             cushionedChair: hasCushionedChair,
           },
           capacity,
-          libraryName: 'Central Study Hub',
+          libraryName: libraryName || 'Central Study Hub',
         });
       }
     });
@@ -368,13 +371,19 @@ const SeatBookingPage: React.FC<SeatBookingPageProps> = ({ darkMode, setDarkMode
 
   if (!layoutCreated) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh' }}>
-        <Card sx={{ p: 4, textAlign: 'center', maxWidth: 600 }}>
-          <LocalLibrary sx={{ fontSize: 100, color: 'primary.main', mb: 2 }} />
-          <Typography variant="h4" gutterBottom>
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        minHeight: embedded ? '60vh' : '80vh',
+        p: { xs: 2, sm: 3 }
+      }}>
+        <Card sx={{ p: { xs: 3, sm: 4 }, textAlign: 'center', maxWidth: 600, width: '100%' }}>
+          <LocalLibrary sx={{ fontSize: { xs: 80, sm: 100 }, color: 'primary.main', mb: 2 }} />
+          <Typography variant={{ xs: 'h5', sm: 'h4' } as any} gutterBottom>
             🪑 Seat Booking
           </Typography>
-          <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+          <Typography variant="body1" color="text.secondary" sx={{ mb: 3, fontSize: { xs: '0.9rem', sm: '1rem' } }}>
             Find your perfect study spot! Book seats with amenities like window views, power outlets, AC, and more.
           </Typography>
           <Stack direction="row" spacing={1} justifyContent="center" flexWrap="wrap" sx={{ mb: 3 }}>
@@ -387,7 +396,8 @@ const SeatBookingPage: React.FC<SeatBookingPageProps> = ({ darkMode, setDarkMode
             size="large"
             onClick={createLibraryLayout}
             startIcon={<EventSeat />}
-            sx={{ px: 6, py: 2 }}
+            sx={{ px: { xs: 4, sm: 6 }, py: 2, fontSize: { xs: '0.9rem', sm: '1rem' } }}
+            fullWidth
           >
             View Available Seats
           </Button>
@@ -397,41 +407,54 @@ const SeatBookingPage: React.FC<SeatBookingPageProps> = ({ darkMode, setDarkMode
   }
 
   return (
-    <Box sx={{ bgcolor: '#f5f5f5', minHeight: '100vh', pb: 4 }}>
+    <Box sx={{ bgcolor: embedded ? 'transparent' : '#f5f5f5', minHeight: embedded ? 'auto' : '100vh', pb: 4 }}>
       {/* Header */}
-      <Box sx={{ bgcolor: 'white', borderBottom: '1px solid #e0e0e0', p: 3 }}>
-        <Stack direction="row" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={2}>
+      <Box sx={{ 
+        bgcolor: 'white', 
+        borderBottom: '1px solid #e0e0e0', 
+        p: { xs: 2, sm: 3 },
+        display: embedded ? 'none' : 'block'
+      }}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} gap={2}>
           <Box>
-            <Typography variant="h4" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography variant={{ xs: 'h5', sm: 'h4' } as any} sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
               🪑 Seat Booking
               {connected && (
                 <Chip icon={<Wifi />} label="Live" color="success" size="small" />
               )}
             </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Select your ideal study spot at {seats[0]?.libraryName}
+            <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.85rem', sm: '0.875rem' } }}>
+              Select your ideal study spot at {libraryName || seats[0]?.libraryName}
             </Typography>
           </Box>
-          <Stack direction="row" spacing={2} flexWrap="wrap">
-            <Chip label={`${stats.available} Available`} color="success" icon={<Check />} />
-            <Chip label={`${stats.occupied} Occupied`} color="error" icon={<Close />} />
+          <Stack direction="row" spacing={{ xs: 1, sm: 2 }} flexWrap="wrap" useFlexGap>
+            <Chip label={`${stats.available} Available`} color="success" icon={<Check />} size="small" />
+            <Chip label={`${stats.occupied} Occupied`} color="error" icon={<Close />} size="small" />
             {stats.selected > 0 && (
-              <Chip label={`${stats.selected} Selected`} color="primary" icon={<EventSeat />} />
+              <Chip label={`${stats.selected} Selected`} color="primary" icon={<EventSeat />} size="small" />
             )}
           </Stack>
         </Stack>
       </Box>
 
-      <Box sx={{ p: 3 }}>
+      <Box sx={{ p: { xs: 2, sm: 3 } }}>
         {/* Controls */}
-        <Paper sx={{ p: 2, mb: 3 }}>
-          <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" gap={2}>
+        <Paper sx={{ p: { xs: 1.5, sm: 2 }, mb: { xs: 2, sm: 3 } }}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ xs: 'stretch', sm: 'center' }} gap={2}>
             {/* Duration Selection */}
             <ToggleButtonGroup
               value={bookingDuration}
               exclusive
               onChange={(e, val) => val && setBookingDuration(val)}
               size="small"
+              fullWidth={embedded}
+              sx={{ 
+                flexDirection: { xs: 'column', sm: 'row' },
+                '& .MuiToggleButton-root': {
+                  fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                  px: { xs: 1, sm: 2 }
+                }
+              }}
             >
               <ToggleButton value="hourly">⏱️ Hourly</ToggleButton>
               <ToggleButton value="daily">📅 Daily</ToggleButton>
@@ -440,7 +463,7 @@ const SeatBookingPage: React.FC<SeatBookingPageProps> = ({ darkMode, setDarkMode
             </ToggleButtonGroup>
 
             {/* Zone Filter */}
-            <FormControl size="small" sx={{ minWidth: 200 }}>
+            <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 200 } }} fullWidth={embedded}>
               <InputLabel>Zone</InputLabel>
               <Select value={selectedZone} onChange={(e) => setSelectedZone(e.target.value)}>
                 <MenuItem value="all">🌐 All Zones</MenuItem>
@@ -469,7 +492,12 @@ const SeatBookingPage: React.FC<SeatBookingPageProps> = ({ darkMode, setDarkMode
                 variant="contained"
                 startIcon={<ShoppingCart />}
                 onClick={handleBooking}
-                sx={{ fontWeight: 600 }}
+                sx={{ 
+                  fontWeight: 600,
+                  fontSize: { xs: '0.85rem', sm: '1rem' },
+                  px: { xs: 2, sm: 3 }
+                }}
+                fullWidth={embedded}
               >
                 Book {selectedSeats.length} Seat{selectedSeats.length > 1 ? 's' : ''} - ₹{getTotalPrice}
               </Button>
@@ -513,21 +541,21 @@ const SeatBookingPage: React.FC<SeatBookingPageProps> = ({ darkMode, setDarkMode
         </Paper>
 
         {/* Seat Map */}
-        <Paper sx={{ p: 3 }}>
+        <Paper sx={{ p: { xs: 2, sm: 3 }, overflow: 'auto' }}>
           {/* Entrance */}
-          <Box sx={{ mb: 4, textAlign: 'center' }}>
+          <Box sx={{ mb: { xs: 3, sm: 4 }, textAlign: 'center' }}>
             <Paper 
               elevation={3} 
               sx={{ 
-                py: 1.5, 
+                py: { xs: 1, sm: 1.5 }, 
                 bgcolor: '#1976D2', 
                 color: 'white',
                 borderRadius: '0 0 50% 50%',
-                maxWidth: 600,
+                maxWidth: { xs: '100%', sm: 600 },
                 mx: 'auto',
               }}
             >
-              <Typography variant="h6">📚 Library Entrance</Typography>
+              <Typography variant={{ xs: 'subtitle1', sm: 'h6' } as any}>📚 Library Entrance</Typography>
             </Paper>
           </Box>
 
@@ -537,10 +565,10 @@ const SeatBookingPage: React.FC<SeatBookingPageProps> = ({ darkMode, setDarkMode
             if (rowSeats.length === 0) return null;
 
             return (
-              <Box key={row} sx={{ mb: 3 }}>
-                <Stack direction="row" spacing={1} alignItems="center" justifyContent="center" flexWrap="wrap">
+              <Box key={row} sx={{ mb: { xs: 2, sm: 3 } }}>
+                <Stack direction="row" spacing={{ xs: 0.5, sm: 1 }} alignItems="center" justifyContent="center" flexWrap="wrap" useFlexGap>
                   {/* Row Label */}
-                  <Chip label={`Row ${row}`} size="small" sx={{ minWidth: 60 }} />
+                  <Chip label={`Row ${row}`} size="small" sx={{ minWidth: { xs: 45, sm: 60 }, fontSize: { xs: '0.7rem', sm: '0.8125rem' } }} />
                   
                   {/* Seats */}
                   {rowSeats.map((seat) => {
@@ -565,8 +593,8 @@ const SeatBookingPage: React.FC<SeatBookingPageProps> = ({ darkMode, setDarkMode
                         <Box
                           sx={{
                             position: 'relative',
-                            width: 50,
-                            height: 50,
+                            width: { xs: 35, sm: 45, md: 50 },
+                            height: { xs: 35, sm: 45, md: 50 },
                             borderRadius: 1,
                             bgcolor: getSeatColor(seat),
                             display: 'flex',
@@ -577,18 +605,18 @@ const SeatBookingPage: React.FC<SeatBookingPageProps> = ({ darkMode, setDarkMode
                             border: isSelected ? '3px solid #1976D2' : '1px solid #ccc',
                             transition: 'all 0.2s',
                             '&:hover': seat.status !== 'occupied' && seat.status !== 'blocked' ? {
-                              transform: 'scale(1.1)',
+                              transform: { xs: 'scale(1.05)', sm: 'scale(1.1)' },
                               boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
                             } : {},
                           }}
                           onClick={() => handleSeatClick(seat)}
                         >
-                          <Typography variant="caption" sx={{ color: 'white', fontWeight: 600 }}>
+                          <Typography variant="caption" sx={{ color: 'white', fontWeight: 600, fontSize: { xs: '0.6rem', sm: '0.75rem' } }}>
                             {seat.id}
                           </Typography>
                           {isFavorite && (
                             <Favorite
-                              sx={{ position: 'absolute', top: -8, right: -8, color: 'error.main', fontSize: 16 }}
+                              sx={{ position: 'absolute', top: { xs: -6, sm: -8 }, right: { xs: -6, sm: -8 }, color: 'error.main', fontSize: { xs: 12, sm: 16 } }}
                             />
                           )}
                         </Box>
