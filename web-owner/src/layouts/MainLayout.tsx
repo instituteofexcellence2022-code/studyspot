@@ -79,8 +79,8 @@ const MainLayout: React.FC = () => {
           minHeight: '100vh',
           width: '100%',
           transition: theme.transitions.create(['margin', 'width'], {
-            easing: theme.transitions.easing.sharp,
-            duration: theme.transitions.duration.leavingScreen,
+            easing: theme.transitions.easing.easeInOut,
+            duration: theme.transitions.duration.standard,
           }),
           // No marginLeft needed - persistent drawer pushes content automatically
         }}
@@ -93,8 +93,8 @@ const MainLayout: React.FC = () => {
             width: sidebarOpen && !isMobile ? 'calc(100% - 280px)' : '100%',
             marginLeft: sidebarOpen && !isMobile ? '280px' : 0,
             transition: theme.transitions.create(['margin', 'width'], {
-              easing: theme.transitions.easing.sharp,
-              duration: theme.transitions.duration.leavingScreen,
+              easing: theme.transitions.easing.easeInOut,
+              duration: theme.transitions.duration.standard,
             }),
           }}
         >
