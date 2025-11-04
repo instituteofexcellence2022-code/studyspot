@@ -15,6 +15,7 @@ const SERVICES = {
   STUDENT: process.env.STUDENT_SERVICE_URL || 'http://localhost:3004',
   LIBRARY: process.env.LIBRARY_SERVICE_URL || 'http://localhost:3005',
   PAYMENT: process.env.PAYMENT_SERVICE_URL || 'http://localhost:3006',
+  BOOKING: process.env.BOOKING_SERVICE_URL || 'http://localhost:3007',
   CREDIT: process.env.CREDIT_SERVICE_URL || 'http://localhost:3008',
   SUBSCRIPTION: process.env.SUBSCRIPTION_SERVICE_URL || 'http://localhost:3009',
   MESSAGING: process.env.MESSAGING_SERVICE_URL || 'http://localhost:3011',
@@ -164,6 +165,36 @@ export function registerRoutes(fastify: FastifyInstance) {
     const result = await proxyToService(
       'Payment',
       SERVICES.PAYMENT,
+      path,
+      request.method,
+      request.headers,
+      request.body
+    );
+    return reply.code(result.statusCode).send(result.data);
+  });
+
+  // ============================================
+  // BOOKING SERVICE ROUTES
+  // ============================================
+  fastify.all('/api/v1/bookings*', async (request, reply) => {
+    const path = request.url.replace('/api/v1', '');
+    const result = await proxyToService(
+      'Booking',
+      SERVICES.BOOKING,
+      path,
+      request.method,
+      request.headers,
+      request.body
+    );
+    return reply.code(result.statusCode).send(result.data);
+  });
+
+  // Also route /api/bookings to the booking service (for frontend compatibility)
+  fastify.all('/api/bookings*', async (request, reply) => {
+    const path = `/api/v1${request.url.replace('/api', '')}`;
+    const result = await proxyToService(
+      'Booking',
+      SERVICES.BOOKING,
       path,
       request.method,
       request.headers,
