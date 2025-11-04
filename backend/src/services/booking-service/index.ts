@@ -8,7 +8,7 @@
  * - Library owner and student booking views
  */
 
-import Fastify, { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import Fastify, { FastifyInstance } from 'fastify';
 import cors from '@fastify/cors';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { logger } from '../../utils/logger';
@@ -323,7 +323,7 @@ export async function startBookingService() {
   });
 
   // Health check
-  fastify.get('/health', async (request, reply) => {
+  fastify.get('/health', async () => {
     return {
       service: 'booking-service',
       status: 'healthy',
