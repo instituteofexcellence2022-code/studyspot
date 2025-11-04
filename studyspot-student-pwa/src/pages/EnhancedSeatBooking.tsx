@@ -98,6 +98,8 @@ import {
 } from '@mui/icons-material';
 import { useSocket } from '../hooks/useSocket';
 import { toast } from 'react-toastify';
+import { generateReceipt, downloadHTMLReceipt, printReceipt } from '../utils/receiptGenerator';
+import { useAuth } from '../contexts/AuthContext';
 
 interface EnhancedSeatBookingProps {
   darkMode?: boolean;
@@ -205,6 +207,7 @@ const EnhancedSeatBooking: React.FC<EnhancedSeatBookingProps> = ({
   });
 
   const { socket, connected } = useSocket('student');
+  const { user } = useAuth();
 
   const steps = ['Select Date & Time', 'Choose Seats', 'Add-ons & Options', 'Payment', 'Confirmation'];
 
@@ -455,8 +458,79 @@ const EnhancedSeatBooking: React.FC<EnhancedSeatBookingProps> = ({
   };
 
   const handleConfirmBooking = () => {
+    // Update booking details with selected seats and total
+    setBookingDetails(prev => ({
+      ...prev,
+      seats: selectedSeats,
+      totalAmount: calculateTotalPrice,
+    }));
+    
     toast.success(`🎉 Booking confirmed! Total: ₹${calculateTotalPrice}`);
     setActiveStep(4);
+  };
+
+  const handleDownloadReceipt = () => {
+    const receiptData = {
+      bookingId: `BK${Date.now().toString().slice(-8)}`,
+      date: bookingDetails.date,
+      libraryName: libraryName || 'Central Study Hub',
+      seats: selectedSeats,
+      duration: bookingDetails.duration,
+      basePrice: selectedSeats.reduce((total, seatId) => {
+        const seat = seats.find(s => s.id === seatId);
+        return total + (seat?.pricing[bookingDetails.duration] || 0);
+      }, 0),
+      addons: {
+        locker: bookingDetails.addons.locker ? 50 * selectedSeats.length : 0,
+        snacks: bookingDetails.addons.snacks ? 100 * selectedSeats.length : 0,
+        wifi: bookingDetails.addons.wifi && bookingDetails.duration === 'hourly' ? 20 * selectedSeats.length : 0,
+      },
+      totalAmount: calculateTotalPrice,
+      paymentMethod: bookingDetails.paymentMethod,
+      studentName: user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : 'Student',
+      studentEmail: user?.email,
+      studentPhone: user?.phone,
+    };
+
+    try {
+      generateReceipt(receiptData);
+      toast.success('📄 Receipt downloaded successfully!');
+    } catch (error) {
+      console.error('Error generating receipt:', error);
+      toast.error('Failed to generate receipt');
+    }
+  };
+
+  const handlePrintReceipt = () => {
+    const receiptData = {
+      bookingId: `BK${Date.now().toString().slice(-8)}`,
+      date: bookingDetails.date,
+      libraryName: libraryName || 'Central Study Hub',
+      seats: selectedSeats,
+      duration: bookingDetails.duration,
+      basePrice: selectedSeats.reduce((total, seatId) => {
+        const seat = seats.find(s => s.id === seatId);
+        return total + (seat?.pricing[bookingDetails.duration] || 0);
+      }, 0),
+      addons: {
+        locker: bookingDetails.addons.locker ? 50 * selectedSeats.length : 0,
+        snacks: bookingDetails.addons.snacks ? 100 * selectedSeats.length : 0,
+        wifi: bookingDetails.addons.wifi && bookingDetails.duration === 'hourly' ? 20 * selectedSeats.length : 0,
+      },
+      totalAmount: calculateTotalPrice,
+      paymentMethod: bookingDetails.paymentMethod,
+      studentName: user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : 'Student',
+      studentEmail: user?.email,
+      studentPhone: user?.phone,
+    };
+
+    try {
+      printReceipt(receiptData);
+      toast.success('🖨️ Opening print dialog...');
+    } catch (error) {
+      console.error('Error printing receipt:', error);
+      toast.error('Failed to print receipt');
+    }
   };
 
   const getRecommendedSeats = () => {
@@ -1116,12 +1190,27 @@ const EnhancedSeatBooking: React.FC<EnhancedSeatBookingProps> = ({
                 </Alert>
               </Stack>
 
-              <Button variant="contained" fullWidth sx={{ mt: 3 }} startIcon={<QrCode2 />}>
-                View QR Code
-              </Button>
-              <Button variant="outlined" fullWidth sx={{ mt: 1 }}>
-                Download Receipt
-              </Button>
+              <Stack spacing={2} sx={{ mt: 3 }}>
+                <Button variant="contained" fullWidth startIcon={<QrCode2 />}>
+                  View QR Code
+                </Button>
+                <Button 
+                  variant="outlined" 
+                  fullWidth 
+                  onClick={handleDownloadReceipt}
+                  startIcon={<Payment />}
+                >
+                  📄 Download PDF Receipt
+                </Button>
+                <Button 
+                  variant="outlined" 
+                  fullWidth 
+                  onClick={handlePrintReceipt}
+                  startIcon={<Payment />}
+                >
+                  🖨️ Print Receipt
+                </Button>
+              </Stack>
             </CardContent>
           </Card>
         )}
