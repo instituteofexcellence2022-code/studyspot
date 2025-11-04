@@ -277,25 +277,101 @@ fastify.get('/api/groups/library/:libraryId', async (request, reply) => {
 });
 
 /**
- * Get all communities and groups (Student view)
- * GET /api/communities/all
+ * Get all communities and groups for a specific student
+ * GET /api/communities/all?userId=xxx
+ * 
+ * Returns:
+ * - All exam communities (no restriction)
+ * - Only library groups from libraries the student has booked
  */
 fastify.get('/api/communities/all', async (request, reply) => {
   try {
-    const { data: all, error } = await supabase
+    const { userId } = request.query as any;
+
+    // If no userId provided, return all communities only (no groups)
+    if (!userId) {
+      const { data: communities, error } = await supabase
+        .from('communities')
+        .select('*')
+        .eq('is_active', true)
+        .eq('type', 'community') // Only communities
+        .order('member_count', { ascending: false });
+
+      if (error) {
+        logger.error('Error fetching communities:', error);
+        return reply.code(500).send({ error: 'Failed to fetch communities' });
+      }
+
+      return reply.send({
+        success: true,
+        data: communities || [],
+      });
+    }
+
+    // ✅ Get ALL exam communities (NO RESTRICTION - anyone can see and join)
+    const { data: communities, error: commError } = await supabase
       .from('communities')
       .select('*')
       .eq('is_active', true)
+      .eq('type', 'community') // COMMUNITIES = Open to everyone
       .order('member_count', { ascending: false });
 
-    if (error) {
-      logger.error('Error fetching all communities:', error);
+    if (commError) {
+      logger.error('Error fetching communities:', commError);
       return reply.code(500).send({ error: 'Failed to fetch communities' });
     }
 
+    // Get libraries the student has booked
+    const { data: bookings, error: bookingError } = await supabase
+      .from('bookings')
+      .select('library_id')
+      .eq('user_id', userId);
+
+    if (bookingError) {
+      logger.error('Error fetching bookings:', bookingError);
+      // Return only communities if booking check fails
+      return reply.send({
+        success: true,
+        data: communities || [],
+      });
+    }
+
+    // Get unique library IDs the student has booked
+    const bookedLibraryIds = [...new Set(bookings?.map((b: any) => b.library_id) || [])];
+
+    let eligibleGroups: any[] = [];
+
+    // 🔒 Get library groups ONLY from libraries the student has booked
+    if (bookedLibraryIds.length > 0) {
+      const { data: groups, error: groupError } = await supabase
+        .from('communities')
+        .select('*')
+        .eq('is_active', true)
+        .eq('type', 'group') // GROUPS = Customer-only restriction
+        .in('library_id', bookedLibraryIds) // FILTER: Only from booked libraries
+        .order('member_count', { ascending: false });
+
+      if (!groupError) {
+        eligibleGroups = groups || [];
+      }
+    } else {
+      // Student hasn't booked any libraries → No groups visible
+      logger.info(`Student ${userId} has no bookings → 0 library groups visible`);
+    }
+
+    // Combine: ALL communities + FILTERED groups (only from booked libraries)
+    const allData = [...(communities || []), ...eligibleGroups];
+
+    logger.info(`Student ${userId} can see: ${communities?.length || 0} communities + ${eligibleGroups.length} eligible groups`);
+
     return reply.send({
       success: true,
-      data: all || [],
+      data: allData,
+      stats: {
+        communities: communities?.length || 0,
+        eligibleGroups: eligibleGroups.length,
+        bookedLibraries: bookedLibraryIds.length,
+      }
     });
   } catch (error) {
     logger.error('Error fetching communities:', error);
@@ -334,7 +410,8 @@ fastify.post('/api/communities/:id/join', async (request, reply) => {
       return reply.code(404).send({ error: 'Community/Group not found' });
     }
 
-    // ✅ VALIDATION: For library groups, verify student is a customer
+    // ✅ VALIDATION: ONLY for library GROUPS (NOT communities)
+    // Communities are open to everyone, groups require booking
     if (community.type === 'group' && community.library_id) {
       const { data: bookings, error: bookingError } = await supabase
         .from('bookings')
@@ -356,7 +433,10 @@ fastify.post('/api/communities/:id/join', async (request, reply) => {
         });
       }
 
-      logger.info(`✅ Customer verified for group join: userId=${userId}`);
+      logger.info(`✅ Customer verified for GROUP join: userId=${userId}`);
+    } else if (community.type === 'community') {
+      // Communities are open to everyone - no validation needed
+      logger.info(`✅ Joining COMMUNITY (no booking required): userId=${userId}`);
     }
 
     // Check if already a member
