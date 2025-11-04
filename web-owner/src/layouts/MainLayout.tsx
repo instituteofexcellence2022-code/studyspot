@@ -89,10 +89,13 @@ const MainLayout: React.FC = () => {
         <AppBar
           position="fixed"
           sx={{
-            zIndex: theme.zIndex.drawer + 1,
-            width: '100%',
-            left: 0,
-            // AppBar spans full width, positioned above drawer
+            zIndex: theme.zIndex.drawer - 1,
+            width: sidebarOpen && !isMobile ? 'calc(100% - 280px)' : '100%',
+            marginLeft: sidebarOpen && !isMobile ? '280px' : 0,
+            transition: theme.transitions.create(['margin', 'width'], {
+              easing: theme.transitions.easing.sharp,
+              duration: theme.transitions.duration.leavingScreen,
+            }),
           }}
         >
           <Toolbar>
