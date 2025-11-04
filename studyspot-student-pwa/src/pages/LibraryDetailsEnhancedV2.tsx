@@ -111,25 +111,6 @@ export default function LibraryDetailsEnhancedV2({ setIsAuthenticated, darkMode,
   const [seats, setSeats] = useState<Seat[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [tab, setTab] = useState(0);
-  const [bookingDialog, setBookingDialog] = useState(false);
-  const [activeStep, setActiveStep] = useState(0);
-  const [bookingData, setBookingData] = useState({
-    date: '',
-    shift: '',
-    selectedSeats: [] as string[],
-    bookingType: 'individual',
-    autoExtend: false,
-    joinWaitlist: false,
-  });
-
-  const shifts = [
-    { id: 'morning', label: 'Morning', time: '6 AM - 12 PM', price: 150, icon: '🌅' },
-    { id: 'afternoon', label: 'Afternoon', time: '12 PM - 6 PM', price: 150, icon: '☀️' },
-    { id: 'evening', label: 'Evening', time: '6 PM - 11 PM', price: 100, icon: '🌙' },
-    { id: 'fullday', label: 'Full Day', time: '6 AM - 11 PM', price: 300, icon: '⏰' },
-  ];
-
-  const steps = ['Date & Shift', 'Select Seats', 'Options', 'Confirm'];
 
   useEffect(() => {
     fetchLibraryDetails();
@@ -535,7 +516,7 @@ export default function LibraryDetailsEnhancedV2({ setIsAuthenticated, darkMode,
                   fullWidth 
                   variant="contained" 
                   size="large"
-                  onClick={() => setBookingDialog(true)}
+                  onClick={() => setTab(2)}
                   sx={{ 
                     background: gradients.primary,
                     py: 1.5,
@@ -543,7 +524,7 @@ export default function LibraryDetailsEnhancedV2({ setIsAuthenticated, darkMode,
                     fontWeight: 'bold',
                   }}
                 >
-                  Book Now
+                  🪑 Book Seats
                 </Button>
               </CardContent>
             </Card>
@@ -577,239 +558,6 @@ export default function LibraryDetailsEnhancedV2({ setIsAuthenticated, darkMode,
           </Grid>
         </Grid>
 
-        {/* Booking Dialog */}
-        <Dialog open={bookingDialog} onClose={() => setBookingDialog(false)} maxWidth="md" fullWidth>
-          <DialogTitle>
-            Book Your Study Session
-            <Typography variant="caption" color="text.secondary" display="block">
-              {library.name}
-            </Typography>
-          </DialogTitle>
-          <DialogContent>
-            <Stepper activeStep={activeStep} sx={{ mb: 3, mt: 1 }}>
-              {steps.map((label) => (
-                <Step key={label}>
-                  <StepLabel>{label}</StepLabel>
-                </Step>
-              ))}
-            </Stepper>
-
-            {/* Step 1: Date & Shift */}
-            {activeStep === 0 && (
-              <Box>
-                <TextField
-                  fullWidth
-                  type="date"
-                  label="Select Date"
-                  value={bookingData.date}
-                  onChange={(e) => setBookingData({ ...bookingData, date: e.target.value })}
-                  InputLabelProps={{ shrink: true }}
-                  inputProps={{ min: new Date().toISOString().split('T')[0] }}
-                  sx={{ mb: 3 }}
-                />
-
-                <Typography variant="subtitle2" gutterBottom>
-                  Select Shift:
-                </Typography>
-                <Grid container spacing={2}>
-                  {shifts.map((shift) => (
-                    <Grid item xs={6} key={shift.id}>
-                      <Card
-                        sx={{
-                          cursor: 'pointer',
-                          border: 2,
-                          borderColor: bookingData.shift === shift.id ? 'primary.main' : 'divider',
-                          bgcolor: bookingData.shift === shift.id ? 'primary.light' : 'background.paper',
-                        }}
-                        onClick={() => setBookingData({ ...bookingData, shift: shift.id })}
-                      >
-                        <CardContent sx={{ textAlign: 'center', py: 2 }}>
-                          <Typography variant="h4">{shift.icon}</Typography>
-                          <Typography variant="body1" fontWeight="600">
-                            {shift.label}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            {shift.time}
-                          </Typography>
-                          <Typography variant="h6" color="primary.main" fontWeight="bold" sx={{ mt: 1 }}>
-                            ₹{shift.price}
-                          </Typography>
-                        </CardContent>
-                      </Card>
-                    </Grid>
-                  ))}
-                </Grid>
-              </Box>
-            )}
-
-            {/* Step 2: Select Seats */}
-            {activeStep === 1 && (
-              <Box>
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={bookingData.bookingType === 'group'}
-                      onChange={(e) => setBookingData({ 
-                        ...bookingData, 
-                        bookingType: e.target.checked ? 'group' : 'individual',
-                        selectedSeats: []
-                      })}
-                    />
-                  }
-                  label="Group booking (select multiple seats)"
-                />
-
-                {/* Seat Legend */}
-                <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap' }}>
-                  <Chip icon={<Box sx={{ width: 12, height: 12, bgcolor: '#10b981', borderRadius: '50%' }} />} label="Available" size="small" />
-                  <Chip icon={<Box sx={{ width: 12, height: 12, bgcolor: '#f59e0b', borderRadius: '50%' }} />} label="Premium" size="small" />
-                  <Chip icon={<Box sx={{ width: 12, height: 12, bgcolor: '#ef4444', borderRadius: '50%' }} />} label="Occupied" size="small" />
-                  <Chip icon={<Box sx={{ width: 12, height: 12, bgcolor: '#2563eb', borderRadius: '50%' }} />} label="Selected" size="small" />
-                </Box>
-
-                {/* Seat Grid */}
-                <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(10, 1fr)', gap: 1, maxHeight: 400, overflow: 'auto', p: 2, bgcolor: 'action.hover', borderRadius: 2 }}>
-                  {seats.map((seat) => (
-                    <Box
-                      key={seat.id}
-                      onClick={() => handleSeatSelect(seat.id)}
-                      sx={{
-                        width: 40,
-                        height: 40,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        bgcolor: getSeatColor(seat),
-                        color: 'white',
-                        borderRadius: 1,
-                        cursor: seat.status === 'available' ? 'pointer' : 'not-allowed',
-                        fontSize: 12,
-                        fontWeight: 600,
-                        transition: 'all 0.2s',
-                        '&:hover': {
-                          transform: seat.status === 'available' ? 'scale(1.1)' : 'none',
-                        },
-                      }}
-                    >
-                      {seat.number}
-                    </Box>
-                  ))}
-                </Box>
-
-                <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-                  Selected: {bookingData.selectedSeats.length} seat(s)
-                </Typography>
-              </Box>
-            )}
-
-            {/* Step 3: Options */}
-            {activeStep === 2 && (
-              <Box>
-                <Card variant="outlined" sx={{ mb: 2, p: 2, bgcolor: 'info.light' }}>
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        checked={bookingData.autoExtend}
-                        onChange={(e) => setBookingData({ ...bookingData, autoExtend: e.target.checked })}
-                      />
-                    }
-                    label={
-                      <Box>
-                        <Typography variant="body2" fontWeight="600">
-                          🔄 Auto-extend booking
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          Automatically extend if seat is available (₹{library.hourlyRate}/hr)
-                        </Typography>
-                      </Box>
-                    }
-                  />
-                </Card>
-
-                {library.availableSeats < 10 && (
-                  <Card variant="outlined" sx={{ p: 2, bgcolor: 'warning.light' }}>
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          checked={bookingData.joinWaitlist}
-                          onChange={(e) => setBookingData({ ...bookingData, joinWaitlist: e.target.checked })}
-                        />
-                      }
-                      label={
-                        <Box>
-                          <Typography variant="body2" fontWeight="600">
-                            📋 Join waitlist (if booked out)
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            Get notified when seats become available
-                          </Typography>
-                        </Box>
-                      }
-                    />
-                  </Card>
-                )}
-              </Box>
-            )}
-
-            {/* Step 4: Confirm */}
-            {activeStep === 3 && (
-              <Box>
-                <Paper sx={{ p: 2, bgcolor: 'action.hover', borderRadius: 2, mb: 2 }}>
-                  <Typography variant="subtitle2" gutterBottom>
-                    📋 Booking Summary
-                  </Typography>
-                  <Grid container spacing={1}>
-                    <Grid item xs={6}>
-                      <Typography variant="caption" color="text.secondary">Date:</Typography>
-                      <Typography variant="body2" fontWeight="600">
-                        {new Date(bookingData.date).toLocaleDateString()}
-                      </Typography>
-                    </Grid>
-                    <Grid item xs={6}>
-                      <Typography variant="caption" color="text.secondary">Shift:</Typography>
-                      <Typography variant="body2" fontWeight="600">
-                        {shifts.find(s => s.id === bookingData.shift)?.label}
-                      </Typography>
-                    </Grid>
-                    <Grid item xs={6}>
-                      <Typography variant="caption" color="text.secondary">Seats:</Typography>
-                      <Typography variant="body2" fontWeight="600">
-                        {bookingData.selectedSeats.map(sId => seats.find(s => s.id === sId)?.number).join(', ')}
-                      </Typography>
-                    </Grid>
-                    <Grid item xs={6}>
-                      <Typography variant="caption" color="text.secondary">Total:</Typography>
-                      <Typography variant="h6" color="primary.main" fontWeight="bold">
-                        ₹{(shifts.find(s => s.id === bookingData.shift)?.price || 0) * bookingData.selectedSeats.length}
-                      </Typography>
-                    </Grid>
-                  </Grid>
-                </Paper>
-
-                {bookingData.autoExtend && (
-                  <Chip label="✓ Auto-extend enabled" color="info" sx={{ mb: 1 }} />
-                )}
-                {bookingData.joinWaitlist && (
-                  <Chip label="✓ Waitlist enabled" color="warning" sx={{ mb: 1 }} />
-                )}
-              </Box>
-            )}
-          </DialogContent>
-
-          <DialogActions>
-            <Button onClick={() => setBookingDialog(false)}>Cancel</Button>
-            {activeStep > 0 && (
-              <Button onClick={() => setActiveStep(prev => prev - 1)}>Back</Button>
-            )}
-            {activeStep < steps.length - 1 ? (
-              <Button variant="contained" onClick={handleNext}>Next</Button>
-            ) : (
-              <Button variant="contained" onClick={handleBooking}>
-                Confirm Booking
-              </Button>
-            )}
-          </DialogActions>
-        </Dialog>
       </Container>
     </StudyFocusedLayout>
   );

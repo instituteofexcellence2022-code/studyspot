@@ -140,6 +140,7 @@ interface LibrarySeat {
 
 interface BookingDetails {
   date: string;
+  shift?: string; // NEW: morning, afternoon, evening, fullday
   startTime: string;
   endTime: string;
   duration: 'hourly' | 'daily' | 'weekly' | 'monthly';
@@ -177,6 +178,7 @@ const EnhancedSeatBooking: React.FC<EnhancedSeatBookingProps> = ({
   // Booking details
   const [bookingDetails, setBookingDetails] = useState<BookingDetails>({
     date: new Date().toISOString().split('T')[0],
+    shift: '', // NEW: shift selection
     startTime: '09:00',
     endTime: '18:00',
     duration: 'daily',
@@ -194,6 +196,14 @@ const EnhancedSeatBooking: React.FC<EnhancedSeatBookingProps> = ({
     },
     specialRequests: '',
   });
+
+  // NEW: Shift options
+  const shifts = [
+    { id: 'morning', label: 'Morning', time: '6 AM - 12 PM', price: 150, icon: '🌅', hours: 6 },
+    { id: 'afternoon', label: 'Afternoon', time: '12 PM - 6 PM', price: 150, icon: '☀️', hours: 6 },
+    { id: 'evening', label: 'Evening', time: '6 PM - 11 PM', price: 100, icon: '🌙', hours: 5 },
+    { id: 'fullday', label: 'Full Day', time: '6 AM - 11 PM', price: 300, icon: '⏰', hours: 17 },
+  ];
 
   // Filters
   const [filters, setFilters] = useState({
@@ -593,57 +603,108 @@ const EnhancedSeatBooking: React.FC<EnhancedSeatBookingProps> = ({
             <Grid item xs={12} md={8}>
               <Card>
                 <CardContent>
-                  <Typography variant="h6" gutterBottom>📅 Select Date & Time</Typography>
+                  <Typography variant="h6" gutterBottom>📅 Select Booking Date</Typography>
+                  <TextField
+                    fullWidth
+                    type="date"
+                    label="Select Date"
+                    value={bookingDetails.date}
+                    onChange={(e) => setBookingDetails({...bookingDetails, date: e.target.value})}
+                    InputLabelProps={{ shrink: true }}
+                    inputProps={{ min: new Date().toISOString().split('T')[0] }}
+                    sx={{ mb: 3 }}
+                  />
+
+                  <Typography variant="h6" gutterBottom sx={{ mt: 3 }}>⏰ Select Shift</Typography>
                   <Grid container spacing={2}>
-                    <Grid item xs={12} sm={6}>
-                      <TextField
-                        fullWidth
-                        type="date"
-                        label="Booking Date"
-                        value={bookingDetails.date}
-                        onChange={(e) => setBookingDetails({...bookingDetails, date: e.target.value})}
-                        InputLabelProps={{ shrink: true }}
-                      />
-                    </Grid>
-                    <Grid item xs={12} sm={6}>
+                    {shifts.map((shift) => (
+                      <Grid item xs={12} sm={6} key={shift.id}>
+                        <Card
+                          sx={{
+                            cursor: 'pointer',
+                            border: 2,
+                            borderColor: bookingDetails.shift === shift.id ? 'primary.main' : 'divider',
+                            bgcolor: bookingDetails.shift === shift.id ? 'primary.light' : 'background.paper',
+                            transition: 'all 0.3s',
+                            '&:hover': {
+                              transform: 'scale(1.02)',
+                              boxShadow: 3,
+                            },
+                          }}
+                          onClick={() => setBookingDetails({ ...bookingDetails, shift: shift.id, duration: 'daily' })}
+                        >
+                          <CardContent sx={{ textAlign: 'center', py: 2 }}>
+                            <Typography variant="h3" sx={{ mb: 1 }}>{shift.icon}</Typography>
+                            <Typography variant="h6" fontWeight="600">
+                              {shift.label}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary" sx={{ my: 1 }}>
+                              {shift.time}
+                            </Typography>
+                            <Divider sx={{ my: 1 }} />
+                            <Typography variant="h5" color="primary.main" fontWeight="bold">
+                              ₹{shift.price}
+                            </Typography>
+                            {bookingDetails.shift === shift.id && (
+                              <Chip 
+                                label="Selected" 
+                                color="primary" 
+                                size="small" 
+                                sx={{ mt: 1 }}
+                                icon={<Check />}
+                              />
+                            )}
+                          </CardContent>
+                        </Card>
+                      </Grid>
+                    ))}
+                  </Grid>
+
+                  {/* Optional: Duration Selector (for flexibility) */}
+                  <Accordion sx={{ mt: 3 }}>
+                    <AccordionSummary expandIcon={<ExpandMore />}>
+                      <Typography variant="subtitle2">⏱️ Or choose custom duration</Typography>
+                    </AccordionSummary>
+                    <AccordionDetails>
                       <FormControl fullWidth>
-                        <InputLabel>Duration</InputLabel>
+                        <InputLabel>Duration Type</InputLabel>
                         <Select
                           value={bookingDetails.duration}
-                          onChange={(e: any) => setBookingDetails({...bookingDetails, duration: e.target.value})}
+                          onChange={(e: any) => setBookingDetails({...bookingDetails, duration: e.target.value, shift: ''})}
                         >
-                          <MenuItem value="hourly">⏱️ Hourly</MenuItem>
-                          <MenuItem value="daily">📅 Daily</MenuItem>
+                          <MenuItem value="hourly">⏱️ Hourly (Custom time)</MenuItem>
+                          <MenuItem value="daily">📅 Daily (Shift-based)</MenuItem>
                           <MenuItem value="weekly">🗓️ Weekly</MenuItem>
                           <MenuItem value="monthly">📆 Monthly</MenuItem>
                         </Select>
                       </FormControl>
-                    </Grid>
-                    {bookingDetails.duration === 'hourly' && (
-                      <>
-                        <Grid item xs={12} sm={6}>
-                          <TextField
-                            fullWidth
-                            type="time"
-                            label="Start Time"
-                            value={bookingDetails.startTime}
-                            onChange={(e) => setBookingDetails({...bookingDetails, startTime: e.target.value})}
-                            InputLabelProps={{ shrink: true }}
-                          />
+                      
+                      {bookingDetails.duration === 'hourly' && (
+                        <Grid container spacing={2} sx={{ mt: 2 }}>
+                          <Grid item xs={6}>
+                            <TextField
+                              fullWidth
+                              type="time"
+                              label="Start Time"
+                              value={bookingDetails.startTime}
+                              onChange={(e) => setBookingDetails({...bookingDetails, startTime: e.target.value})}
+                              InputLabelProps={{ shrink: true }}
+                            />
+                          </Grid>
+                          <Grid item xs={6}>
+                            <TextField
+                              fullWidth
+                              type="time"
+                              label="End Time"
+                              value={bookingDetails.endTime}
+                              onChange={(e) => setBookingDetails({...bookingDetails, endTime: e.target.value})}
+                              InputLabelProps={{ shrink: true }}
+                            />
+                          </Grid>
                         </Grid>
-                        <Grid item xs={12} sm={6}>
-                          <TextField
-                            fullWidth
-                            type="time"
-                            label="End Time"
-                            value={bookingDetails.endTime}
-                            onChange={(e) => setBookingDetails({...bookingDetails, endTime: e.target.value})}
-                            InputLabelProps={{ shrink: true }}
-                          />
-                        </Grid>
-                      </>
-                    )}
-                  </Grid>
+                      )}
+                    </AccordionDetails>
+                  </Accordion>
                 </CardContent>
               </Card>
 
