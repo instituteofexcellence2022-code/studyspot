@@ -331,6 +331,19 @@ export function registerRoutes(fastify: FastifyInstance) {
     return reply.code(result.statusCode).send(result.data);
   });
 
+  // Student search (for owner to add to groups)
+  fastify.all('/api/students*', async (request, reply) => {
+    const result = await proxyToService(
+      'Community',
+      SERVICES.COMMUNITY,
+      request.url,
+      request.method,
+      request.headers,
+      request.body
+    );
+    return reply.code(result.statusCode).send(result.data);
+  });
+
   // ============================================
   // MESSAGING SERVICE ROUTES (Legacy)
   // ============================================
