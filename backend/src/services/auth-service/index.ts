@@ -14,6 +14,7 @@ import { coreDb } from '../../config/database';
 import { logger } from '../../utils/logger';
 import { HTTP_STATUS, ERROR_CODES } from '../../config/constants';
 import type { AdminUser } from '../../types';
+import { Server as SocketIOServer } from 'socket.io';
 
 dotenv.config();
 
@@ -796,6 +797,10 @@ const start = async () => {
 
     // Store io instance globally for use in routes
     (fastify as any).io = io;
+    
+    // Also make it available via helper functions
+    const { setSocketIO } = require('../../utils/socketHelpers');
+    setSocketIO(io);
     
     logger.info(`✅ WebSocket Server running on port ${PORT}`);
     logger.info(`🔴 Real-time updates: ENABLED`);
