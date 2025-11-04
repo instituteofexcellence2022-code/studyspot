@@ -29,6 +29,7 @@ import {
   Dashboard,
   LibraryBooks,
   MenuBook,
+  EventSeat,
   Schedule,
   Timer,
   Assignment,
