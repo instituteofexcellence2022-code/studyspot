@@ -112,6 +112,8 @@ export default function EnhancedCommunityPage({ setIsAuthenticated, darkMode, se
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [myPrivacyEnabled, setMyPrivacyEnabled] = useState(false); // User's own privacy choice
+  const [privacyMenuAnchor, setPrivacyMenuAnchor] = useState<null | HTMLElement>(null); // Privacy settings menu
 
   const { user } = useAuth();
   const { socket, connected } = useSocket('student');
@@ -343,25 +345,59 @@ export default function EnhancedCommunityPage({ setIsAuthenticated, darkMode, se
     setSelectedCommunity(community);
     setChatDialog(true);
     fetchMessages(community.id);
+    
+    // Fetch user's privacy preference for this group (only for groups)
+    if (community.type === 'group') {
+      fetchPrivacyPreference(community.id);
+    }
+  };
+
+  const fetchPrivacyPreference = async (communityId: string) => {
+    try {
+      const response = await api.get(`/api/communities/${communityId}/privacy/${user?.id || 'student-001'}`);
+      setMyPrivacyEnabled(response.data?.privacyEnabled || false);
+    } catch (error) {
+      console.error('Error fetching privacy preference:', error);
+      setMyPrivacyEnabled(false);
+    }
+  };
+
+  const handleTogglePrivacy = async () => {
+    if (!selectedCommunity) return;
+
+    const newPrivacyState = !myPrivacyEnabled;
+
+    try {
+      await api.put(`/api/communities/${selectedCommunity.id}/privacy`, {
+        userId: user?.id || 'student-001',
+        privacyEnabled: newPrivacyState,
+      });
+
+      setMyPrivacyEnabled(newPrivacyState);
+      setPrivacyMenuAnchor(null);
+      toast.success(
+        newPrivacyState 
+          ? '🔒 Privacy enabled! You will appear as "Student X" to others.' 
+          : '✅ Privacy disabled! Your real name will be shown.'
+      );
+    } catch (error) {
+      console.error('Error toggling privacy:', error);
+      toast.error('Failed to update privacy setting');
+    }
   };
 
   const fetchMessages = async (communityId: string) => {
     try {
-      // Pass userRole=student so backend knows to apply privacy mode if enabled
+      // Pass userRole=student to get proper display names
       const response = await api.get(`/api/communities/${communityId}/messages?userRole=student`);
       const msgs = response.data?.data || getMockMessages();
-      const privacyMode = response.data?.privacyMode || false;
       
-      setMessages(msgs.map((m: ChatMessage) => ({
+      setMessages(msgs.map((m: any) => ({
         ...m,
         is_me: m.user_id === (user?.id || 'current-user'),
-        privacyMode, // Pass privacy mode to each message
+        // Use display_name if available (respects individual privacy), fallback to user_name
+        user_name: m.display_name || m.user_name,
       })));
-      
-      // Update community with privacy mode
-      if (selectedCommunity) {
-        setSelectedCommunity({ ...selectedCommunity, privacy_mode: privacyMode });
-      }
       
       scrollToBottom();
     } catch (error) {
@@ -635,17 +671,17 @@ export default function EnhancedCommunityPage({ setIsAuthenticated, darkMode, se
                 <Typography variant="caption" color="text.secondary">
                   {selectedCommunity?.member_count} members • {connected ? 'Online' : 'Offline'}
                 </Typography>
-                {selectedCommunity?.privacy_mode && selectedCommunity?.type === 'group' && (
+                {selectedCommunity?.type === 'group' && myPrivacyEnabled && (
                   <Chip
-                    label="🔒 Privacy Mode"
+                    label="🔒 Private"
                     size="small"
-                    color="warning"
+                    color="success"
                     sx={{ height: 18, fontSize: '0.65rem' }}
                   />
                 )}
               </Box>
             </Box>
-            <IconButton>
+            <IconButton onClick={(e) => setPrivacyMenuAnchor(e.currentTarget)}>
               <MoreVert />
             </IconButton>
           </Paper>
@@ -783,6 +819,51 @@ export default function EnhancedCommunityPage({ setIsAuthenticated, darkMode, se
             </IconButton>
           </DialogActions>
         </Dialog>
+
+        {/* Privacy Settings Menu */}
+        {selectedCommunity?.type === 'group' && (
+          <Paper
+            elevation={3}
+            sx={{
+              position: 'fixed',
+              top: privacyMenuAnchor ? privacyMenuAnchor.getBoundingClientRect().bottom + 8 : 0,
+              right: 16,
+              zIndex: 1400,
+              minWidth: 280,
+              display: privacyMenuAnchor ? 'block' : 'none',
+            }}
+          >
+            <List sx={{ py: 0 }}>
+              <ListItem>
+                <ListItemText
+                  primary="🔒 Privacy Settings"
+                  secondary="Control how others see you in this group"
+                  primaryTypographyProps={{ fontWeight: 600 }}
+                />
+              </ListItem>
+              <Divider />
+              <ListItemButton onClick={handleTogglePrivacy}>
+                <ListItemAvatar>
+                  <Avatar sx={{ bgcolor: myPrivacyEnabled ? 'success.main' : 'grey.400' }}>
+                    {myPrivacyEnabled ? '🔒' : '👤'}
+                  </Avatar>
+                </ListItemAvatar>
+                <ListItemText
+                  primary={myPrivacyEnabled ? 'Privacy ON' : 'Privacy OFF'}
+                  secondary={
+                    myPrivacyEnabled
+                      ? 'You appear as "Student X". Click to show your real name.'
+                      : 'Your real name is visible. Click to be anonymous.'
+                  }
+                />
+              </ListItemButton>
+              <Divider />
+              <ListItemButton onClick={() => setPrivacyMenuAnchor(null)}>
+                <ListItemText primary="Close" sx={{ textAlign: 'center', color: 'text.secondary' }} />
+              </ListItemButton>
+            </List>
+          </Paper>
+        )}
       </Container>
     </StudyFocusedLayout>
   );

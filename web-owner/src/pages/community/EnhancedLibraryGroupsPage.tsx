@@ -122,7 +122,6 @@ export default function EnhancedLibraryGroupsPage() {
     name: '',
     description: '',
     isPrivate: false,
-    privacyMode: false, // New: hide student names from each other
   });
 
   useEffect(() => {
@@ -229,12 +228,11 @@ export default function EnhancedLibraryGroupsPage() {
         libraryId,
         createdBy: ownerId,
         isPrivate: formData.isPrivate,
-        privacyMode: formData.privacyMode, // Send privacy mode setting
       });
 
       toast.success('Library group created successfully!');
       setCreateDialogOpen(false);
-      setFormData({ name: '', description: '', isPrivate: false, privacyMode: false });
+      setFormData({ name: '', description: '', isPrivate: false });
       fetchGroups();
     } catch (error) {
       console.error('Error creating group:', error);
@@ -518,27 +516,15 @@ export default function EnhancedLibraryGroupsPage() {
             sx={{ mt: 2 }}
           />
 
-          <FormControlLabel
-            control={
-              <Switch
-                checked={formData.privacyMode}
-                onChange={(e) => setFormData({ ...formData, privacyMode: e.target.checked })}
-                color="warning"
-              />
-            }
-            label={
-              <Box>
-                <Typography variant="body2" fontWeight="600">
-                  🔒 Enable Privacy Mode
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  Hide student names from each other. Only you (owner) can see full details.
-                  Students will see anonymous names like "Student A", "Student B".
-                </Typography>
-              </Box>
-            }
-            sx={{ mt: 2, alignItems: 'flex-start' }}
-          />
+          <Alert severity="info" sx={{ mt: 2 }}>
+            <Typography variant="body2" fontWeight="600">
+              ℹ️ Student Privacy
+            </Typography>
+            <Typography variant="caption">
+              Each student can choose to be anonymous ("Student A") or show their real name.
+              You (owner) will always see full details regardless of their choice.
+            </Typography>
+          </Alert>
         </DialogContent>
         <DialogActions sx={{ p: 2 }}>
           <Button onClick={() => setCreateDialogOpen(false)}>Cancel</Button>
