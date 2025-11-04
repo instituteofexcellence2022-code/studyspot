@@ -667,20 +667,46 @@ export default function EnhancedCommunityPage({ setIsAuthenticated, darkMode, se
               <Typography variant="h6" fontWeight="600">
                 {selectedCommunity?.name}
               </Typography>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Typography variant="caption" color="text.secondary">
-                  {selectedCommunity?.member_count} members • {connected ? 'Online' : 'Offline'}
-                </Typography>
-                {selectedCommunity?.type === 'group' && myPrivacyEnabled && (
-                  <Chip
-                    label="🔒 Private"
-                    size="small"
-                    color="success"
-                    sx={{ height: 18, fontSize: '0.65rem' }}
-                  />
-                )}
-              </Box>
+              <Typography variant="caption" color="text.secondary">
+                {selectedCommunity?.member_count} members • {connected ? 'Online' : 'Offline'}
+              </Typography>
             </Box>
+            
+            {/* Privacy Toggle - Only for Groups */}
+            {selectedCommunity?.type === 'group' && (
+              <Tooltip title={myPrivacyEnabled ? 'You appear as "Student X" (Click to show real name)' : 'Your real name is visible (Click to be anonymous)'}>
+                <Box 
+                  onClick={handleTogglePrivacy}
+                  sx={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: 1, 
+                    px: 2, 
+                    py: 0.5,
+                    borderRadius: 2,
+                    bgcolor: myPrivacyEnabled ? 'success.light' : 'grey.200',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s',
+                    '&:hover': {
+                      bgcolor: myPrivacyEnabled ? 'success.main' : 'grey.300',
+                    }
+                  }}
+                >
+                  <Avatar sx={{ width: 28, height: 28, bgcolor: myPrivacyEnabled ? 'success.dark' : 'grey.500' }}>
+                    {myPrivacyEnabled ? '🔒' : '👤'}
+                  </Avatar>
+                  <Box>
+                    <Typography variant="caption" fontWeight="600" sx={{ color: myPrivacyEnabled ? 'success.dark' : 'text.primary' }}>
+                      {myPrivacyEnabled ? 'Private' : 'Public'}
+                    </Typography>
+                    <Typography variant="caption" display="block" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
+                      {myPrivacyEnabled ? 'Anonymous' : 'Real Name'}
+                    </Typography>
+                  </Box>
+                </Box>
+              </Tooltip>
+            )}
+            
             <IconButton onClick={(e) => setPrivacyMenuAnchor(e.currentTarget)}>
               <MoreVert />
             </IconButton>
@@ -820,50 +846,7 @@ export default function EnhancedCommunityPage({ setIsAuthenticated, darkMode, se
           </DialogActions>
         </Dialog>
 
-        {/* Privacy Settings Menu */}
-        {selectedCommunity?.type === 'group' && (
-          <Paper
-            elevation={3}
-            sx={{
-              position: 'fixed',
-              top: privacyMenuAnchor ? privacyMenuAnchor.getBoundingClientRect().bottom + 8 : 0,
-              right: 16,
-              zIndex: 1400,
-              minWidth: 280,
-              display: privacyMenuAnchor ? 'block' : 'none',
-            }}
-          >
-            <List sx={{ py: 0 }}>
-              <ListItem>
-                <ListItemText
-                  primary="🔒 Privacy Settings"
-                  secondary="Control how others see you in this group"
-                  primaryTypographyProps={{ fontWeight: 600 }}
-                />
-              </ListItem>
-              <Divider />
-              <ListItemButton onClick={handleTogglePrivacy}>
-                <ListItemAvatar>
-                  <Avatar sx={{ bgcolor: myPrivacyEnabled ? 'success.main' : 'grey.400' }}>
-                    {myPrivacyEnabled ? '🔒' : '👤'}
-                  </Avatar>
-                </ListItemAvatar>
-                <ListItemText
-                  primary={myPrivacyEnabled ? 'Privacy ON' : 'Privacy OFF'}
-                  secondary={
-                    myPrivacyEnabled
-                      ? 'You appear as "Student X". Click to show your real name.'
-                      : 'Your real name is visible. Click to be anonymous.'
-                  }
-                />
-              </ListItemButton>
-              <Divider />
-              <ListItemButton onClick={() => setPrivacyMenuAnchor(null)}>
-                <ListItemText primary="Close" sx={{ textAlign: 'center', color: 'text.secondary' }} />
-              </ListItemButton>
-            </List>
-          </Paper>
-        )}
+        {/* Keep privacy menu for additional options if needed */}
       </Container>
     </StudyFocusedLayout>
   );
