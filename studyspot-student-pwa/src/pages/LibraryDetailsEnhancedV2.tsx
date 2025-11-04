@@ -56,7 +56,6 @@ import {
 import StudyFocusedLayout from '../components/StudyFocusedLayout';
 import { gradients } from '../theme/colors';
 import api from '../services/api';
-import SeatBookingPage from './SeatBookingPage';
 import EnhancedSeatBooking from './EnhancedSeatBooking';
 
 interface Library {

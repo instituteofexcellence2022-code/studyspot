@@ -32,7 +32,6 @@ import CommunityPage from './pages/CommunityPage';
 import FavoritesPage from './pages/FavoritesPage';
 import ManageBookingsPage from './pages/ManageBookingsPage';
 import ReviewsPage from './pages/ReviewsPage';
-import SeatBookingPage from './pages/SeatBookingPage';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -128,14 +127,6 @@ function App() {
               element={
                 <ProtectedRoute>
                   <BookingsPage darkMode={darkMode} setDarkMode={setDarkMode} />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/seat-booking"
-              element={
-                <ProtectedRoute>
-                  <SeatBookingPage darkMode={darkMode} setDarkMode={setDarkMode} />
                 </ProtectedRoute>
               }
             />
