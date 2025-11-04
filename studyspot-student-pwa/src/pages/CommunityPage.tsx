@@ -25,6 +25,7 @@ import {
   Tab,
   Paper,
   Divider,
+  MenuItem,
 } from '@mui/material';
 import {
   Group,
@@ -40,6 +41,7 @@ import {
   Comment,
   Share,
   ThumbUp,
+  CheckCircle,
 } from '@mui/icons-material';
 import Layout from '../components/StudyFocusedLayout';
 import api from '../services/api';
@@ -75,7 +77,7 @@ interface ChatMessage {
   isMe: boolean;
 }
 
-export default function CommunityPage({ setIsAuthenticated }: { setIsAuthenticated: (value: boolean) => void }) {
+export default function CommunityPage({ setIsAuthenticated, darkMode, setDarkMode }: any) {
   const [tab, setTab] = useState(0);
   const [search, setSearch] = useState('');
   const [groups, setGroups] = useState<StudyGroup[]>([]);
@@ -243,7 +245,7 @@ export default function CommunityPage({ setIsAuthenticated }: { setIsAuthenticat
   );
 
   return (
-    <Layout setIsAuthenticated={setIsAuthenticated}>
+    <Layout setIsAuthenticated={setIsAuthenticated} darkMode={darkMode} setDarkMode={setDarkMode}>
       <Container maxWidth="lg" sx={{ py: 4 }}>
         <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Box>
@@ -529,9 +531,5 @@ export default function CommunityPage({ setIsAuthenticated }: { setIsAuthenticat
       </Container>
     </Layout>
   );
-}
-
-function CheckCircle() {
-  return <Group />;
 }
 
