@@ -77,14 +77,12 @@ const MainLayout: React.FC = () => {
           display: 'flex',
           flexDirection: 'column',
           minHeight: '100vh',
+          width: '100%',
           transition: theme.transitions.create(['margin', 'width'], {
             easing: theme.transitions.easing.sharp,
             duration: theme.transitions.duration.leavingScreen,
           }),
-          ...(sidebarOpen && !isMobile && {
-            marginLeft: '280px',
-            width: 'calc(100% - 280px)',
-          }),
+          // No marginLeft needed - persistent drawer pushes content automatically
         }}
       >
         {/* Top App Bar */}
@@ -92,10 +90,9 @@ const MainLayout: React.FC = () => {
           position="fixed"
           sx={{
             zIndex: theme.zIndex.drawer + 1,
-            ...(sidebarOpen && !isMobile && {
-              width: 'calc(100% - 280px)',
-              marginLeft: '280px',
-            }),
+            width: '100%',
+            left: 0,
+            // AppBar spans full width, positioned above drawer
           }}
         >
           <Toolbar>
