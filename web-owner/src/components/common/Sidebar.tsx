@@ -49,6 +49,7 @@ import {
   Event,
   Psychology,
   Chat as ChatIcon,
+  Group,
   EditLocationAlt,
   Star,
   Receipt,
@@ -204,6 +205,15 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
       description: 'Student inquiries and communication',
       section: 'operations',
       badge: { count: 3, color: 'error' }
+    },
+    {
+      label: 'Library Groups',
+      path: '/groups',
+      icon: <Group />,
+      roles: ['library_owner', 'branch_manager', 'super_admin'],
+      description: 'Create and manage library study groups',
+      section: 'operations',
+      badge: { text: 'NEW', color: 'success' }
     },
     {
       label: 'Issue Management',

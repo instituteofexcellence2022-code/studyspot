@@ -28,7 +28,7 @@ import AnnouncementsPage from './pages/AnnouncementsPage';
 import ReferralPage from './pages/ReferralPage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import TasksGoalsPage from './pages/TasksGoalsPage';
-import CommunityPage from './pages/CommunityPage';
+import CommunityPage from './pages/EnhancedCommunityPage';
 import FavoritesPage from './pages/FavoritesPage';
 import ManageBookingsPage from './pages/ManageBookingsPage';
 import ReviewsPage from './pages/ReviewsPage';

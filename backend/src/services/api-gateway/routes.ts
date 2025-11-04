@@ -19,7 +19,8 @@ const SERVICES = {
   CREDIT: process.env.CREDIT_SERVICE_URL || 'http://localhost:3008',
   SUBSCRIPTION: process.env.SUBSCRIPTION_SERVICE_URL || 'http://localhost:3009',
   MESSAGE: process.env.MESSAGE_SERVICE_URL || 'http://localhost:3010',
-  MESSAGING: process.env.MESSAGING_SERVICE_URL || 'http://localhost:3011',
+  COMMUNITY: process.env.COMMUNITY_SERVICE_URL || 'http://localhost:3011',
+  MESSAGING: process.env.MESSAGING_SERVICE_URL || 'http://localhost:3012',
   ANALYTICS: process.env.ANALYTICS_SERVICE_URL || 'http://localhost:3013',
 };
 
@@ -282,6 +283,46 @@ export function registerRoutes(fastify: FastifyInstance) {
     const result = await proxyToService(
       'Message',
       SERVICES.MESSAGE,
+      path,
+      request.method,
+      request.headers,
+      request.body
+    );
+    return reply.code(result.statusCode).send(result.data);
+  });
+
+  // ============================================
+  // COMMUNITY SERVICE ROUTES
+  // ============================================
+  fastify.all('/api/communities*', async (request, reply) => {
+    const result = await proxyToService(
+      'Community',
+      SERVICES.COMMUNITY,
+      request.url,
+      request.method,
+      request.headers,
+      request.body
+    );
+    return reply.code(result.statusCode).send(result.data);
+  });
+
+  fastify.all('/api/groups*', async (request, reply) => {
+    const result = await proxyToService(
+      'Community',
+      SERVICES.COMMUNITY,
+      request.url,
+      request.method,
+      request.headers,
+      request.body
+    );
+    return reply.code(result.statusCode).send(result.data);
+  });
+
+  fastify.all('/api/v1/communities*', async (request, reply) => {
+    const path = request.url.replace('/api/v1', '/api');
+    const result = await proxyToService(
+      'Community',
+      SERVICES.COMMUNITY,
       path,
       request.method,
       request.headers,
