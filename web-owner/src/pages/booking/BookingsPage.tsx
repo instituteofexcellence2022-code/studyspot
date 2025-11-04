@@ -126,7 +126,7 @@ const BookingsPage: React.FC = () => {
   }, [socket, connected]);
 
   const getStatusChip = (status: string) => {
-    const statusConfig: Record<string, { color: any; icon: React.ReactNode }> = {
+    const statusConfig: Record<string, { color: any; icon?: React.ReactElement }> = {
       confirmed: { color: 'success', icon: <CheckCircle /> },
       pending: { color: 'warning', icon: <AccessTime /> },
       cancelled: { color: 'error', icon: <Cancel /> },
@@ -134,11 +134,11 @@ const BookingsPage: React.FC = () => {
       completed: { color: 'default', icon: <CheckCircle /> },
     };
 
-    const config = statusConfig[status] || { color: 'default', icon: null };
+    const config = statusConfig[status] || { color: 'default' };
 
     return (
       <Chip
-        icon={config.icon}
+        {...(config.icon && { icon: config.icon })}
         label={status.replace('_', ' ').toUpperCase()}
         color={config.color}
         size="small"
