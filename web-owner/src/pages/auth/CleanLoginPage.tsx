@@ -19,12 +19,12 @@ import {
   GitHub as GitHubIcon,
   SkipNext,
 } from '@mui/icons-material';
-import axios from 'axios';
 import { useAppDispatch } from '../../hooks/redux';
-import { setCredentials } from '../../store/slices/authSlice';
-import { ROUTES, API_CONFIG, STORAGE_KEYS } from '../../constants';
+import { login, setCredentials } from '../../store/slices/authSlice';
+import { ROUTES, STORAGE_KEYS } from '../../constants';
 import errorService from '../../services/errorService';
 import ENV from '../../config/environment';
+import { authService } from '../../services/authService';
 
 const DEMO_ACCOUNT = {
   email: 'owner@demo.com',
@@ -50,45 +50,25 @@ const CleanLoginPage: React.FC = () => {
       setSuccess('');
       setLoading(true);
 
-      console.log('🔵 Attempting login to:', `${API_CONFIG.BASE_URL}/api/auth/login`);
+      console.log('🔵 Attempting login via Redux...');
       
-      const response = await axios.post(
-        `${API_CONFIG.BASE_URL}/api/auth/login`,
-        { 
-          email: loginEmail, 
-          password: loginPassword 
-        },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          timeout: 10000,
-        }
-      );
+      // Use Redux login action
+      const result = await dispatch(login({
+        email: loginEmail,
+        password: loginPassword,
+      })).unwrap();
 
-      console.log('✅ Login response:', response.data);
+      console.log('✅ Login successful:', result);
 
-      const data = response.data as any;
-      if (data.success && data.data) {
-        const { user, tokens } = data.data;
-        
-        // Store tokens
-        localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, tokens.accessToken);
-        localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, tokens.refreshToken);
-        localStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(user));
-
-        setSuccess('✅ Login successful! Redirecting...');
-        
-        setTimeout(() => {
-          navigate(ROUTES.DASHBOARD);
-        }, 500);
-      } else {
-        throw new Error('Invalid response format from server');
-      }
+      setSuccess('✅ Login successful! Redirecting...');
+      
+      setTimeout(() => {
+        navigate(ROUTES.DASHBOARD);
+      }, 500);
     } catch (err: any) {
       const appError = errorService.parseError(err);
       errorService.logError(appError, 'Login');
-      setError(appError.userMessage);
+      setError(appError.userMessage || err || 'Login failed. Please check your credentials.');
     } finally {
       setLoading(false);
     }
@@ -96,37 +76,37 @@ const CleanLoginPage: React.FC = () => {
 
   const handleRegister = async (userData: typeof DEMO_ACCOUNT) => {
     try {
-      console.log('🔵 Attempting registration to:', `${API_CONFIG.BASE_URL}/api/auth/register`);
+      console.log('🔵 Attempting registration via authService...');
       
-      const response = await axios.post(
-        `${API_CONFIG.BASE_URL}/api/auth/register`,
-        userData,
-        {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          timeout: 10000,
-        }
-      );
+      // Use authService.registerDetailed for better data handling
+      const response = await (authService as any).registerDetailed({
+        email: userData.email,
+        password: userData.password,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        phone: userData.phone,
+        role: userData.role,
+      });
 
-      console.log('✅ Registration response:', response.data);
+      console.log('✅ Registration response:', response);
       
-      const data = response.data as any;
-      if (data.success) {
+      if (response.success) {
         return { success: true, message: 'Account created successfully!' };
       } else {
-        throw new Error(data.message || 'Registration failed');
+        throw new Error(response.message || 'Registration failed');
       }
     } catch (err: any) {
       const appError = errorService.parseError(err);
       errorService.logError(appError, 'Registration');
       
       // If user already exists, that's okay for demo account
-      if (appError.code === 'CONFLICT' || appError.message.toLowerCase().includes('exists')) {
+      if (appError.code === 'CONFLICT' || 
+          appError.message?.toLowerCase().includes('exists') ||
+          err?.message?.toLowerCase().includes('exists')) {
         return { success: true, message: 'Account already exists, logging in...' };
       }
       
-      throw new Error(appError.userMessage);
+      throw new Error(appError.userMessage || err?.message || 'Registration failed');
     }
   };
 
