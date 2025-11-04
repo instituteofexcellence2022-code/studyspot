@@ -30,6 +30,10 @@ fastify.register(cors, {
     'http://localhost:3001',  // Student PWA  
     'http://localhost:3002',  // Legacy
     'http://localhost:5173',  // Vite dev server
+    'https://main.studyspot-student.pages.dev',  // Cloudflare Student PWA
+    'https://studyspot-student.pages.dev',  // Cloudflare root domain
+    /\.pages\.dev$/,  // All Cloudflare Pages domains
+    /\.vercel\.app$/,  // All Vercel domains
   ],
   credentials: true,
 });
