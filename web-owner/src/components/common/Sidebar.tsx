@@ -970,13 +970,13 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
         '& .MuiDrawer-paper': {
           width: drawerWidth,
           boxSizing: 'border-box',
-          borderRight: `1px solid ${theme.palette.divider}`,
+          borderRight: 'none', // Remove border to eliminate gap
           position: 'fixed',
           height: '100vh',
           maxHeight: '100vh', // Prevent drawer from exceeding viewport
           overflow: 'hidden', // Prevent overall drawer overflow
           zIndex: theme.zIndex.drawer,
-          boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+          boxShadow: '2px 0 8px rgba(0,0,0,0.08)', // Subtle right shadow for depth
           background: theme.palette.background.paper,
           top: 0,
           left: 0,
