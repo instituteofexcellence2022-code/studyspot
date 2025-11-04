@@ -114,6 +114,7 @@ export default function EnhancedCommunityPage({ setIsAuthenticated, darkMode, se
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [myPrivacyEnabled, setMyPrivacyEnabled] = useState(false); // User's own privacy choice
   const [privacyMenuAnchor, setPrivacyMenuAnchor] = useState<null | HTMLElement>(null); // Privacy settings menu
+  const [groupStats, setGroupStats] = useState<{ communities: number; eligibleGroups: number; bookedLibraries: number } | null>(null);
 
   const { user } = useAuth();
   const { socket, connected } = useSocket('student');
@@ -161,11 +162,16 @@ export default function EnhancedCommunityPage({ setIsAuthenticated, darkMode, se
   const fetchCommunities = async () => {
     setLoading(true);
     try {
-      const response = await api.get('/api/communities/all');
+      // Pass userId to get filtered groups (only from booked libraries)
+      const userId = user?.id || 'student-001';
+      const response = await api.get(`/api/communities/all?userId=${userId}`);
       const allCommunities = response.data?.data || getMockCommunities();
+      const stats = response.data?.stats;
+      
+      console.log('📊 Communities/Groups visible:', stats);
       
       // Check which ones user has joined
-      const userResponse = await api.get(`/api/communities/user/${user?.id || 'student-001'}`);
+      const userResponse = await api.get(`/api/communities/user/${userId}`);
       const joined = userResponse.data?.data || [];
       const joinedIds = joined.map((c: Community) => c.id);
       
@@ -175,6 +181,14 @@ export default function EnhancedCommunityPage({ setIsAuthenticated, darkMode, se
       }));
       
       setCommunities(withJoinStatus);
+      setGroupStats(stats || null);
+      
+      // Show info if student has booked libraries
+      if (stats && stats.bookedLibraries > 0) {
+        console.log(`✅ You can see ${stats.eligibleGroups} library group(s) from ${stats.bookedLibraries} library(ies) you've booked`);
+      } else if (stats) {
+        console.log('ℹ️ Book a library to unlock library groups!');
+      }
     } catch (error) {
       console.error('Error fetching communities:', error);
       setCommunities(getMockCommunities());
@@ -589,6 +603,26 @@ export default function EnhancedCommunityPage({ setIsAuthenticated, darkMode, se
           <Tab label={`Library Groups (${communities.filter(c => c.type === 'group').length})`} icon={<Business fontSize="small" />} iconPosition="start" />
         </Tabs>
 
+        {/* Library Groups Info Banner */}
+        {tab === 2 && groupStats && (
+          <Alert 
+            severity={groupStats.bookedLibraries > 0 ? 'success' : 'info'} 
+            sx={{ mb: 3 }}
+            icon={groupStats.bookedLibraries > 0 ? <CheckCircle /> : <Business />}
+          >
+            <Typography variant="body2" fontWeight="600">
+              {groupStats.bookedLibraries > 0 
+                ? `🎉 You can access ${groupStats.eligibleGroups} library group(s) from ${groupStats.bookedLibraries} library(ies) you've booked!`
+                : '📚 Library Groups are Locked'}
+            </Typography>
+            <Typography variant="caption">
+              {groupStats.bookedLibraries > 0
+                ? 'You can only see and join groups from libraries where you have bookings. Book more libraries to unlock more groups!'
+                : 'Book a library to unlock library groups! Only customers can join library-specific groups. Browse libraries and make your first booking.'}
+            </Typography>
+          </Alert>
+        )}
+
         {/* Content */}
         {loading ? (
           <LinearProgress />
@@ -601,6 +635,11 @@ export default function EnhancedCommunityPage({ setIsAuthenticated, darkMode, se
             {tab === 0 && (
               <Typography variant="body2" color="text.secondary">
                 Browse and join communities from other tabs
+              </Typography>
+            )}
+            {tab === 2 && groupStats?.bookedLibraries === 0 && (
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                📖 Book a library to see library groups here!
               </Typography>
             )}
           </Paper>
