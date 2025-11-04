@@ -10,6 +10,9 @@ const { errorHandler, notFound } = require('./middleware/errorHandler');
 const { logger } = require('./utils/logger');
 const { connectDatabase, checkHealth: checkDatabaseHealth } = require('./config/database');
 const { connectRedis } = require('./config/redis');
+// Multi-provider support (optional - falls back to single provider if not configured)
+const { connectAllRedis, redisHealthCheck } = require('./config/redis-multi');
+const { connectPrimaryDatabase, connectReadReplica, databaseHealthCheck } = require('./config/database-multi');
 const { securityHeaders } = require('./middleware/securityHeaders');
 const { requestId } = require('./middleware/requestId');
 const { httpsRedirect } = require('./middleware/httpsRedirect');
@@ -295,7 +298,16 @@ async function startServer() {
     // ========================================
     try {
       logger.info('Connecting to PostgreSQL database...');
-      await connectDatabase();
+      // Try multi-provider database first, fallback to single provider
+      try {
+        await connectPrimaryDatabase();
+        await connectReadReplica().catch(() => {
+          logger.warn('⚠️  Read replica not configured, using primary only');
+        });
+      } catch (error) {
+        logger.warn('⚠️  Multi-provider database failed, trying single provider:', error.message);
+        await connectDatabase();
+      }
       
       // Verify database health
       const dbHealth = await checkDatabaseHealth();
@@ -325,7 +337,13 @@ async function startServer() {
     // ========================================
     try {
       logger.info('Connecting to Redis...');
-      await connectRedis();
+      // Try multi-provider Redis first, fallback to single provider
+      try {
+        await connectAllRedis();
+      } catch (error) {
+        logger.warn('⚠️  Multi-provider Redis failed, trying single provider:', error.message);
+        await connectRedis();
+      }
       logger.info('✅ Redis connected successfully (caching enabled)');
     } catch (redisError) {
       console.warn('⚠️  Redis connection failed - caching disabled');

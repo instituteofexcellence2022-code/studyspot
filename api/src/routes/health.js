@@ -1,6 +1,18 @@
 const express = require('express');
 const { checkHealth: checkDatabaseHealth } = require('../config/database');
 const { checkHealth: checkRedisHealth } = require('../config/redis');
+// Multi-provider support (optional)
+let databaseHealthCheck, redisHealthCheck;
+try {
+  databaseHealthCheck = require('../config/database-multi').databaseHealthCheck;
+} catch (e) {
+  databaseHealthCheck = null;
+}
+try {
+  redisHealthCheck = require('../config/redis-multi').redisHealthCheck;
+} catch (e) {
+  redisHealthCheck = null;
+}
 const { logger } = require('../utils/logger');
 
 const router = express.Router();
@@ -27,11 +39,11 @@ router.get('/detailed', async (req, res) => {
   try {
     const startTime = Date.now();
     
-    // Check database health
-    const dbHealth = await checkDatabaseHealth();
+    // Check database health (multi-provider if available)
+    const dbHealth = databaseHealthCheck ? await databaseHealthCheck() : await checkDatabaseHealth();
     
-    // Check Redis health
-    const redisHealth = await checkRedisHealth();
+    // Check Redis health (multi-provider if available)
+    const redisHealth = redisHealthCheck ? await redisHealthCheck() : await checkRedisHealth();
     
     // Check memory usage
     const memoryUsage = process.memoryUsage();

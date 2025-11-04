@@ -1,0 +1,30 @@
+[1mdiff --git a/studyspot-student-pwa/src/components/StudyFocusedLayout.tsx b/studyspot-student-pwa/src/components/StudyFocusedLayout.tsx[m
+[1mindex d6025698..07f53e30 100644[m
+[1m--- a/studyspot-student-pwa/src/components/StudyFocusedLayout.tsx[m
+[1m+++ b/studyspot-student-pwa/src/components/StudyFocusedLayout.tsx[m
+[36m@@ -22,7 +22,7 @@[m [mimport {[m
+   useMediaQuery,[m
+   useTheme,[m
+   Menu,[m
+[31m-  MenuItem,[m
+[32m+[m[32m  Button,[m
+ } from '@mui/material';[m
+ import {[m
+   Menu as MenuIcon,[m
+[36m@@ -392,14 +392,14 @@[m [mexport default function StudyFocusedLayout({ children, setIsAuthenticated, darkM[m
+                     </Typography>[m
+                   }[m
+                   secondary={[m
+[31m-                    <Box component="div">[m
+[32m+[m[32m                    <>[m
+                       <Typography variant="caption" color="text.secondary" display="block">[m
+                         {notif.message}[m
+                       </Typography>[m
+                       <Typography variant="caption" color="primary.main" sx={{ mt: 0.5 }}>[m
+                         {notif.time}[m
+                       </Typography>[m
+[31m-                    </Box>[m
+[32m+[m[32m                    </>[m
+                   }[m
+                 />[m
+               </ListItemButton>[m

@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+Sitemap: https://studyspot-student.vercel.app/sitemap.xml
+

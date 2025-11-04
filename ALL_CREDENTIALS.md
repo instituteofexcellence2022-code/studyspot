@@ -94,8 +94,9 @@ CORS_ORIGIN=http://localhost:3000,http://localhost:3002
 
 **Optional Services:**
 ```env
-# Redis (for caching)
-REDIS_URL=
+# Redis (Upstash - for caching)
+REDIS_URL=redis://default:AWuSAAIncDJhMjdlOWZkZjgyMTU0ZDJjOTVkZTk0N2UxYzViY2YzM3AyMjc1Mzg@adequate-hen-27538.upstash.io:6379
+UPSTASH_REDIS_URL=redis://default:AWuSAAIncDJhMjdlOWZkZjgyMTU0ZDJjOTVkZTk0N2UxYzViY2YzM3AyMjc1Mzg@adequate-hen-27538.upstash.io:6379
 
 # Email (Brevo/SendinBlue)
 EMAIL_HOST=
@@ -107,6 +108,12 @@ EMAIL_PASSWORD=
 TWILIO_ACCOUNT_SID=
 TWILIO_AUTH_TOKEN=
 TWILIO_PHONE_NUMBER=
+
+# Storage (Cloudinary)
+CLOUDINARY_CLOUD_NAME=dhytamfqw
+CLOUDINARY_API_KEY=175265946761561
+CLOUDINARY_API_SECRET=fuVVLM5YZnNHUwBHx5aziXDNWnc
+CLOUDINARY_URL=cloudinary://175265946761561:fuVVLM5YZnNHUwBHx5aziXDNWnc@dhytamfqw
 
 # Payments
 RAZORPAY_KEY_ID=
@@ -136,9 +143,16 @@ DATABASE_URL=postgresql://postgres.zgrgryufcxgjbmpjiwbh:[password]@aws-0-ap-sout
 ```
 NODE_ENV=production
 PORT=3001
-CORS_ORIGIN=https://studyspot-owner.vercel.app,https://studyspot-admin.vercel.app
+CORS_ORIGIN=https://studyspot-owner.vercel.app,https://studyspot-admin.vercel.app,https://studyspot-student.vercel.app
 JWT_SECRET=[Your production JWT secret]
 JWT_REFRESH_SECRET=[Your production refresh secret]
+```
+
+**Redis (Upstash):**
+```
+UPSTASH_REDIS_URL=rediss://default:AWuSAAIncDJhMjdlOWZkZjgyMTU0ZDJjOTVkZTk0N2UxYzViY2YzM3AyMjc1Mzg@adequate-hen-27538.upstash.io:6379
+UPSTASH_REDIS_REST_URL=https://adequate-hen-27538.upstash.io
+UPSTASH_REDIS_REST_TOKEN=AWuSAAIncDJhMjdlOWZkZjgyMTU0ZDJjOTVkZTk0N2UxYzViY2YzM3AyMjc1Mzg
 ```
 
 ### **Vercel (Owner Portal) Environment Variables:**
