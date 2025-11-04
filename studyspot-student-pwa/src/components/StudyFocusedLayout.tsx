@@ -81,6 +81,7 @@ export default function StudyFocusedLayout({ children, darkMode, setDarkMode }: 
       items: [
         { text: 'Dashboard', icon: <Dashboard />, path: '/dashboard', badge: null },
         { text: 'Find Libraries', icon: <LibraryBooks />, path: '/libraries', badge: null },
+        { text: 'Book a Seat', icon: <EventSeat />, path: '/seat-booking', badge: 'New' },
         { text: 'My Bookings', icon: <MenuBook />, path: '/bookings', badge: null },
         { text: 'Study Timer', icon: <Timer />, path: '/study-timer', badge: 'Start' },
         { text: 'QR Check-in', icon: <QrCodeScanner />, path: '/qr-scanner', badge: null },
