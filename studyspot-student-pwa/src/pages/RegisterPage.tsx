@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import {
   Box,
@@ -9,14 +9,27 @@ import {
   Paper,
   Alert,
   CircularProgress,
+  InputAdornment,
+  IconButton,
 } from '@mui/material';
-import { PersonAdd as RegisterIcon } from '@mui/icons-material';
-import api from '../services/api';
+import { 
+  PersonAdd as RegisterIcon,
+  Visibility,
+  VisibilityOff,
+  Email as EmailIcon,
+  Lock as LockIcon,
+  Person as PersonIcon,
+  Phone as PhoneIcon,
+} from '@mui/icons-material';
+import { useAuth } from '../contexts/AuthContext';
+import { validateRegisterForm } from '../utils/validation';
 
 export default function RegisterPage() {
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const { register, isLoading, error: authError, clearError } = useAuth();
+  
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [success, setSuccess] = useState(false);
   const [formData, setFormData] = useState({
     firstName: '',
@@ -26,43 +39,33 @@ export default function RegisterPage() {
     password: '',
     confirmPassword: '',
   });
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (authError || Object.keys(fieldErrors).length > 0) {
+      clearError();
+      setFieldErrors({});
+    }
+  }, [formData]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
     });
-    setError('');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setError('');
 
-    // Validate passwords match
-    if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
-      setLoading(false);
-      return;
-    }
-
-    // Validate password length
-    if (formData.password.length < 8) {
-      setError('Password must be at least 8 characters long');
-      setLoading(false);
-      return;
-    }
-
-    // Validate phone (10 digits)
-    if (formData.phone && !/^\d{10}$/.test(formData.phone)) {
-      setError('Phone number must be 10 digits');
-      setLoading(false);
+    const validation = validateRegisterForm(formData);
+    if (!validation.isValid) {
+      setFieldErrors(validation.errors);
       return;
     }
 
     try {
-      const response = await api.post('/api/auth/register', {
+      await register({
         firstName: formData.firstName,
         lastName: formData.lastName,
         email: formData.email,
@@ -71,19 +74,14 @@ export default function RegisterPage() {
         role: 'student',
       });
 
-      console.log('Registration response:', response.data);
       setSuccess(true);
-      setTimeout(() => navigate('/login'), 2000);
-    } catch (err: any) {
-      console.error('Registration error:', err);
-      setError(
-        err.response?.data?.message || 
-        err.response?.data?.error ||
-        err.response?.data?.errors?.[0]?.msg ||
-        'Registration failed. Please try again.'
-      );
-    } finally {
-      setLoading(false);
+      setTimeout(() => {
+        navigate('/login', {
+          state: { message: 'Registration successful! Please login.' }
+        });
+      }, 2000);
+    } catch (error) {
+      console.error('Registration failed:', error);
     }
   };
 
@@ -96,53 +94,94 @@ export default function RegisterPage() {
         justifyContent: 'center',
         background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
         padding: 2,
+        py: 3,
       }}
     >
-      <Container maxWidth="xs">
-        <Paper elevation={3} sx={{ p: 4, borderRadius: 2 }}>
+      <Container maxWidth="sm">
+        <Paper 
+          elevation={24} 
+          sx={{ 
+            p: 4, 
+            borderRadius: 3,
+            background: 'rgba(255, 255, 255, 0.98)',
+            backdropFilter: 'blur(10px)',
+          }}
+        >
+          {/* Header */}
           <Box sx={{ textAlign: 'center', mb: 3 }}>
-            <RegisterIcon sx={{ fontSize: 48, color: 'primary.main', mb: 2 }} />
-            <Typography variant="h4" component="h1" gutterBottom fontWeight="bold">
-              Join StudySpot
+            <Box
+              sx={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 64,
+                height: 64,
+                borderRadius: '50%',
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                mb: 2,
+              }}
+            >
+              <RegisterIcon sx={{ fontSize: 32, color: 'white' }} />
+            </Box>
+            <Typography variant="h5" fontWeight="700" gutterBottom>
+              Create Account
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Create your student account
+              Join StudySpot today
             </Typography>
           </Box>
 
-          {error && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {error}
+          {/* Alerts */}
+          {authError && !success && (
+            <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>
+              {authError}
             </Alert>
           )}
 
           {success && (
-            <Alert severity="success" sx={{ mb: 2 }}>
-              Registration successful! Redirecting to login...
+            <Alert severity="success" sx={{ mb: 2, borderRadius: 2 }}>
+              ✓ Registration successful! Redirecting...
             </Alert>
           )}
 
-          <form onSubmit={handleSubmit}>
-            <TextField
-              fullWidth
-              label="First Name"
-              name="firstName"
-              value={formData.firstName}
-              onChange={handleChange}
-              required
-              margin="normal"
-              autoFocus
-            />
+          {/* Form */}
+          <form onSubmit={handleSubmit} noValidate>
+            <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+              <TextField
+                fullWidth
+                label="First Name"
+                name="firstName"
+                value={formData.firstName}
+                onChange={handleChange}
+                error={!!fieldErrors.firstName}
+                helperText={fieldErrors.firstName}
+                autoFocus
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <PersonIcon color="action" />
+                    </InputAdornment>
+                  ),
+                }}
+              />
 
-            <TextField
-              fullWidth
-              label="Last Name"
-              name="lastName"
-              value={formData.lastName}
-              onChange={handleChange}
-              required
-              margin="normal"
-            />
+              <TextField
+                fullWidth
+                label="Last Name"
+                name="lastName"
+                value={formData.lastName}
+                onChange={handleChange}
+                error={!!fieldErrors.lastName}
+                helperText={fieldErrors.lastName}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <PersonIcon color="action" />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            </Box>
 
             <TextField
               fullWidth
@@ -151,42 +190,94 @@ export default function RegisterPage() {
               type="email"
               value={formData.email}
               onChange={handleChange}
-              required
-              margin="normal"
+              error={!!fieldErrors.email}
+              helperText={fieldErrors.email}
+              sx={{ mb: 2 }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <EmailIcon color="action" />
+                  </InputAdornment>
+                ),
+              }}
             />
 
             <TextField
               fullWidth
-              label="Phone (10 digits)"
+              label="Phone"
               name="phone"
               value={formData.phone}
               onChange={handleChange}
-              required
-              margin="normal"
+              error={!!fieldErrors.phone}
+              helperText={fieldErrors.phone || '10 digits'}
               placeholder="9876543210"
+              sx={{ mb: 2 }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <PhoneIcon color="action" />
+                  </InputAdornment>
+                ),
+              }}
             />
 
             <TextField
               fullWidth
               label="Password"
               name="password"
-              type="password"
+              type={showPassword ? 'text' : 'password'}
               value={formData.password}
               onChange={handleChange}
-              required
-              margin="normal"
-              helperText="At least 8 characters"
+              error={!!fieldErrors.password}
+              helperText={fieldErrors.password || '8+ characters'}
+              sx={{ mb: 2 }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <LockIcon color="action" />
+                  </InputAdornment>
+                ),
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      onClick={() => setShowPassword(!showPassword)}
+                      edge="end"
+                      size="small"
+                    >
+                      {showPassword ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
             />
 
             <TextField
               fullWidth
               label="Confirm Password"
               name="confirmPassword"
-              type="password"
+              type={showConfirmPassword ? 'text' : 'password'}
               value={formData.confirmPassword}
               onChange={handleChange}
-              required
-              margin="normal"
+              error={!!fieldErrors.confirmPassword}
+              helperText={fieldErrors.confirmPassword}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <LockIcon color="action" />
+                  </InputAdornment>
+                ),
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      edge="end"
+                      size="small"
+                    >
+                      {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
             />
 
             <Button
@@ -194,38 +285,33 @@ export default function RegisterPage() {
               type="submit"
               variant="contained"
               size="large"
-              disabled={loading || success}
-              sx={{ mt: 3, mb: 2, py: 1.5 }}
+              disabled={isLoading || success}
+              sx={{ 
+                mt: 3,
+                py: 1.5,
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                fontWeight: 600,
+                textTransform: 'none',
+              }}
             >
-              {loading ? <CircularProgress size={24} /> : 'Register'}
+              {isLoading ? <CircularProgress size={24} color="inherit" /> : 'Create Account'}
             </Button>
 
-            <Box sx={{ textAlign: 'center', mb: 2 }}>
+            <Box sx={{ textAlign: 'center', mt: 2 }}>
               <Typography variant="body2" color="text.secondary">
                 Already have an account?{' '}
-                <Link to="/login" style={{ color: '#2563eb', textDecoration: 'none', fontWeight: 600 }}>
-                  Login here
+                <Link 
+                  to="/login" 
+                  style={{ 
+                    color: '#667eea', 
+                    textDecoration: 'none', 
+                    fontWeight: 600 
+                  }}
+                >
+                  Login
                 </Link>
               </Typography>
             </Box>
-
-            {/* DEV MODE: Skip Registration Button */}
-            <Button
-              fullWidth
-              variant="outlined"
-              color="secondary"
-              size="small"
-              component={Link}
-              to="/dev-bypass"
-              sx={{ 
-                textTransform: 'none',
-                borderStyle: 'dashed',
-                opacity: 0.7,
-                '&:hover': { opacity: 1, borderStyle: 'dashed' }
-              }}
-            >
-              🔓 Skip Registration (Dev Mode)
-            </Button>
           </form>
         </Paper>
       </Container>

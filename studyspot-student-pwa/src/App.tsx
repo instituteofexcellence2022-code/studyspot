@@ -2,6 +2,12 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
 import { useState, useEffect, useMemo } from 'react';
 
+// Auth Provider
+import { AuthProvider } from './contexts/AuthContext';
+
+// Protected Route
+import ProtectedRoute from './components/ProtectedRoute';
+
 // Pages
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
@@ -27,44 +33,7 @@ import FavoritesPage from './pages/FavoritesPage';
 import ManageBookingsPage from './pages/ManageBookingsPage';
 import ReviewsPage from './pages/ReviewsPage';
 
-// Dev Bypass Component
-function DevBypass({ setIsAuthenticated }: { setIsAuthenticated: (value: boolean) => void }) {
-  useEffect(() => {
-    const mockUser = {
-      id: 'dev-user-123',
-      email: 'dev@studyspot.com',
-      firstName: 'Dev',
-      lastName: 'User',
-      role: 'student',
-      phone: '9999999999',
-    };
-    localStorage.clear(); // Clear all previous auth data
-    localStorage.setItem('user', JSON.stringify(mockUser));
-    localStorage.setItem('token', 'dev-mock-token-bypass');
-    localStorage.setItem('bypassAuth', 'true');
-    setIsAuthenticated(true);
-    window.location.href = '/dashboard';
-  }, [setIsAuthenticated]);
-  
-  return (
-    <div style={{ 
-      minHeight: '100vh', 
-      display: 'flex', 
-      alignItems: 'center', 
-      justifyContent: 'center',
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-    }}>
-      <div style={{ textAlign: 'center', color: 'white' }}>
-        <h2>🔓 Dev Mode Activated</h2>
-        <p>Clearing old auth data and logging in...</p>
-      </div>
-    </div>
-  );
-}
-
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [darkMode, setDarkMode] = useState(() => {
     const saved = localStorage.getItem('darkMode');
     return saved ? JSON.parse(saved) : false;
@@ -116,85 +85,195 @@ function App() {
     localStorage.setItem('darkMode', JSON.stringify(darkMode));
   }, [darkMode]);
 
-  useEffect(() => {
-    // Check authentication status
-    const checkAuth = () => {
-      const token = localStorage.getItem('token');
-      const user = localStorage.getItem('user');
-      
-      if (token && user) {
-        try {
-          JSON.parse(user); // Validate user data
-          setIsAuthenticated(true);
-        } catch (e) {
-          // Invalid user data, clear everything
-          localStorage.clear();
-          setIsAuthenticated(false);
-        }
-      } else {
-        setIsAuthenticated(false);
-      }
-      
-      setLoading(false);
-    };
-
-    checkAuth();
-  }, []);
-
-  if (loading) {
-    return (
-      <div style={{ 
-        minHeight: '100vh', 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'center',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-      }}>
-        <div style={{ textAlign: 'center', color: 'white' }}>
-          <h2>Loading...</h2>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <Router>
-        <Routes>
-          {/* Public Routes */}
-          <Route path="/login" element={!isAuthenticated ? <LoginPage setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/dashboard" />} />
-          <Route path="/register" element={!isAuthenticated ? <RegisterPage /> : <Navigate to="/dashboard" />} />
-          <Route path="/dev-bypass" element={<DevBypass setIsAuthenticated={setIsAuthenticated} />} />
+    <AuthProvider>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <Router>
+          <Routes>
+            {/* Public Routes */}
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
 
-          {/* Protected Routes */}
-          <Route path="/dashboard" element={isAuthenticated ? <DashboardPageEnhanced setIsAuthenticated={setIsAuthenticated} darkMode={darkMode} setDarkMode={setDarkMode} /> : <Navigate to="/login" />} />
-          <Route path="/libraries" element={isAuthenticated ? <LibrariesPageEnhanced setIsAuthenticated={setIsAuthenticated} darkMode={darkMode} setDarkMode={setDarkMode} /> : <Navigate to="/login" />} />
-          <Route path="/libraries/:id" element={isAuthenticated ? <LibraryDetailsPageEnhanced setIsAuthenticated={setIsAuthenticated} darkMode={darkMode} setDarkMode={setDarkMode} /> : <Navigate to="/login" />} />
-          <Route path="/bookings" element={isAuthenticated ? <BookingsPage setIsAuthenticated={setIsAuthenticated} darkMode={darkMode} setDarkMode={setDarkMode} /> : <Navigate to="/login" />} />
-          <Route path="/profile" element={isAuthenticated ? <ProfilePageEnhanced setIsAuthenticated={setIsAuthenticated} darkMode={darkMode} setDarkMode={setDarkMode} /> : <Navigate to="/login" />} />
-          <Route path="/qr-scanner" element={isAuthenticated ? <QRScannerPage setIsAuthenticated={setIsAuthenticated} darkMode={darkMode} setDarkMode={setDarkMode} /> : <Navigate to="/login" />} />
-          <Route path="/attendance" element={isAuthenticated ? <AttendancePage setIsAuthenticated={setIsAuthenticated} darkMode={darkMode} setDarkMode={setDarkMode} /> : <Navigate to="/login" />} />
-          <Route path="/study-timer" element={isAuthenticated ? <StudyTimerPage setIsAuthenticated={setIsAuthenticated} darkMode={darkMode} setDarkMode={setDarkMode} /> : <Navigate to="/login" />} />
-          <Route path="/rewards" element={isAuthenticated ? <RewardsPage setIsAuthenticated={setIsAuthenticated} darkMode={darkMode} setDarkMode={setDarkMode} /> : <Navigate to="/login" />} />
-          <Route path="/payments" element={isAuthenticated ? <PaymentsPage setIsAuthenticated={setIsAuthenticated} darkMode={darkMode} setDarkMode={setDarkMode} /> : <Navigate to="/login" />} />
-          <Route path="/resources" element={isAuthenticated ? <ResourcesPage setIsAuthenticated={setIsAuthenticated} darkMode={darkMode} setDarkMode={setDarkMode} /> : <Navigate to="/login" />} />
-          <Route path="/issues" element={isAuthenticated ? <IssuesPage setIsAuthenticated={setIsAuthenticated} darkMode={darkMode} setDarkMode={setDarkMode} /> : <Navigate to="/login" />} />
-          <Route path="/support" element={isAuthenticated ? <SupportPage setIsAuthenticated={setIsAuthenticated} darkMode={darkMode} setDarkMode={setDarkMode} /> : <Navigate to="/login" />} />
-          <Route path="/announcements" element={isAuthenticated ? <AnnouncementsPage setIsAuthenticated={setIsAuthenticated} darkMode={darkMode} setDarkMode={setDarkMode} /> : <Navigate to="/login" />} />
-          <Route path="/referral" element={isAuthenticated ? <ReferralPage setIsAuthenticated={setIsAuthenticated} darkMode={darkMode} setDarkMode={setDarkMode} /> : <Navigate to="/login" />} />
-          <Route path="/analytics" element={isAuthenticated ? <AnalyticsPage setIsAuthenticated={setIsAuthenticated} darkMode={darkMode} setDarkMode={setDarkMode} /> : <Navigate to="/login" />} />
-          <Route path="/tasks-goals" element={isAuthenticated ? <TasksGoalsPage setIsAuthenticated={setIsAuthenticated} darkMode={darkMode} setDarkMode={setDarkMode} /> : <Navigate to="/login" />} />
-          <Route path="/community" element={isAuthenticated ? <CommunityPage setIsAuthenticated={setIsAuthenticated} darkMode={darkMode} setDarkMode={setDarkMode} /> : <Navigate to="/login" />} />
-          <Route path="/favorites" element={isAuthenticated ? <FavoritesPage setIsAuthenticated={setIsAuthenticated} darkMode={darkMode} setDarkMode={setDarkMode} /> : <Navigate to="/login" />} />
-          <Route path="/manage-bookings" element={isAuthenticated ? <ManageBookingsPage setIsAuthenticated={setIsAuthenticated} darkMode={darkMode} setDarkMode={setDarkMode} /> : <Navigate to="/login" />} />
-          <Route path="/reviews" element={isAuthenticated ? <ReviewsPage setIsAuthenticated={setIsAuthenticated} darkMode={darkMode} setDarkMode={setDarkMode} /> : <Navigate to="/login" />} />
+            {/* Protected Routes */}
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute>
+                  <DashboardPageEnhanced darkMode={darkMode} setDarkMode={setDarkMode} />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/libraries"
+              element={
+                <ProtectedRoute>
+                  <LibrariesPageEnhanced darkMode={darkMode} setDarkMode={setDarkMode} />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/libraries/:id"
+              element={
+                <ProtectedRoute>
+                  <LibraryDetailsPageEnhanced darkMode={darkMode} setDarkMode={setDarkMode} />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/bookings"
+              element={
+                <ProtectedRoute>
+                  <BookingsPage darkMode={darkMode} setDarkMode={setDarkMode} />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  <ProfilePageEnhanced darkMode={darkMode} setDarkMode={setDarkMode} />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/qr-scanner"
+              element={
+                <ProtectedRoute>
+                  <QRScannerPage darkMode={darkMode} setDarkMode={setDarkMode} />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/attendance"
+              element={
+                <ProtectedRoute>
+                  <AttendancePage darkMode={darkMode} setDarkMode={setDarkMode} />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/study-timer"
+              element={
+                <ProtectedRoute>
+                  <StudyTimerPage darkMode={darkMode} setDarkMode={setDarkMode} />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/rewards"
+              element={
+                <ProtectedRoute>
+                  <RewardsPage darkMode={darkMode} setDarkMode={setDarkMode} />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/payments"
+              element={
+                <ProtectedRoute>
+                  <PaymentsPage darkMode={darkMode} setDarkMode={setDarkMode} />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/resources"
+              element={
+                <ProtectedRoute>
+                  <ResourcesPage darkMode={darkMode} setDarkMode={setDarkMode} />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/issues"
+              element={
+                <ProtectedRoute>
+                  <IssuesPage darkMode={darkMode} setDarkMode={setDarkMode} />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/support"
+              element={
+                <ProtectedRoute>
+                  <SupportPage darkMode={darkMode} setDarkMode={setDarkMode} />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/announcements"
+              element={
+                <ProtectedRoute>
+                  <AnnouncementsPage darkMode={darkMode} setDarkMode={setDarkMode} />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/referral"
+              element={
+                <ProtectedRoute>
+                  <ReferralPage darkMode={darkMode} setDarkMode={setDarkMode} />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/analytics"
+              element={
+                <ProtectedRoute>
+                  <AnalyticsPage darkMode={darkMode} setDarkMode={setDarkMode} />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tasks-goals"
+              element={
+                <ProtectedRoute>
+                  <TasksGoalsPage darkMode={darkMode} setDarkMode={setDarkMode} />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/community"
+              element={
+                <ProtectedRoute>
+                  <CommunityPage darkMode={darkMode} setDarkMode={setDarkMode} />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/favorites"
+              element={
+                <ProtectedRoute>
+                  <FavoritesPage darkMode={darkMode} setDarkMode={setDarkMode} />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/manage-bookings"
+              element={
+                <ProtectedRoute>
+                  <ManageBookingsPage darkMode={darkMode} setDarkMode={setDarkMode} />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/reviews"
+              element={
+                <ProtectedRoute>
+                  <ReviewsPage darkMode={darkMode} setDarkMode={setDarkMode} />
+                </ProtectedRoute>
+              }
+            />
 
-          {/* Default Route */}
-          <Route path="/" element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} />} />
-        </Routes>
-      </Router>
-    </ThemeProvider>
+            {/* Default Route */}
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            
+            {/* Catch all - redirect to login */}
+            <Route path="*" element={<Navigate to="/login" replace />} />
+          </Routes>
+        </Router>
+      </ThemeProvider>
+    </AuthProvider>
   );
 }
 

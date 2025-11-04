@@ -184,6 +184,160 @@ fastify.post('/api/v1/auth/admin/login', async (request, reply) => {
   }
 });
 
+// Student register
+fastify.post('/api/v1/auth/student/register', async (request, reply) => {
+  try {
+    const { firstName, lastName, email, phone, password } = request.body as any;
+
+    // Validate input
+    if (!firstName || !lastName || !email || !password) {
+      return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.REQUIRED_FIELD_MISSING,
+          message: 'All fields are required',
+        },
+      });
+    }
+
+    // Hash password
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    // Create user
+    const result = await coreDb.query(
+      `INSERT INTO admin_users (email, password_hash, first_name, last_name, role, is_active, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, NOW())
+       RETURNING id, email, first_name, last_name, role, created_at`,
+      [email.toLowerCase(), passwordHash, firstName, lastName, 'student', true]
+    );
+
+    const user = result.rows[0];
+
+    return {
+      success: true,
+      data: {
+        user: {
+          id: user.id,
+          email: user.email,
+          firstName: user.first_name,
+          lastName: user.last_name,
+          role: user.role,
+          phone: phone || null,
+        },
+      },
+      message: 'Registration successful',
+    };
+  } catch (error: any) {
+    logger.error('Student register error:', error);
+    
+    if (error.code === '23505') { // Unique violation
+      return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.VALIDATION_ERROR,
+          message: 'Email already exists',
+        },
+      });
+    }
+    
+    return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
+      success: false,
+      error: {
+        code: ERROR_CODES.SERVER_ERROR,
+        message: 'Registration failed',
+      },
+    });
+  }
+});
+
+// Student login
+fastify.post('/api/v1/auth/student/login', async (request, reply) => {
+  try {
+    const { email, password } = request.body as { email: string; password: string };
+
+    if (!email || !password) {
+      return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.REQUIRED_FIELD_MISSING,
+          message: 'Email and password are required',
+        },
+      });
+    }
+
+    // Find user
+    const result = await coreDb.query(
+      'SELECT * FROM admin_users WHERE email = $1',
+      [email.toLowerCase()]
+    );
+
+    if (!result.rows.length) {
+      return reply.status(HTTP_STATUS.UNAUTHORIZED).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.INVALID_CREDENTIALS,
+          message: 'Invalid email or password',
+        },
+      });
+    }
+
+    const user = result.rows[0];
+
+    // Verify password
+    const isValidPassword = await bcrypt.compare(password, user.password_hash);
+    if (!isValidPassword) {
+      return reply.status(HTTP_STATUS.UNAUTHORIZED).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.INVALID_CREDENTIALS,
+          message: 'Invalid email or password',
+        },
+      });
+    }
+
+    // Generate tokens
+    const accessToken = generateAccessToken(user);
+    const refreshToken = generateRefreshToken(user);
+
+    // Store refresh token
+    await coreDb.query(
+      `INSERT INTO refresh_tokens (user_id, user_type, token, expires_at)
+       VALUES ($1, $2, $3, NOW() + INTERVAL '7 days')`,
+      [user.id, 'student', refreshToken]
+    );
+
+    // Remove sensitive data
+    const { password_hash, ...safeUser } = user;
+
+    return {
+      success: true,
+      data: {
+        user: {
+          id: safeUser.id,
+          email: safeUser.email,
+          firstName: safeUser.first_name,
+          lastName: safeUser.last_name,
+          role: safeUser.role,
+        },
+        tokens: {
+          accessToken,
+          refreshToken,
+        },
+      },
+      message: 'Login successful',
+    };
+  } catch (error: any) {
+    logger.error('Student login error:', error);
+    return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
+      success: false,
+      error: {
+        code: ERROR_CODES.SERVER_ERROR,
+        message: 'Login failed',
+      },
+    });
+  }
+});
+
 // Tenant login (placeholder for future)
 fastify.post('/api/v1/auth/tenant/login', async (request, reply) => {
   // TODO: Implement tenant login

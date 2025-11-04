@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import {
   Box,
   Container,
@@ -9,83 +9,71 @@ import {
   Paper,
   Alert,
   CircularProgress,
-  Divider,
+  InputAdornment,
+  IconButton,
 } from '@mui/material';
-import { Login as LoginIcon } from '@mui/icons-material';
-import api from '../services/api';
+import { 
+  Login as LoginIcon,
+  Visibility,
+  VisibilityOff,
+  Email as EmailIcon,
+  Lock as LockIcon,
+} from '@mui/icons-material';
+import { useAuth } from '../contexts/AuthContext';
+import { validateLoginForm } from '../utils/validation';
 
-export default function LoginPage({ setIsAuthenticated }: { setIsAuthenticated: (value: boolean) => void }) {
+interface LocationState {
+  from?: { pathname: string };
+  message?: string;
+}
+
+export default function LoginPage() {
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const location = useLocation();
+  const { login, isLoading, error: authError, clearError } = useAuth();
+  
+  const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
   });
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (authError || Object.keys(fieldErrors).length > 0) {
+      clearError();
+      setFieldErrors({});
+    }
+  }, [formData]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
     });
-    setError('');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setError('');
+
+    const validation = validateLoginForm(formData.email, formData.password);
+    if (!validation.isValid) {
+      setFieldErrors(validation.errors);
+      return;
+    }
 
     try {
-      const response = await api.post('/api/auth/login', formData);
-      
-      // Extract data from response
-      const responseData = response.data?.data || response.data;
-      const tokens = responseData.tokens || {};
-      const user = responseData.user || {};
-      
-      // Store authentication data
-      const accessToken = tokens.accessToken || tokens.token || responseData.token;
-      if (accessToken) {
-        localStorage.setItem('token', accessToken);
-      }
-      if (tokens.refreshToken) {
-        localStorage.setItem('refreshToken', tokens.refreshToken);
-      }
-      if (user && Object.keys(user).length > 0) {
-        localStorage.setItem('user', JSON.stringify(user));
-      }
-
-      setIsAuthenticated(true);
-      navigate('/dashboard');
-    } catch (err: any) {
-      console.error('Login error:', err);
-      setError(
-        err.response?.data?.message || 
-        err.response?.data?.error || 
-        'Login failed. Please check your credentials.'
-      );
-    } finally {
-      setLoading(false);
+      await login(formData);
+      const state = location.state as LocationState;
+      const from = state?.from?.pathname || '/dashboard';
+      navigate(from, { replace: true });
+    } catch (error) {
+      console.error('Login failed:', error);
     }
   };
 
-  const handleSkipLogin = () => {
-    // Dev mode bypass
-    const mockUser = {
-      id: 'dev-user-123',
-      email: 'dev@studyspot.com',
-      firstName: 'Dev',
-      lastName: 'User',
-      role: 'student',
-      phone: '9999999999',
-    };
-    localStorage.setItem('user', JSON.stringify(mockUser));
-    localStorage.setItem('token', 'dev-mock-token-bypass');
-    localStorage.setItem('bypassAuth', 'true');
-    setIsAuthenticated(true);
-    navigate('/dashboard');
-  };
+  const state = location.state as LocationState;
+  const redirectMessage = state?.message;
 
   return (
     <Box
@@ -99,24 +87,54 @@ export default function LoginPage({ setIsAuthenticated }: { setIsAuthenticated: 
       }}
     >
       <Container maxWidth="xs">
-        <Paper elevation={3} sx={{ p: 4, borderRadius: 2 }}>
+        <Paper 
+          elevation={24} 
+          sx={{ 
+            p: 4, 
+            borderRadius: 3,
+            background: 'rgba(255, 255, 255, 0.98)',
+            backdropFilter: 'blur(10px)',
+          }}
+        >
+          {/* Header */}
           <Box sx={{ textAlign: 'center', mb: 3 }}>
-            <LoginIcon sx={{ fontSize: 48, color: 'primary.main', mb: 2 }} />
-            <Typography variant="h4" component="h1" gutterBottom fontWeight="bold">
+            <Box
+              sx={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 64,
+                height: 64,
+                borderRadius: '50%',
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                mb: 2,
+              }}
+            >
+              <LoginIcon sx={{ fontSize: 32, color: 'white' }} />
+            </Box>
+            <Typography variant="h5" fontWeight="700" gutterBottom>
               Welcome Back
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Sign in to your StudySpot account
+              Sign in to StudySpot
             </Typography>
           </Box>
 
-          {error && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {error}
+          {/* Alerts */}
+          {redirectMessage && (
+            <Alert severity="success" sx={{ mb: 2, borderRadius: 2 }}>
+              {redirectMessage}
             </Alert>
           )}
 
-          <form onSubmit={handleSubmit}>
+          {authError && (
+            <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>
+              {authError}
+            </Alert>
+          )}
+
+          {/* Form */}
+          <form onSubmit={handleSubmit} noValidate>
             <TextField
               fullWidth
               label="Email"
@@ -124,20 +142,47 @@ export default function LoginPage({ setIsAuthenticated }: { setIsAuthenticated: 
               type="email"
               value={formData.email}
               onChange={handleChange}
-              required
-              margin="normal"
+              error={!!fieldErrors.email}
+              helperText={fieldErrors.email}
               autoFocus
+              autoComplete="email"
+              sx={{ mb: 2 }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <EmailIcon color="action" />
+                  </InputAdornment>
+                ),
+              }}
             />
 
             <TextField
               fullWidth
               label="Password"
               name="password"
-              type="password"
+              type={showPassword ? 'text' : 'password'}
               value={formData.password}
               onChange={handleChange}
-              required
-              margin="normal"
+              error={!!fieldErrors.password}
+              helperText={fieldErrors.password}
+              autoComplete="current-password"
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <LockIcon color="action" />
+                  </InputAdornment>
+                ),
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      onClick={() => setShowPassword(!showPassword)}
+                      edge="end"
+                    >
+                      {showPassword ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
             />
 
             <Button
@@ -145,39 +190,36 @@ export default function LoginPage({ setIsAuthenticated }: { setIsAuthenticated: 
               type="submit"
               variant="contained"
               size="large"
-              disabled={loading}
-              sx={{ mt: 3, mb: 2, py: 1.5 }}
+              disabled={isLoading}
+              sx={{ 
+                mt: 3, 
+                py: 1.5,
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                fontWeight: 600,
+                textTransform: 'none',
+                '&:hover': {
+                  background: 'linear-gradient(135deg, #764ba2 0%, #667eea 100%)',
+                },
+              }}
             >
-              {loading ? <CircularProgress size={24} /> : 'Login'}
+              {isLoading ? <CircularProgress size={24} color="inherit" /> : 'Login'}
             </Button>
 
-            <Divider sx={{ my: 2 }} />
-
-            <Box sx={{ textAlign: 'center', mb: 2 }}>
+            <Box sx={{ textAlign: 'center', mt: 2 }}>
               <Typography variant="body2" color="text.secondary">
                 Don't have an account?{' '}
-                <Link to="/register" style={{ color: '#2563eb', textDecoration: 'none', fontWeight: 600 }}>
-                  Register here
+                <Link 
+                  to="/register" 
+                  style={{ 
+                    color: '#667eea', 
+                    textDecoration: 'none', 
+                    fontWeight: 600 
+                  }}
+                >
+                  Register
                 </Link>
               </Typography>
             </Box>
-
-            {/* DEV MODE: Skip Login Button */}
-            <Button
-              fullWidth
-              variant="outlined"
-              color="secondary"
-              size="small"
-              onClick={handleSkipLogin}
-              sx={{ 
-                textTransform: 'none',
-                borderStyle: 'dashed',
-                opacity: 0.7,
-                '&:hover': { opacity: 1, borderStyle: 'dashed' }
-              }}
-            >
-              🔓 Skip Login (Dev Mode)
-            </Button>
           </form>
         </Paper>
       </Container>

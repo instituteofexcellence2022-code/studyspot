@@ -10,6 +10,22 @@
       "source": "/(.*)",
       "destination": "/index.html"
     }
-  ]
+  ],
+  "env": {
+    "REACT_APP_API_URL": "https://studyspot-api.onrender.com",
+    "REACT_APP_PORTAL_TYPE": "admin",
+    "REACT_APP_PORTAL_NAME": "Platform Administrator",
+    "REACT_APP_VERSION": "2.0.0",
+    "NODE_ENV": "production"
+  },
+  "build": {
+    "env": {
+      "REACT_APP_API_URL": "https://studyspot-api.onrender.com",
+      "REACT_APP_PORTAL_TYPE": "admin",
+      "REACT_APP_PORTAL_NAME": "Platform Administrator",
+      "REACT_APP_VERSION": "2.0.0",
+      "NODE_ENV": "production"
+    }
+  }
 }
 

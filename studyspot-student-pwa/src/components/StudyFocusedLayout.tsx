@@ -46,24 +46,25 @@ import {
   Campaign,
   Notifications,
   Person,
+  Star,
 } from '@mui/icons-material';
+import { useAuth } from '../contexts/AuthContext';
 
 interface LayoutProps {
   children: React.ReactNode;
-  setIsAuthenticated: (value: boolean) => void;
   darkMode?: boolean;
   setDarkMode?: (value: boolean) => void;
 }
 
-export default function StudyFocusedLayout({ children, setIsAuthenticated, darkMode, setDarkMode }: LayoutProps) {
+export default function StudyFocusedLayout({ children, darkMode, setDarkMode }: LayoutProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [notifAnchor, setNotifAnchor] = useState<null | HTMLElement>(null);
-
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  
+  const { user, logout } = useAuth();
   const streak = 12;
   const unreadNotifications = 3;
   
@@ -132,8 +133,7 @@ export default function StudyFocusedLayout({ children, setIsAuthenticated, darkM
   const currentBottomNav = bottomNavItems.findIndex(item => location.pathname.startsWith(item.path));
 
   const handleLogout = () => {
-    localStorage.clear();
-    setIsAuthenticated(false);
+    logout();
     navigate('/login');
   };
 
@@ -201,7 +201,7 @@ export default function StudyFocusedLayout({ children, setIsAuthenticated, darkM
               }}
               onClick={() => navigate('/profile')}
             >
-              {user.firstName?.[0]}{user.lastName?.[0]}
+              {user?.firstName?.[0]}{user?.lastName?.[0]}
             </Avatar>
           </Box>
         </Toolbar>
@@ -221,11 +221,11 @@ export default function StudyFocusedLayout({ children, setIsAuthenticated, darkM
           <Paper sx={{ p: 2, mb: 2, background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white', borderRadius: 2 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
               <Avatar sx={{ width: 56, height: 56, bgcolor: 'rgba(255,255,255,0.2)', border: '2px solid white' }}>
-                {user.firstName?.[0]}{user.lastName?.[0]}
+                {user?.firstName?.[0]}{user?.lastName?.[0]}
               </Avatar>
               <Box>
                 <Typography variant="subtitle1" fontWeight="bold">
-                  {user.firstName} {user.lastName}
+                  {user?.firstName} {user?.lastName}
                 </Typography>
                 <Chip 
                   label="Student" 

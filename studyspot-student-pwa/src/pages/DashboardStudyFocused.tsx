@@ -35,10 +35,16 @@ import { LineChart, Line, BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tool
 import { useNavigate } from 'react-router-dom';
 import StudyFocusedLayout from '../components/StudyFocusedLayout';
 import { gradients } from '../theme/colors';
+import { useAuth } from '../contexts/AuthContext';
 
-export default function DashboardStudyFocused({ setIsAuthenticated, darkMode, setDarkMode }: any) {
+interface DashboardProps {
+  darkMode?: boolean;
+  setDarkMode?: (value: boolean) => void;
+}
+
+export default function DashboardStudyFocused({ darkMode, setDarkMode }: DashboardProps) {
   const navigate = useNavigate();
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const { user } = useAuth();
   
   const stats = {
     streak: 12,
@@ -107,12 +113,12 @@ export default function DashboardStudyFocused({ setIsAuthenticated, darkMode, se
   ];
 
   return (
-    <StudyFocusedLayout setIsAuthenticated={setIsAuthenticated} darkMode={darkMode} setDarkMode={setDarkMode}>
+    <StudyFocusedLayout darkMode={darkMode} setDarkMode={setDarkMode}>
       <Container maxWidth="lg" sx={{ py: { xs: 2, md: 3 } }}>
         {/* Welcome Header */}
         <Box sx={{ mb: 3 }}>
           <Typography variant="h4" fontWeight="bold" gutterBottom>
-            Welcome back, {user.firstName}! 📚
+            Welcome back, {user?.firstName}! 📚
           </Typography>
           <Typography variant="body2" color="text.secondary">
             {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
