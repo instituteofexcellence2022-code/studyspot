@@ -132,8 +132,8 @@ export default function MessagesInboxPage() {
       // For now, using hardcoded library ID - should come from user context
       const libraryId = localStorage.getItem('currentLibraryId') || '1';
       
-      const response = await axios.get(`${API_BASE_URL}/api/messages/library/${libraryId}`);
-      setMessages(response.data.data || getMockMessages());
+      const response = await axios.get<{ success: boolean; data: Message[] }>(`${API_BASE_URL}/api/messages/library/${libraryId}`);
+      setMessages(response.data?.data || getMockMessages());
     } catch (error) {
       console.error('Error fetching messages:', error);
       setMessages(getMockMessages());
@@ -308,7 +308,7 @@ export default function MessagesInboxPage() {
       ) : (
         <Grid container spacing={3}>
           {filteredMessages.map((message) => (
-            <Grid item xs={12} md={6} lg={4} key={message.id}>
+            <Grid key={message.id} item xs={12} md={6} lg={4}>
               <Card 
                 sx={{ 
                   border: 2,

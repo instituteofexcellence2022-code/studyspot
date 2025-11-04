@@ -32,6 +32,7 @@ import CommunityPage from './pages/CommunityPage';
 import FavoritesPage from './pages/FavoritesPage';
 import ManageBookingsPage from './pages/ManageBookingsPage';
 import ReviewsPage from './pages/ReviewsPage';
+import MessagesPage from './pages/MessagesPage';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -263,6 +264,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <ReviewsPage darkMode={darkMode} setDarkMode={setDarkMode} />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/messages"
+              element={
+                <ProtectedRoute>
+                  <MessagesPage darkMode={darkMode} setDarkMode={setDarkMode} />
                 </ProtectedRoute>
               }
             />

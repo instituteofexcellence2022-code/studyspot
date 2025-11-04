@@ -12,6 +12,7 @@ import {
   Divider,
   useTheme,
   useMediaQuery,
+  Badge,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -19,6 +20,7 @@ import {
   AccountCircle,
   Settings,
   Logout,
+  Message as MessageIcon,
 } from '@mui/icons-material';
 
 import Sidebar from '../components/common/Sidebar';
@@ -36,6 +38,7 @@ const MainLayout: React.FC = () => {
   
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [notificationAnchorEl, setNotificationAnchorEl] = useState<null | HTMLElement>(null);
+  const unreadMessages = 2; // TODO: Fetch from API
 
   const handleProfileMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -112,6 +115,17 @@ const MainLayout: React.FC = () => {
             <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
               🎓 STUDYSPOT
             </Typography>
+
+            {/* Messages */}
+            <IconButton
+              color="inherit"
+              aria-label="messages"
+              onClick={() => window.location.href = '/messages'}
+            >
+              <Badge badgeContent={unreadMessages} color="error">
+                <MessageIcon />
+              </Badge>
+            </IconButton>
 
             {/* Notifications */}
             <IconButton

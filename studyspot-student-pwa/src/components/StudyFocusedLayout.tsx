@@ -48,6 +48,7 @@ import {
   Notifications,
   Person,
   Star,
+  Message,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -68,6 +69,7 @@ export default function StudyFocusedLayout({ children, darkMode, setDarkMode }: 
   const { user, logout } = useAuth();
   const streak = 12;
   const unreadNotifications = 3;
+  const unreadMessages = 2; // TODO: Fetch from API
   
   const recentNotifications = [
     { id: '1', title: 'Booking Confirmed', message: 'Your seat A-12 is confirmed for today', time: '5 min ago', read: false },
@@ -180,6 +182,16 @@ export default function StudyFocusedLayout({ children, darkMode, setDarkMode }: 
           />
 
           <Box sx={{ display: 'flex', gap: 1 }}>
+            <IconButton 
+              color="inherit" 
+              onClick={() => navigate('/messages')}
+              sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
+            >
+              <Badge badgeContent={unreadMessages} color="error">
+                <Message />
+              </Badge>
+            </IconButton>
+
             <IconButton 
               color="inherit" 
               onClick={(e) => setNotifAnchor(e.currentTarget)}
