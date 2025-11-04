@@ -11,6 +11,8 @@ import {
   CircularProgress,
   InputAdornment,
   IconButton,
+  Checkbox,
+  FormControlLabel,
 } from '@mui/material';
 import { 
   Login as LoginIcon,
@@ -18,6 +20,9 @@ import {
   VisibilityOff,
   Email as EmailIcon,
   Lock as LockIcon,
+  Google as GoogleIcon,
+  Facebook as FacebookIcon,
+  Apple as AppleIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { validateLoginForm } from '../utils/validation';
@@ -33,6 +38,7 @@ export default function LoginPage() {
   const { login, isLoading, error: authError, clearError } = useAuth();
   
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -166,6 +172,7 @@ export default function LoginPage() {
               error={!!fieldErrors.password}
               helperText={fieldErrors.password}
               autoComplete="current-password"
+              sx={{ mb: 1 }}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
@@ -185,6 +192,20 @@ export default function LoginPage() {
               }}
             />
 
+            {/* Remember Me */}
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  size="small"
+                  sx={{ color: '#667eea', '&.Mui-checked': { color: '#667eea' } }}
+                />
+              }
+              label={<Typography variant="body2">Remember me</Typography>}
+              sx={{ mb: 1, mt: 0.5 }}
+            />
+
             <Button
               fullWidth
               type="submit"
@@ -192,7 +213,6 @@ export default function LoginPage() {
               size="large"
               disabled={isLoading}
               sx={{ 
-                mt: 3, 
                 py: 1.5,
                 background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                 fontWeight: 600,
@@ -205,7 +225,76 @@ export default function LoginPage() {
               {isLoading ? <CircularProgress size={24} color="inherit" /> : 'Login'}
             </Button>
 
-            <Box sx={{ textAlign: 'center', mt: 2 }}>
+            {/* Social Login Divider */}
+            <Box sx={{ my: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Box sx={{ flex: 1, height: 1, bgcolor: 'divider' }} />
+              <Typography variant="caption" color="text.secondary" sx={{ px: 1 }}>
+                OR
+              </Typography>
+              <Box sx={{ flex: 1, height: 1, bgcolor: 'divider' }} />
+            </Box>
+
+            {/* Social Login Buttons */}
+            <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+              <Button
+                fullWidth
+                variant="outlined"
+                size="medium"
+                sx={{ 
+                  py: 1.2,
+                  borderColor: '#e0e0e0',
+                  color: '#757575',
+                  textTransform: 'none',
+                  '&:hover': {
+                    borderColor: '#DB4437',
+                    bgcolor: 'rgba(219, 68, 55, 0.04)',
+                  }
+                }}
+                startIcon={<GoogleIcon sx={{ color: '#DB4437' }} />}
+              >
+                Google
+              </Button>
+
+              <Button
+                fullWidth
+                variant="outlined"
+                size="medium"
+                sx={{ 
+                  py: 1.2,
+                  borderColor: '#e0e0e0',
+                  color: '#757575',
+                  textTransform: 'none',
+                  '&:hover': {
+                    borderColor: '#1877F2',
+                    bgcolor: 'rgba(24, 119, 242, 0.04)',
+                  }
+                }}
+                startIcon={<FacebookIcon sx={{ color: '#1877F2' }} />}
+              >
+                Facebook
+              </Button>
+
+              <Button
+                fullWidth
+                variant="outlined"
+                size="medium"
+                sx={{ 
+                  py: 1.2,
+                  borderColor: '#e0e0e0',
+                  color: '#757575',
+                  textTransform: 'none',
+                  '&:hover': {
+                    borderColor: '#000',
+                    bgcolor: 'rgba(0, 0, 0, 0.04)',
+                  }
+                }}
+                startIcon={<AppleIcon sx={{ color: '#000' }} />}
+              >
+                Apple
+              </Button>
+            </Box>
+
+            <Box sx={{ textAlign: 'center' }}>
               <Typography variant="body2" color="text.secondary">
                 Don't have an account?{' '}
                 <Link 
