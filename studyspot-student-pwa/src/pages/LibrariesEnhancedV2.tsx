@@ -39,6 +39,7 @@ import {
   LocalParking,
   Restaurant,
   ViewList,
+  ViewModule,
   Map as MapIcon,
   ExpandMore,
   TrendingUp,
@@ -46,6 +47,8 @@ import {
   Star,
   DirectionsCar,
   Schedule,
+  Room,
+  EventSeat,
 } from '@mui/icons-material';
 import StudyFocusedLayout from '../components/StudyFocusedLayout';
 import { gradients } from '../theme/colors';
@@ -78,7 +81,7 @@ interface Library {
 export default function LibrariesEnhancedV2({ setIsAuthenticated, darkMode, setDarkMode }: any) {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<'list' | 'map'>('list');
+  const [view, setView] = useState<'list' | 'card' | 'map'>('card');
   const [libraries, setLibraries] = useState<Library[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('distance'); // distance, rating, price
@@ -283,13 +286,19 @@ export default function LibrariesEnhancedV2({ setIsAuthenticated, darkMode, setD
               exclusive
               onChange={(e, newView) => newView && setView(newView)}
               size="small"
-              sx={{ ml: 'auto' }}
+              sx={{ ml: { xs: 0, sm: 'auto' }, mt: { xs: 1, sm: 0 }, width: { xs: '100%', sm: 'auto' } }}
             >
-              <ToggleButton value="list">
+              <ToggleButton value="list" sx={{ flex: { xs: 1, sm: 'initial' } }}>
                 <ViewList />
+                <Typography variant="caption" sx={{ ml: 0.5, display: { xs: 'inline', sm: 'none' } }}>List</Typography>
               </ToggleButton>
-              <ToggleButton value="map">
+              <ToggleButton value="card" sx={{ flex: { xs: 1, sm: 'initial' } }}>
+                <ViewModule />
+                <Typography variant="caption" sx={{ ml: 0.5, display: { xs: 'inline', sm: 'none' } }}>Card</Typography>
+              </ToggleButton>
+              <ToggleButton value="map" sx={{ flex: { xs: 1, sm: 'initial' } }}>
                 <MapIcon />
+                <Typography variant="caption" sx={{ ml: 0.5, display: { xs: 'inline', sm: 'none' } }}>Map</Typography>
               </ToggleButton>
             </ToggleButtonGroup>
           </Box>
@@ -399,7 +408,7 @@ export default function LibrariesEnhancedV2({ setIsAuthenticated, darkMode, setD
           )}
         </Box>
 
-        {/* Libraries Grid */}
+        {/* Loading State */}
         {loading ? (
           <Grid container spacing={2}>
             {[1, 2, 3, 4, 5, 6].map(i => (
@@ -415,9 +424,138 @@ export default function LibrariesEnhancedV2({ setIsAuthenticated, darkMode, setD
             ))}
           </Grid>
         ) : (
-          <Grid container spacing={2}>
-            {filteredLibraries.map((library) => (
-              <Grid item xs={12} sm={6} md={4} key={library.id}>
+          <>
+            {/* LIST VIEW */}
+            {view === 'list' && (
+              <Box>
+                {filteredLibraries.map((library) => (
+                  <Card 
+                    key={library.id}
+                    sx={{ 
+                      mb: 2,
+                      cursor: 'pointer',
+                      transition: 'all 0.3s',
+                      '&:hover': { 
+                        boxShadow: 4,
+                        transform: 'translateX(4px)',
+                      }
+                    }}
+                    onClick={() => navigate(`/libraries/${library.id}`)}
+                  >
+                    <CardContent>
+                      <Grid container spacing={2} alignItems="center">
+                        {/* Image */}
+                        <Grid item xs={12} sm={3} md={2}>
+                          <Box sx={{ position: 'relative' }}>
+                            <CardMedia
+                              component="img"
+                              height="120"
+                              image={library.imageUrl}
+                              alt={library.name}
+                              sx={{ borderRadius: 2 }}
+                            />
+                            {library.isVerified && (
+                              <Chip
+                                icon={<Verified fontSize="small" />}
+                                label="Verified"
+                                size="small"
+                                sx={{ position: 'absolute', bottom: 4, left: 4, bgcolor: 'white', height: 22, fontSize: '0.7rem' }}
+                              />
+                            )}
+                          </Box>
+                        </Grid>
+
+                        {/* Details */}
+                        <Grid item xs={12} sm={6} md={7}>
+                          <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 1 }}>
+                            <Box sx={{ flex: 1 }}>
+                              <Typography variant="h6" fontWeight="bold" sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }}>
+                                {library.name}
+                                {library.openNow && (
+                                  <Chip label="Open" size="small" color="success" sx={{ ml: 1, height: 20, fontSize: '0.7rem' }} />
+                                )}
+                              </Typography>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, my: 0.5 }}>
+                                <Rating value={library.rating} readOnly precision={0.1} size="small" />
+                                <Typography variant="caption" color="text.secondary">
+                                  {library.rating} ({library.reviewCount} reviews)
+                                </Typography>
+                              </Box>
+                            </Box>
+                            <IconButton
+                              size="small"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleToggleFavorite(library.id);
+                              }}
+                            >
+                              {library.isFavorite ? <Favorite color="error" /> : <FavoriteBorder />}
+                            </IconButton>
+                          </Box>
+
+                          <Typography variant="body2" color="text.secondary" sx={{ mb: 1, display: { xs: 'none', sm: 'block' } }}>
+                            {library.description}
+                          </Typography>
+
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                            <LocationOn sx={{ fontSize: 16, color: 'text.secondary' }} />
+                            <Typography variant="caption" color="text.secondary">
+                              {library.address}, {library.city} • {library.distance}km away
+                            </Typography>
+                          </Box>
+
+                          <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                            {library.amenities.slice(0, 6).map((amenity) => (
+                              <Chip key={amenity} label={amenity} size="small" sx={{ height: 20, fontSize: '0.7rem' }} variant="outlined" />
+                            ))}
+                            {library.amenities.length > 6 && (
+                              <Chip label={`+${library.amenities.length - 6} more`} size="small" sx={{ height: 20, fontSize: '0.7rem' }} />
+                            )}
+                          </Box>
+                        </Grid>
+
+                        {/* Price & Action */}
+                        <Grid item xs={12} sm={3} md={3}>
+                          <Box sx={{ textAlign: { xs: 'left', sm: 'right' } }}>
+                            <Typography variant="caption" color="text.secondary" display="block">
+                              Starting from
+                            </Typography>
+                            <Typography variant="h5" fontWeight="bold" color="primary.main">
+                              ₹{library.hourlyRate}/hr
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary" display="block">
+                              ₹{library.dailyRate}/day • ₹{library.monthlyRate}/mo
+                            </Typography>
+                            <Typography variant="caption" color={library.availableSeats > 20 ? 'success.main' : 'warning.main'} fontWeight="600" display="block" sx={{ mt: 1 }}>
+                              <EventSeat sx={{ fontSize: 14, mr: 0.5 }} />
+                              {library.availableSeats}/{library.totalSeats} seats
+                            </Typography>
+                            <Button 
+                              variant="contained" 
+                              size="small" 
+                              fullWidth 
+                              sx={{ mt: 1 }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/libraries/${library.id}`);
+                              }}
+                            >
+                              Book Now
+                            </Button>
+                          </Box>
+                        </Grid>
+                      </Grid>
+                    </CardContent>
+                  </Card>
+                ))}
+              </Box>
+            )}
+
+            {/* CARD VIEW */}
+            {view === 'card' && (
+              <Grid container spacing={2}>
+                {filteredLibraries.map((library) => (
+                  <Grid item xs={12} sm={6} md={4} key={library.id}>
                 <Card 
                   sx={{ 
                     height: '100%',
@@ -559,7 +697,172 @@ export default function LibrariesEnhancedV2({ setIsAuthenticated, darkMode, setD
                 </Card>
               </Grid>
             ))}
-          </Grid>
+              </Grid>
+            )}
+
+            {/* MAP VIEW */}
+            {view === 'map' && (
+              <Box>
+                <Paper sx={{ p: 2, mb: 2, bgcolor: 'info.light' }}>
+                  <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <MapIcon /> Map view with {filteredLibraries.length} libraries
+                  </Typography>
+                </Paper>
+
+                <Grid container spacing={2}>
+                  {/* Map Container */}
+                  <Grid item xs={12} md={8}>
+                    <Paper sx={{ height: { xs: 400, md: 600 }, position: 'relative', overflow: 'hidden', borderRadius: 2 }}>
+                      {/* Mock Map Interface */}
+                      <Box sx={{ 
+                        width: '100%', 
+                        height: '100%', 
+                        bgcolor: '#e0e0e0',
+                        backgroundImage: 'linear-gradient(45deg, #f5f5f5 25%, transparent 25%, transparent 75%, #f5f5f5 75%, #f5f5f5), linear-gradient(45deg, #f5f5f5 25%, transparent 25%, transparent 75%, #f5f5f5 75%, #f5f5f5)',
+                        backgroundSize: '20px 20px',
+                        backgroundPosition: '0 0, 10px 10px',
+                        position: 'relative',
+                      }}>
+                        {/* Map Markers */}
+                        {filteredLibraries.map((library, index) => (
+                          <Tooltip key={library.id} title={library.name} arrow>
+                            <Box
+                              sx={{
+                                position: 'absolute',
+                                left: `${20 + (index * 15) % 60}%`,
+                                top: `${30 + (index * 20) % 40}%`,
+                                cursor: 'pointer',
+                                transition: 'all 0.3s',
+                                '&:hover': {
+                                  transform: 'scale(1.2)',
+                                  zIndex: 10,
+                                }
+                              }}
+                              onClick={() => navigate(`/libraries/${library.id}`)}
+                            >
+                              <Room 
+                                sx={{ 
+                                  fontSize: 40, 
+                                  color: library.openNow ? 'error.main' : 'text.disabled',
+                                  filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))'
+                                }} 
+                              />
+                              {library.isVerified && (
+                                <Verified 
+                                  sx={{ 
+                                    position: 'absolute', 
+                                    top: -2, 
+                                    right: -2, 
+                                    fontSize: 16, 
+                                    color: 'primary.main',
+                                    bgcolor: 'white',
+                                    borderRadius: '50%'
+                                  }} 
+                                />
+                              )}
+                            </Box>
+                          </Tooltip>
+                        ))}
+
+                        {/* Map Controls */}
+                        <Box sx={{ position: 'absolute', top: 16, right: 16, display: 'flex', flexDirection: 'column', gap: 1 }}>
+                          <IconButton sx={{ bgcolor: 'white', '&:hover': { bgcolor: 'white' } }}>
+                            <TrendingUp />
+                          </IconButton>
+                          <IconButton sx={{ bgcolor: 'white', '&:hover': { bgcolor: 'white' } }}>
+                            <LocationOn />
+                          </IconButton>
+                        </Box>
+
+                        {/* Map Legend */}
+                        <Paper sx={{ position: 'absolute', bottom: 16, left: 16, p: 1.5, minWidth: 200 }}>
+                          <Typography variant="caption" fontWeight="600" display="block" gutterBottom>
+                            Legend:
+                          </Typography>
+                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <Room sx={{ fontSize: 20, color: 'error.main' }} />
+                              <Typography variant="caption">Open Now</Typography>
+                            </Box>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <Room sx={{ fontSize: 20, color: 'text.disabled' }} />
+                              <Typography variant="caption">Closed</Typography>
+                            </Box>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <Verified sx={{ fontSize: 16, color: 'primary.main' }} />
+                              <Typography variant="caption">Verified</Typography>
+                            </Box>
+                          </Box>
+                        </Paper>
+                      </Box>
+                    </Paper>
+                  </Grid>
+
+                  {/* Library List Sidebar */}
+                  <Grid item xs={12} md={4}>
+                    <Paper sx={{ height: { xs: 'auto', md: 600 }, overflow: 'auto', p: 2 }}>
+                      <Typography variant="h6" gutterBottom>
+                        📍 {filteredLibraries.length} Libraries
+                      </Typography>
+                      {filteredLibraries.map((library) => (
+                        <Card 
+                          key={library.id}
+                          sx={{ 
+                            mb: 1.5,
+                            cursor: 'pointer',
+                            border: 1,
+                            borderColor: 'divider',
+                            '&:hover': { borderColor: 'primary.main', boxShadow: 2 }
+                          }}
+                          onClick={() => navigate(`/libraries/${library.id}`)}
+                        >
+                          <CardContent sx={{ p: 1.5 }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 0.5 }}>
+                              <Typography variant="subtitle2" fontWeight="600" sx={{ fontSize: '0.9rem' }}>
+                                {library.name}
+                              </Typography>
+                              <IconButton 
+                                size="small"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleToggleFavorite(library.id);
+                                }}
+                              >
+                                {library.isFavorite ? <Favorite sx={{ fontSize: 18 }} color="error" /> : <FavoriteBorder sx={{ fontSize: 18 }} />}
+                              </IconButton>
+                            </Box>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
+                              <Rating value={library.rating} readOnly size="small" sx={{ fontSize: 14 }} />
+                              <Typography variant="caption" color="text.secondary">
+                                {library.rating}
+                              </Typography>
+                            </Box>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
+                              <LocationOn sx={{ fontSize: 14, color: 'text.secondary' }} />
+                              <Typography variant="caption" color="text.secondary">
+                                {library.distance}km away
+                              </Typography>
+                            </Box>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1 }}>
+                              <Typography variant="body2" fontWeight="600" color="primary.main">
+                                ₹{library.dailyRate}/day
+                              </Typography>
+                              <Chip 
+                                label={`${library.availableSeats} seats`} 
+                                size="small" 
+                                color={library.availableSeats > 20 ? 'success' : 'warning'}
+                                sx={{ height: 20, fontSize: '0.7rem' }}
+                              />
+                            </Box>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </Paper>
+                  </Grid>
+                </Grid>
+              </Box>
+            )}
+          </>
         )}
 
         {filteredLibraries.length === 0 && !loading && (
