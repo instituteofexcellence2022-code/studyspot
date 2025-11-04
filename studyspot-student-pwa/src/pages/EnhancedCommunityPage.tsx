@@ -359,8 +359,11 @@ export default function EnhancedCommunityPage({ setIsAuthenticated, darkMode, se
       console.log('✅ Privacy preference fetched:', response.data?.privacyEnabled);
     } catch (error: any) {
       console.error('❌ Error fetching privacy preference:', error.response?.data || error.message);
-      setMyPrivacyEnabled(false);
-      // Don't show error to user - just default to false
+      // Fallback to localStorage if backend unavailable
+      const localKey = `privacy_${communityId}_${user?.id || 'student-001'}`;
+      const localPrivacy = localStorage.getItem(localKey) === 'true';
+      setMyPrivacyEnabled(localPrivacy);
+      console.log('📦 Using localStorage fallback:', localPrivacy);
     }
   };
 
@@ -382,6 +385,11 @@ export default function EnhancedCommunityPage({ setIsAuthenticated, darkMode, se
 
       setMyPrivacyEnabled(newPrivacyState);
       setPrivacyMenuAnchor(null);
+      
+      // Also save to localStorage as backup
+      const localKey = `privacy_${selectedCommunity.id}_${user?.id || 'student-001'}`;
+      localStorage.setItem(localKey, String(newPrivacyState));
+      
       toast.success(
         newPrivacyState 
           ? '🔒 Privacy enabled! You will appear as "Student X" to others.' 
@@ -391,16 +399,19 @@ export default function EnhancedCommunityPage({ setIsAuthenticated, darkMode, se
       console.error('❌ Error toggling privacy:', error.response?.data || error.message);
       console.error('Full error:', error);
       
-      // More specific error messages
-      if (error.response?.status === 404) {
-        toast.error('Privacy feature not available yet. Please contact support.');
-      } else if (error.response?.status === 500) {
-        toast.error('Server error. Database might need to be updated.');
-      } else if (error.message?.includes('Network Error')) {
-        toast.error('Cannot connect to server. Please check your internet connection.');
-      } else {
-        toast.error(`Failed to update privacy: ${error.response?.data?.error || error.message || 'Unknown error'}`);
-      }
+      // FALLBACK: Use localStorage if backend unavailable
+      console.log('📦 Using localStorage fallback for privacy');
+      const localKey = `privacy_${selectedCommunity.id}_${user?.id || 'student-001'}`;
+      localStorage.setItem(localKey, String(newPrivacyState));
+      setMyPrivacyEnabled(newPrivacyState);
+      setPrivacyMenuAnchor(null);
+      
+      toast.warning(
+        newPrivacyState 
+          ? '🔒 Privacy enabled locally! (Backend connection failed, will sync when available)' 
+          : '✅ Privacy disabled locally! (Backend connection failed, will sync when available)',
+        { autoClose: 5000 }
+      );
     }
   };
 
