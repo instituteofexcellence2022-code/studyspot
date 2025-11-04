@@ -10,8 +10,11 @@ import type {
 } from '../types/auth';
 
 // Use mock service for instant testing, real service when backend is ready
-const USE_MOCK = true; // Enabled for testing - set to false for production
+// Read from environment variable, default to false (use real backend)
+const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true' || false;
 const activeAuthService = USE_MOCK ? mockAuthService : authService;
+
+console.log('🔧 [AUTH] Mode:', USE_MOCK ? 'MOCK (Testing)' : 'REAL BACKEND (Production)');
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
