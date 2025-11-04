@@ -6,40 +6,37 @@
   "outputDirectory": "dist",
   "installCommand": "npm install",
   "devCommand": "npm run dev",
-  "routes": [
+  "rewrites": [
     {
-      "src": "/assets/(.*)",
-      "headers": {
-        "cache-control": "public, max-age=31536000, immutable"
-      },
-      "dest": "/assets/$1"
-    },
-    {
-      "src": "/(.*\\.(js|css|png|jpg|jpeg|svg|ico|json|webp))",
-      "headers": {
-        "cache-control": "public, max-age=31536000, immutable"
-      },
-      "dest": "/$1"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ],
   "env": {
     "VITE_API_URL": "https://studyspot-api.onrender.com",
     "VITE_APP_NAME": "StudySpot Student Portal",
-    "VITE_APP_VERSION": "3.0.0"
+    "VITE_APP_VERSION": "3.0.0",
+    "VITE_USE_MOCK": "false"
   },
   "build": {
     "env": {
       "VITE_API_URL": "https://studyspot-api.onrender.com",
       "VITE_APP_NAME": "StudySpot Student Portal",
       "VITE_APP_VERSION": "3.0.0",
+      "VITE_USE_MOCK": "false",
       "NODE_ENV": "production"
     }
   },
   "headers": [
+    {
+      "source": "/assets/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
     {
       "source": "/(.*)",
       "headers": [
