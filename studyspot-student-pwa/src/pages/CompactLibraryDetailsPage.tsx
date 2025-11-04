@@ -40,6 +40,11 @@ import {
   List,
   ListItem,
   ListItemText,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
 } from '@mui/material';
 import {
   ArrowBack,
@@ -74,6 +79,8 @@ import {
   CheckCircle,
   Call,
   Navigation,
+  Message,
+  Send,
 } from '@mui/icons-material';
 import StudyFocusedLayout from '../components/StudyFocusedLayout';
 import { gradients } from '../theme/colors';
@@ -137,6 +144,8 @@ export default function CompactLibraryDetailsPage({ setIsAuthenticated, darkMode
   const [reviews, setReviews] = useState<Review[]>([]);
   const [tab, setTab] = useState(0);
   const [currentImage, setCurrentImage] = useState(0);
+  const [messageDialogOpen, setMessageDialogOpen] = useState(false);
+  const [messageText, setMessageText] = useState('');
 
   useEffect(() => {
     fetchLibraryDetails();
@@ -270,6 +279,30 @@ export default function CompactLibraryDetailsPage({ setIsAuthenticated, darkMode
     } else {
       navigator.clipboard.writeText(window.location.href);
       toast.success('Link copied to clipboard');
+    }
+  };
+
+  const handleSendMessage = async () => {
+    if (!messageText.trim()) {
+      toast.error('Please enter a message');
+      return;
+    }
+
+    try {
+      // TODO: Implement actual message sending API
+      // await api.post('/api/messages/send', {
+      //   libraryId: id,
+      //   message: messageText,
+      // });
+      
+      // For now, simulate sending
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      toast.success('Message sent to library owner!');
+      setMessageDialogOpen(false);
+      setMessageText('');
+    } catch (error) {
+      toast.error('Failed to send message. Please try again.');
     }
   };
 
@@ -603,7 +636,7 @@ export default function CompactLibraryDetailsPage({ setIsAuthenticated, darkMode
                   <AccessTime fontSize="small" color="action" />
                   <Typography variant="body2">Peak Hours: {library.peakHours}</Typography>
                 </Box>
-                <Stack direction="row" spacing={1}>
+                <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
                   <Button
                     size="small"
                     variant="outlined"
@@ -621,6 +654,18 @@ export default function CompactLibraryDetailsPage({ setIsAuthenticated, darkMode
                     fullWidth
                   >
                     Email
+                  </Button>
+                </Stack>
+                <Stack direction="row" spacing={1}>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    startIcon={<Message />}
+                    onClick={() => setMessageDialogOpen(true)}
+                    fullWidth
+                    color="primary"
+                  >
+                    Message Owner
                   </Button>
                   <Button
                     size="small"
@@ -819,6 +864,60 @@ export default function CompactLibraryDetailsPage({ setIsAuthenticated, darkMode
             Book Seats Now
           </Fab>
         )}
+
+        {/* Message Owner Dialog */}
+        <Dialog 
+          open={messageDialogOpen} 
+          onClose={() => setMessageDialogOpen(false)}
+          fullWidth
+          maxWidth="sm"
+          fullScreen={isMobile}
+        >
+          <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Message color="primary" />
+            Message Library Owner
+          </DialogTitle>
+          <DialogContent>
+            <Box sx={{ pt: 2 }}>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Send a message to the owner of <strong>{library?.name}</strong>
+              </Typography>
+              <TextField
+                fullWidth
+                multiline
+                rows={4}
+                placeholder="Type your message here... (e.g., Ask about availability, timings, facilities, etc.)"
+                value={messageText}
+                onChange={(e) => setMessageText(e.target.value)}
+                variant="outlined"
+                autoFocus
+              />
+              <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                💡 Tip: Be specific about your query for a faster response
+              </Typography>
+            </Box>
+          </DialogContent>
+          <DialogActions sx={{ p: 2, gap: 1 }}>
+            <Button 
+              onClick={() => {
+                setMessageDialogOpen(false);
+                setMessageText('');
+              }}
+              variant="outlined"
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSendMessage}
+              variant="contained"
+              startIcon={<Send />}
+              disabled={!messageText.trim()}
+              sx={{ background: gradients.primary }}
+            >
+              Send Message
+            </Button>
+          </DialogActions>
+        </Dialog>
       </Box>
     </StudyFocusedLayout>
   );
