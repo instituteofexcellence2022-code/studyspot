@@ -108,6 +108,9 @@ const OfflinePaymentPage = lazy(() => import('./pages/offline-payments/OfflinePa
 // Messages
 const MessagesInboxPage = lazy(() => import('./pages/messages/MessagesInboxPage'));
 
+// Community/Groups
+const LibraryGroupsPage = lazy(() => import('./pages/community/LibraryGroupsPage'));
+
 // Profile
 const ProfilePage = lazy(() => import('./pages/profile/ProfilePage'));
 const SettingsPage = lazy(() => import('./pages/settings/SettingsPage'));
@@ -358,6 +361,11 @@ const AppContent: React.FC = () => {
               {/* MESSAGES & COMMUNICATION */}
               {/* ============================================ */}
               <Route path="/messages" element={<MessagesInboxPage />} />
+              
+              {/* ============================================ */}
+              {/* COMMUNITY & GROUPS */}
+              {/* ============================================ */}
+              <Route path="/groups" element={<LibraryGroupsPage />} />
 
               {/* ============================================ */}
               {/* PROFILE & SETTINGS */}
