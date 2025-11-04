@@ -181,9 +181,38 @@ export default function LibrariesPage({ setIsAuthenticated }: LibrariesPageProps
   return (
     <Layout setIsAuthenticated={setIsAuthenticated}>
       <Container maxWidth="lg">
-        <Typography variant="h4" gutterBottom fontWeight="bold">
-          Browse Libraries 📚
-        </Typography>
+        {/* Header with Connection Status */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+          <Typography variant="h4" fontWeight="bold" sx={{ flexGrow: 1 }}>
+            Browse Libraries 📚
+          </Typography>
+          
+          {connected && (
+            <Chip
+              icon={<Wifi />}
+              label="Live Updates"
+              color="success"
+              size="small"
+              sx={{ fontWeight: 600 }}
+            />
+          )}
+        </Box>
+
+        {/* Real-time Notifications */}
+        <Snackbar
+          open={notification.open}
+          autoHideDuration={4000}
+          onClose={() => setNotification({ ...notification, open: false })}
+          anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        >
+          <Alert
+            onClose={() => setNotification({ ...notification, open: false })}
+            severity={notification.type}
+            sx={{ width: '100%', fontWeight: 600 }}
+          >
+            {notification.message}
+          </Alert>
+        </Snackbar>
 
         <TextField
           fullWidth
