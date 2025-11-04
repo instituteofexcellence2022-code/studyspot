@@ -59,8 +59,71 @@ fastify.get('/health', async () => {
 // ============================================
 
 /**
+ * 🔒 PRIVACY MODE FOR LIBRARY GROUPS
+ * 
+ * Helper function to anonymize member details in library groups
+ * - Students see anonymous names like "Student A", "Student B"
+ * - Library owners always see full details (name, email, phone)
+ * - Only applies to groups (type='group'), NOT communities
+ */
+function anonymizeMemberDetails(data: any, userRole: string, privacyMode: boolean): any {
+  if (!privacyMode || userRole === 'library_owner' || userRole === 'admin' || userRole === 'super_admin') {
+    return data; // Owners/admins see full details
+  }
+
+  // For students in privacy mode, anonymize names
+  if (data.user_name) {
+    // Generate consistent anonymous name based on user_id hash
+    const hash = data.user_id.split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0);
+    const letter = String.fromCharCode(65 + (hash % 26)); // A-Z
+    data.user_name = `Student ${letter}`;
+  }
+
+  // Remove any other identifying details
+  delete data.email;
+  delete data.phone;
+  delete data.user_id; // Keep only for backend logic, but don't expose to students
+
+  return data;
+}
+
+/**
+ * Helper to anonymize array of messages/members
+ */
+function anonymizeList(list: any[], userRole: string, privacyMode: boolean): any[] {
+  if (!privacyMode || userRole === 'library_owner' || userRole === 'admin' || userRole === 'super_admin') {
+    return list; // Owners see full details
+  }
+
+  // Create a mapping of user_id to anonymous names for consistency
+  const nameMap = new Map<string, string>();
+  let letterIndex = 0;
+
+  return list.map((item, index) => {
+    if (item.user_id && !nameMap.has(item.user_id)) {
+      const letter = String.fromCharCode(65 + (letterIndex % 26)); // A-Z
+      nameMap.set(item.user_id, `Student ${letter}`);
+      letterIndex++;
+    }
+
+    if (item.user_id && nameMap.has(item.user_id)) {
+      item.user_name = nameMap.get(item.user_id);
+    }
+
+    // Remove identifying details
+    delete item.email;
+    delete item.phone;
+    // Keep user_id for backend but don't expose it meaningfully
+
+    return item;
+  });
+}
+
+/**
  * Create a new community (Admin only)
  * POST /api/communities
+ * 
+ * Note: Communities do NOT support privacy mode (only groups do)
  */
 fastify.post('/api/communities', async (request, reply) => {
   try {
@@ -82,6 +145,7 @@ fastify.post('/api/communities', async (request, reply) => {
         type: 'community', // vs 'group'
         member_count: 0,
         is_active: true,
+        privacy_mode: false, // Communities don't use privacy mode
         created_at: new Date().toISOString(),
       })
       .select()
@@ -409,7 +473,7 @@ fastify.get('/api/communities/:id/members', async (request, reply) => {
 fastify.post('/api/communities/:id/messages', async (request, reply) => {
   try {
     const { id } = request.params as any;
-    const { userId, userName, message, messageType, fileUrl, fileName, fileType } = request.body as any;
+    const { userId, userName, message, messageType, fileUrl, fileName, fileType, userRole } = request.body as any;
 
     if (!userId || !message) {
       return reply.code(400).send({ error: 'Missing required fields' });
@@ -426,6 +490,16 @@ fastify.post('/api/communities/:id/messages', async (request, reply) => {
     if (!membership) {
       return reply.code(403).send({ error: 'Not a member of this community' });
     }
+
+    // Get community privacy mode (only for groups)
+    const { data: community } = await supabase
+      .from('communities')
+      .select('privacy_mode, type')
+      .eq('id', id)
+      .single();
+
+    const privacyMode = community?.privacy_mode || false;
+    const isGroup = community?.type === 'group';
 
     // Insert message
     const { data: newMessage, error } = await supabase
@@ -449,20 +523,32 @@ fastify.post('/api/communities/:id/messages', async (request, reply) => {
       return reply.code(500).send({ error: 'Failed to send message' });
     }
 
-    // Emit real-time message to all community members
+    // Anonymize message for students if privacy mode is enabled (only for groups)
+    let broadcastMessage = { ...newMessage };
+    if (isGroup && privacyMode) {
+      broadcastMessage = anonymizeMemberDetails(
+        { ...newMessage },
+        userRole || 'student',
+        privacyMode
+      );
+    }
+
+    // Emit real-time message to all community/group members
     const io = getSocketIO();
     if (io) {
       io.to(`community:${id}`).emit('message:new', {
-        ...newMessage,
+        ...broadcastMessage,
         communityId: id,
+        privacyMode: isGroup ? privacyMode : false, // Include privacy mode flag for groups only
+        isGroup,
       });
-      logger.info(`Real-time message sent to community: ${id}`);
+      logger.info(`Real-time message sent to ${isGroup ? 'group' : 'community'}: ${id} (privacy: ${isGroup && privacyMode})`);
     }
 
     return reply.code(201).send({
       success: true,
       message: 'Message sent successfully',
-      data: newMessage,
+      data: newMessage, // Return full message to sender (they know their own name)
     });
   } catch (error) {
     logger.error('Error sending message:', error);
@@ -472,12 +558,24 @@ fastify.post('/api/communities/:id/messages', async (request, reply) => {
 
 /**
  * Get messages for a community/group
- * GET /api/communities/:id/messages
+ * GET /api/communities/:id/messages?userRole=student
+ * 
+ * Applies privacy mode for groups: students see anonymous names, owners see full details
  */
 fastify.get('/api/communities/:id/messages', async (request, reply) => {
   try {
     const { id } = request.params as any;
-    const { limit = 100, offset = 0 } = request.query as any;
+    const { limit = 100, offset = 0, userRole = 'student' } = request.query as any;
+
+    // Get community to check privacy mode
+    const { data: community } = await supabase
+      .from('communities')
+      .select('privacy_mode, type')
+      .eq('id', id)
+      .single();
+
+    const privacyMode = community?.privacy_mode || false;
+    const isGroup = community?.type === 'group';
 
     const { data: messages, error } = await supabase
       .from('community_messages')
@@ -491,9 +589,17 @@ fastify.get('/api/communities/:id/messages', async (request, reply) => {
       return reply.code(500).send({ error: 'Failed to fetch messages' });
     }
 
+    let processedMessages = (messages || []).reverse(); // Chronological order
+
+    // Apply privacy mode only for groups
+    if (isGroup && privacyMode) {
+      processedMessages = anonymizeList(processedMessages, userRole, privacyMode);
+    }
+
     return reply.send({
       success: true,
-      data: (messages || []).reverse(), // Return in chronological order
+      data: processedMessages,
+      privacyMode: isGroup ? privacyMode : false, // Include privacy mode flag
     });
   } catch (error) {
     logger.error('Error fetching messages:', error);
