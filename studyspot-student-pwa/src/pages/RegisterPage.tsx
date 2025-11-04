@@ -20,6 +20,9 @@ import {
   Lock as LockIcon,
   Person as PersonIcon,
   Phone as PhoneIcon,
+  Google as GoogleIcon,
+  Facebook as FacebookIcon,
+  Apple as AppleIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { validateRegisterForm } from '../utils/validation';
@@ -287,7 +290,7 @@ export default function RegisterPage() {
               size="large"
               disabled={isLoading || success}
               sx={{ 
-                mt: 3,
+                mt: 2,
                 py: 1.5,
                 background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                 fontWeight: 600,
@@ -297,7 +300,61 @@ export default function RegisterPage() {
               {isLoading ? <CircularProgress size={24} color="inherit" /> : 'Create Account'}
             </Button>
 
-            <Box sx={{ textAlign: 'center', mt: 2 }}>
+            {/* Social Login Divider */}
+            <Box sx={{ my: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Box sx={{ flex: 1, height: 1, bgcolor: 'divider' }} />
+              <Typography variant="caption" color="text.secondary" sx={{ px: 1 }}>
+                OR SIGN UP WITH
+              </Typography>
+              <Box sx={{ flex: 1, height: 1, bgcolor: 'divider' }} />
+            </Box>
+
+            {/* Social Login Buttons - Compact Icons */}
+            <Box sx={{ display: 'flex', gap: 1.5, justifyContent: 'center', mb: 2 }}>
+              <IconButton
+                sx={{ 
+                  width: 48,
+                  height: 48,
+                  border: '1px solid #e0e0e0',
+                  '&:hover': {
+                    borderColor: '#DB4437',
+                    bgcolor: 'rgba(219, 68, 55, 0.04)',
+                  }
+                }}
+              >
+                <GoogleIcon sx={{ color: '#DB4437', fontSize: 24 }} />
+              </IconButton>
+
+              <IconButton
+                sx={{ 
+                  width: 48,
+                  height: 48,
+                  border: '1px solid #e0e0e0',
+                  '&:hover': {
+                    borderColor: '#1877F2',
+                    bgcolor: 'rgba(24, 119, 242, 0.04)',
+                  }
+                }}
+              >
+                <FacebookIcon sx={{ color: '#1877F2', fontSize: 24 }} />
+              </IconButton>
+
+              <IconButton
+                sx={{ 
+                  width: 48,
+                  height: 48,
+                  border: '1px solid #e0e0e0',
+                  '&:hover': {
+                    borderColor: '#000',
+                    bgcolor: 'rgba(0, 0, 0, 0.04)',
+                  }
+                }}
+              >
+                <AppleIcon sx={{ color: '#000', fontSize: 24 }} />
+              </IconButton>
+            </Box>
+
+            <Box sx={{ textAlign: 'center' }}>
               <Typography variant="body2" color="text.secondary">
                 Already have an account?{' '}
                 <Link 
