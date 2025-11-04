@@ -85,8 +85,85 @@ fastify.get('/health', async () => {
       status: 'healthy',
       service: 'auth-service',
       timestamp: new Date().toISOString(),
+      websocket: 'enabled',
     },
   };
+});
+
+// WebSocket test endpoint - Test real-time events
+fastify.post('/api/test/socket-event', async (request, reply) => {
+  try {
+    const { event, data, room } = request.body as any;
+    const io = (fastify as any).io;
+    
+    if (!io) {
+      return reply.status(500).send({
+        success: false,
+        error: { message: 'WebSocket not initialized' },
+      });
+    }
+
+    // Emit test event
+    if (room) {
+      io.to(room).emit(event, data);
+    } else {
+      io.emit(event, data);
+    }
+
+    return {
+      success: true,
+      data: {
+        message: 'Event emitted',
+        event,
+        room: room || 'all',
+        timestamp: new Date().toISOString(),
+      },
+    };
+  } catch (error: any) {
+    return reply.status(500).send({
+      success: false,
+      error: { message: error.message },
+    });
+  }
+});
+
+// Get WebSocket connection stats
+fastify.get('/api/test/socket-stats', async (request, reply) => {
+  try {
+    const io = (fastify as any).io;
+    
+    if (!io) {
+      return reply.status(500).send({
+        success: false,
+        error: { message: 'WebSocket not initialized' },
+      });
+    }
+
+    const sockets = await io.fetchSockets();
+    const rooms = new Set<string>();
+    
+    sockets.forEach((socket: any) => {
+      socket.rooms.forEach((room: string) => {
+        if (room !== socket.id) {
+          rooms.add(room);
+        }
+      });
+    });
+
+    return {
+      success: true,
+      data: {
+        totalConnections: sockets.length,
+        activeRooms: Array.from(rooms),
+        timestamp: new Date().toISOString(),
+      },
+    };
+  } catch (error: any) {
+    return reply.status(500).send({
+      success: false,
+      error: { message: error.message },
+    });
+  }
 });
 
 // Admin login
