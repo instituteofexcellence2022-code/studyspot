@@ -247,31 +247,71 @@ export default function StreamlinedSeatBooking({
   };
 
   const handleDownloadReceipt = () => {
+    if (!bookingId || !selectedPlan) {
+      toast.error('Booking information incomplete');
+      return;
+    }
+
     const receiptData = {
       bookingId,
       libraryName: libraryName || 'StudySpot Library',
       date: bookingData.date,
-      plan: bookingData.planName,
-      seats: bookingData.seats,
-      amount: bookingData.totalAmount,
+      duration: bookingData.duration,
+      basePrice: selectedPlan.basePrice,
+      seats: selectedSeats,
+      addons: {
+        locker: 0,
+        snacks: 0,
+        wifi: 0,
+      },
+      totalAmount: calculateTotal(),
+      paymentMethod: bookingData.paymentMethod,
       studentName: user?.firstName || 'Student',
       studentEmail: user?.email || 'student@studyspot.com',
+      studentPhone: user?.phone || '',
     };
-    generateReceipt(receiptData);
+    
+    try {
+      generateReceipt(receiptData);
+      toast.success('Receipt downloaded successfully!');
+    } catch (error) {
+      console.error('Receipt generation error:', error);
+      toast.error('Failed to generate receipt. Please try again.');
+    }
   };
 
   const handlePrintReceipt = () => {
+    if (!bookingId || !selectedPlan) {
+      toast.error('Booking information incomplete');
+      return;
+    }
+
     const receiptData = {
       bookingId,
       libraryName: libraryName || 'StudySpot Library',
       date: bookingData.date,
-      plan: bookingData.planName,
-      seats: bookingData.seats,
-      amount: bookingData.totalAmount,
+      duration: bookingData.duration,
+      basePrice: selectedPlan.basePrice,
+      seats: selectedSeats,
+      addons: {
+        locker: 0,
+        snacks: 0,
+        wifi: 0,
+      },
+      totalAmount: calculateTotal(),
+      paymentMethod: bookingData.paymentMethod,
       studentName: user?.firstName || 'Student',
       studentEmail: user?.email || 'student@studyspot.com',
+      studentPhone: user?.phone || '',
     };
-    printReceipt(receiptData);
+    
+    try {
+      printReceipt(receiptData);
+      toast.success('Opening receipt for printing...');
+    } catch (error) {
+      console.error('Receipt printing error:', error);
+      toast.error('Failed to open receipt. Please try again.');
+    }
   };
 
   const getSeatColor = (seat: Seat) => {

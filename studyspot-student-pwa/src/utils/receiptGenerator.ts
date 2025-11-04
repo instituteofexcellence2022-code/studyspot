@@ -26,7 +26,9 @@ interface ReceiptData {
 }
 
 export const generateReceipt = (data: ReceiptData) => {
-  const doc = new jsPDF();
+  try {
+    console.log('📄 Generating receipt with data:', data);
+    const doc = new jsPDF();
   
   // Colors
   const primaryColor = '#2563eb';
@@ -194,13 +196,18 @@ export const generateReceipt = (data: ReceiptData) => {
   doc.text('Thank you for choosing StudySpot!', 105, yPos + 6, { align: 'center' });
   doc.text('For support: support@studyspot.com | +91 98765 43210', 105, yPos + 11, { align: 'center' });
   
-  // Generate filename
-  const filename = `StudySpot_Receipt_${data.bookingId}.pdf`;
-  
-  // Download PDF
-  doc.save(filename);
-  
-  return filename;
+    // Generate filename
+    const filename = `StudySpot_Receipt_${data.bookingId}.pdf`;
+    
+    // Download PDF
+    doc.save(filename);
+    
+    console.log('✅ Receipt generated successfully:', filename);
+    return filename;
+  } catch (error) {
+    console.error('❌ Error generating receipt:', error);
+    throw error;
+  }
 };
 
 /**
