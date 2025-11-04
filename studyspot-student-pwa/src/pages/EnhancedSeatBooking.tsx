@@ -100,6 +100,8 @@ import { useSocket } from '../hooks/useSocket';
 import { toast } from 'react-toastify';
 import { generateReceipt, downloadHTMLReceipt, printReceipt } from '../utils/receiptGenerator';
 import { useAuth } from '../contexts/AuthContext';
+import { feePlanService } from '../services/feePlan.service';
+import { FeePlan } from '../types/feePlan';
 
 interface EnhancedSeatBookingProps {
   darkMode?: boolean;
@@ -175,6 +177,11 @@ const EnhancedSeatBooking: React.FC<EnhancedSeatBookingProps> = ({
   const [showFilters, setShowFilters] = useState(false);
   const [selectedZone, setSelectedZone] = useState<string>('all');
   
+  // NEW: Fee plans from library
+  const [feePlans, setFeePlans] = useState<FeePlan[]>([]);
+  const [selectedFeePlan, setSelectedFeePlan] = useState<FeePlan | null>(null);
+  const [loadingPlans, setLoadingPlans] = useState(false);
+  
   // Booking details
   const [bookingDetails, setBookingDetails] = useState<BookingDetails>({
     date: new Date().toISOString().split('T')[0],
@@ -219,7 +226,35 @@ const EnhancedSeatBooking: React.FC<EnhancedSeatBookingProps> = ({
   const { socket, connected } = useSocket('student');
   const { user } = useAuth();
 
-  const steps = ['Select Date & Time', 'Choose Seats', 'Add-ons & Options', 'Payment', 'Confirmation'];
+  const steps = ['Select Plan & Date', 'Choose Seats', 'Add-ons & Options', 'Payment', 'Confirmation'];
+
+  // Load fee plans from library
+  useEffect(() => {
+    if (libraryId && layoutCreated) {
+      loadFeePlans();
+    }
+  }, [libraryId, layoutCreated]);
+
+  const loadFeePlans = async () => {
+    setLoadingPlans(true);
+    try {
+      const plans = await feePlanService.getActiveFeePlans(libraryId || '');
+      setFeePlans(plans);
+      console.log('📋 Loaded fee plans:', plans);
+      
+      // Auto-select the most popular or first active plan
+      const popular = plans.find(p => p.isPopular) || plans[0];
+      if (popular) {
+        setSelectedFeePlan(popular);
+        setBookingDetails(prev => ({ ...prev, duration: popular.type }));
+      }
+    } catch (error) {
+      console.error('Error loading fee plans:', error);
+      toast.info('Using default pricing options');
+    } finally {
+      setLoadingPlans(false);
+    }
+  };
 
   const zoneConfig = {
     'silent': {
@@ -416,10 +451,15 @@ const EnhancedSeatBooking: React.FC<EnhancedSeatBookingProps> = ({
   };
 
   const calculateTotalPrice = useMemo(() => {
-    let basePrice = selectedSeats.reduce((total, seatId) => {
-      const seat = seats.find(s => s.id === seatId);
-      return total + (seat?.pricing[bookingDetails.duration] || 0);
-    }, 0);
+    if (!selectedFeePlan) return 0;
+
+    // Use fee plan pricing
+    let basePrice = feePlanService.calculatePrice(
+      selectedFeePlan,
+      selectedSeats.length,
+      bookingDetails.shift,
+      bookingDetails.duration === 'daily' && selectedFeePlan.shiftPricing ? undefined : selectedZone
+    );
 
     // Add-ons
     if (bookingDetails.addons.locker) basePrice += 50 * selectedSeats.length;
@@ -427,7 +467,7 @@ const EnhancedSeatBooking: React.FC<EnhancedSeatBookingProps> = ({
     if (bookingDetails.addons.wifi && bookingDetails.duration === 'hourly') basePrice += 20 * selectedSeats.length;
 
     return basePrice;
-  }, [selectedSeats, seats, bookingDetails.duration, bookingDetails.addons]);
+  }, [selectedSeats, bookingDetails, selectedFeePlan, selectedZone]);
 
   const filteredSeats = useMemo(() => {
     let result = selectedZone === 'all' ? seats : seats.filter(s => s.zone === selectedZone);
@@ -597,11 +637,12 @@ const EnhancedSeatBooking: React.FC<EnhancedSeatBookingProps> = ({
 
       {/* Step Content */}
       <Box sx={{ p: { xs: 2, sm: 3 } }}>
-        {/* Step 1: Date & Time Selection */}
+        {/* Step 1: Select Plan & Date */}
         {activeStep === 0 && (
           <Grid container spacing={3}>
             <Grid item xs={12} md={8}>
-              <Card>
+              {/* Date Selection */}
+              <Card sx={{ mb: 3 }}>
                 <CardContent>
                   <Typography variant="h6" gutterBottom>📅 Select Booking Date</Typography>
                   <TextField
@@ -612,53 +653,197 @@ const EnhancedSeatBooking: React.FC<EnhancedSeatBookingProps> = ({
                     onChange={(e) => setBookingDetails({...bookingDetails, date: e.target.value})}
                     InputLabelProps={{ shrink: true }}
                     inputProps={{ min: new Date().toISOString().split('T')[0] }}
-                    sx={{ mb: 3 }}
                   />
+                </CardContent>
+              </Card>
 
-                  <Typography variant="h6" gutterBottom sx={{ mt: 3 }}>⏰ Select Shift</Typography>
-                  <Grid container spacing={2}>
-                    {shifts.map((shift) => (
-                      <Grid item xs={12} sm={6} key={shift.id}>
-                        <Card
-                          sx={{
-                            cursor: 'pointer',
-                            border: 2,
-                            borderColor: bookingDetails.shift === shift.id ? 'primary.main' : 'divider',
-                            bgcolor: bookingDetails.shift === shift.id ? 'primary.light' : 'background.paper',
-                            transition: 'all 0.3s',
-                            '&:hover': {
-                              transform: 'scale(1.02)',
-                              boxShadow: 3,
-                            },
-                          }}
-                          onClick={() => setBookingDetails({ ...bookingDetails, shift: shift.id, duration: 'daily' })}
-                        >
-                          <CardContent sx={{ textAlign: 'center', py: 2 }}>
-                            <Typography variant="h3" sx={{ mb: 1 }}>{shift.icon}</Typography>
-                            <Typography variant="h6" fontWeight="600">
-                              {shift.label}
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary" sx={{ my: 1 }}>
-                              {shift.time}
-                            </Typography>
-                            <Divider sx={{ my: 1 }} />
-                            <Typography variant="h5" color="primary.main" fontWeight="bold">
-                              ₹{shift.price}
-                            </Typography>
-                            {bookingDetails.shift === shift.id && (
+              {/* Fee Plans from Library */}
+              <Card>
+                <CardContent>
+                  <Typography variant="h6" gutterBottom>💎 Select a Plan</Typography>
+                  {loadingPlans ? (
+                    <LinearProgress />
+                  ) : feePlans.length > 0 ? (
+                    <Grid container spacing={2}>
+                      {feePlans.map((plan) => (
+                        <Grid item xs={12} sm={6} key={plan.id}>
+                          <Card
+                            sx={{
+                              cursor: 'pointer',
+                              border: 2,
+                              borderColor: selectedFeePlan?.id === plan.id ? 'primary.main' : 'divider',
+                              bgcolor: selectedFeePlan?.id === plan.id ? 'primary.light' : 'background.paper',
+                              transition: 'all 0.3s',
+                              position: 'relative',
+                              '&:hover': {
+                                transform: 'scale(1.02)',
+                                boxShadow: 4,
+                              },
+                            }}
+                            onClick={() => {
+                              setSelectedFeePlan(plan);
+                              setBookingDetails({ 
+                                ...bookingDetails, 
+                                duration: plan.type,
+                                shift: plan.shift || ''
+                              });
+                            }}
+                          >
+                            {plan.isPopular && (
                               <Chip 
-                                label="Selected" 
-                                color="primary" 
+                                label="⭐ Popular" 
+                                color="warning" 
                                 size="small" 
-                                sx={{ mt: 1 }}
-                                icon={<Check />}
+                                sx={{ position: 'absolute', top: 8, right: 8 }}
                               />
                             )}
-                          </CardContent>
-                        </Card>
+                            <CardContent sx={{ textAlign: 'center', pt: plan.isPopular ? 5 : 2 }}>
+                              <Typography variant="h6" fontWeight="600" gutterBottom>
+                                {plan.name}
+                              </Typography>
+                              <Chip 
+                                label={plan.type.charAt(0).toUpperCase() + plan.type.slice(1)} 
+                                size="small" 
+                                sx={{ mb: 1 }}
+                              />
+                              <Typography variant="body2" color="text.secondary" sx={{ my: 1, minHeight: 40 }}>
+                                {plan.description}
+                              </Typography>
+                              <Divider sx={{ my: 1 }} />
+                              
+                              {/* Pricing */}
+                              <Box sx={{ mb: 1 }}>
+                                <Typography variant="h4" color="primary.main" fontWeight="bold">
+                                  ₹{plan.basePrice}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                  per {plan.type}
+                                </Typography>
+                                
+                                {/* Discount Badge */}
+                                {plan.discount && (
+                                  <Chip
+                                    label={`${plan.discount.type === 'percentage' ? `${plan.discount.value}%` : `₹${plan.discount.value}`} OFF`}
+                                    color="success"
+                                    size="small"
+                                    sx={{ mt: 1 }}
+                                  />
+                                )}
+                              </Box>
+
+                              {/* Features */}
+                              {plan.features && plan.features.length > 0 && (
+                                <Box sx={{ mt: 2 }}>
+                                  <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
+                                    Includes:
+                                  </Typography>
+                                  <Stack direction="row" spacing={0.5} flexWrap="wrap" justifyContent="center" useFlexGap>
+                                    {plan.features.slice(0, 4).map((feature, idx) => (
+                                      <Chip 
+                                        key={idx} 
+                                        label={feature} 
+                                        size="small" 
+                                        sx={{ fontSize: '0.65rem', height: 20 }}
+                                      />
+                                    ))}
+                                    {plan.features.length > 4 && (
+                                      <Chip 
+                                        label={`+${plan.features.length - 4} more`} 
+                                        size="small" 
+                                        sx={{ fontSize: '0.65rem', height: 20 }}
+                                      />
+                                    )}
+                                  </Stack>
+                                </Box>
+                              )}
+
+                              {/* Eligibility Badges */}
+                              <Stack direction="row" spacing={0.5} justifyContent="center" sx={{ mt: 2 }}>
+                                {plan.scholarshipEligible && (
+                                  <Chip label="🎓 Scholarship" size="small" color="info" sx={{ fontSize: '0.7rem', height: 22 }} />
+                                )}
+                                {plan.waiverAllowed && (
+                                  <Chip label="💸 Waiver" size="small" color="success" sx={{ fontSize: '0.7rem', height: 22 }} />
+                                )}
+                              </Stack>
+
+                              {selectedFeePlan?.id === plan.id && (
+                                <Chip 
+                                  label="✓ Selected" 
+                                  color="primary" 
+                                  size="small" 
+                                  sx={{ mt: 1 }}
+                                  icon={<Check />}
+                                />
+                              )}
+                            </CardContent>
+                          </Card>
+                        </Grid>
+                      ))}
+                    </Grid>
+                  ) : (
+                    <Alert severity="info">
+                      No fee plans available for this library. Using default pricing.
+                    </Alert>
+                  )}
+
+                  {/* Show shift options if selected plan has shift pricing */}
+                  {selectedFeePlan && selectedFeePlan.shiftPricing && (
+                    <Box sx={{ mt: 3 }}>
+                      <Typography variant="subtitle1" gutterBottom>⏰ Available Shifts</Typography>
+                      <Grid container spacing={2}>
+                        {Object.entries(selectedFeePlan.shiftPricing).map(([shiftId, price]) => {
+                          const shiftIcons: Record<string, string> = {
+                            morning: '🌅',
+                            afternoon: '☀️',
+                            evening: '🌙',
+                            night: '🌃',
+                          };
+                          const shiftLabels: Record<string, string> = {
+                            morning: 'Morning',
+                            afternoon: 'Afternoon',
+                            evening: 'Evening',
+                            night: 'Night',
+                          };
+                          const shiftTimes: Record<string, string> = {
+                            morning: '6 AM - 12 PM',
+                            afternoon: '12 PM - 6 PM',
+                            evening: '6 PM - 11 PM',
+                            night: '11 PM - 6 AM',
+                          };
+
+                          return (
+                            <Grid item xs={6} sm={3} key={shiftId}>
+                              <Card
+                                sx={{
+                                  cursor: 'pointer',
+                                  border: 2,
+                                  borderColor: bookingDetails.shift === shiftId ? 'primary.main' : 'divider',
+                                  bgcolor: bookingDetails.shift === shiftId ? 'primary.light' : 'background.paper',
+                                  transition: 'all 0.2s',
+                                  '&:hover': { transform: 'scale(1.05)' },
+                                }}
+                                onClick={() => setBookingDetails({ ...bookingDetails, shift: shiftId })}
+                              >
+                                <CardContent sx={{ textAlign: 'center', p: 1.5 }}>
+                                  <Typography variant="h4">{shiftIcons[shiftId]}</Typography>
+                                  <Typography variant="body2" fontWeight="600">
+                                    {shiftLabels[shiftId]}
+                                  </Typography>
+                                  <Typography variant="caption" color="text.secondary" display="block">
+                                    {shiftTimes[shiftId]}
+                                  </Typography>
+                                  <Typography variant="h6" color="primary.main" fontWeight="bold" sx={{ mt: 0.5 }}>
+                                    ₹{price}
+                                  </Typography>
+                                </CardContent>
+                              </Card>
+                            </Grid>
+                          );
+                        })}
                       </Grid>
-                    ))}
-                  </Grid>
+                    </Box>
+                  )}
 
                   {/* Optional: Duration Selector (for flexibility) */}
                   <Accordion sx={{ mt: 3 }}>
@@ -708,40 +893,58 @@ const EnhancedSeatBooking: React.FC<EnhancedSeatBookingProps> = ({
                 </CardContent>
               </Card>
 
-              <Card sx={{ mt: 3 }}>
-                <CardContent>
-                  <Typography variant="h6" gutterBottom>🎯 Zone Preferences</Typography>
-                  <Grid container spacing={2}>
-                    {Object.entries(zoneConfig).map(([key, zone]) => (
-                      <Grid item xs={12} sm={6} key={key}>
-                        <Paper 
-                          sx={{ 
-                            p: 2, 
-                            bgcolor: zone.color + '20',
-                            border: `2px solid ${zone.color}`,
-                            cursor: 'pointer',
-                            '&:hover': { transform: 'scale(1.02)' },
-                            transition: 'all 0.2s'
-                          }}
-                          onClick={() => setSelectedZone(key)}
-                        >
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                            {zone.icon}
-                            <Typography variant="subtitle2">{zone.label}</Typography>
-                          </Box>
-                          <Typography variant="caption" color="text.secondary">
-                            {zone.description}
-                          </Typography>
-                          <Divider sx={{ my: 1 }} />
-                          <Typography variant="body2" fontWeight="600">
-                            From ₹{zone.hourly}/hr
-                          </Typography>
-                        </Paper>
-                      </Grid>
-                    ))}
-                  </Grid>
-                </CardContent>
-              </Card>
+              {/* Show zone options if selected plan has zone pricing */}
+              {selectedFeePlan && selectedFeePlan.zonePricing && (
+                <Card sx={{ mt: 3 }}>
+                  <CardContent>
+                    <Typography variant="h6" gutterBottom>🏢 Select Zone</Typography>
+                    <Grid container spacing={2}>
+                      {Object.entries(selectedFeePlan.zonePricing).map(([zoneId, price]) => {
+                        const zoneIcons: Record<string, string> = {
+                          ac: '❄️',
+                          nonAc: '🌡️',
+                          premium: '⭐',
+                          quiet: '🤫',
+                          general: '📚',
+                        };
+                        const zoneLabels: Record<string, string> = {
+                          ac: 'AC Zone',
+                          nonAc: 'Non-AC Zone',
+                          premium: 'Premium Zone',
+                          quiet: 'Quiet Zone',
+                          general: 'General Zone',
+                        };
+
+                        return (
+                          <Grid item xs={12} sm={6} key={zoneId}>
+                            <Card
+                              sx={{
+                                cursor: 'pointer',
+                                border: 2,
+                                borderColor: selectedZone === zoneId ? 'primary.main' : 'divider',
+                                bgcolor: selectedZone === zoneId ? 'primary.light' : 'background.paper',
+                                transition: 'all 0.2s',
+                                '&:hover': { transform: 'scale(1.02)' },
+                              }}
+                              onClick={() => setSelectedZone(zoneId)}
+                            >
+                              <CardContent sx={{ textAlign: 'center', p: 2 }}>
+                                <Typography variant="h3">{zoneIcons[zoneId]}</Typography>
+                                <Typography variant="subtitle1" fontWeight="600">
+                                  {zoneLabels[zoneId]}
+                                </Typography>
+                                <Typography variant="h5" color="primary.main" fontWeight="bold" sx={{ mt: 1 }}>
+                                  ₹{price}
+                                </Typography>
+                              </CardContent>
+                            </Card>
+                          </Grid>
+                        );
+                      })}
+                    </Grid>
+                  </CardContent>
+                </Card>
+              )}
             </Grid>
 
             <Grid item xs={12} md={4}>
