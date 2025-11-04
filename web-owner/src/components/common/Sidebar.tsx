@@ -95,7 +95,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
   
   const { user } = useAppSelector((state) => state.auth);
   
-  const [expandedSections, setExpandedSections] = useState<string[]>(['quick', 'management', 'users', 'operations', 'ai', 'smart_integrations', 'student_revenue', 'platform_billing', 'marketing', 'admin']); // All sections expanded by default
+  const [expandedSections, setExpandedSections] = useState<string[]>([]); // All sections collapsed by default for cleaner UI
 
   const drawerWidth = 280;
 
