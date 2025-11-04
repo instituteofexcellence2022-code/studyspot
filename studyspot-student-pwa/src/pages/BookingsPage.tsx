@@ -8,6 +8,8 @@ import {
   Chip,
   Grid,
   CircularProgress,
+  Alert,
+  Snackbar,
 } from '@mui/material';
 import {
   AccessTime,
@@ -15,9 +17,12 @@ import {
   CheckCircle,
   Cancel,
   Pending,
+  Wifi,
+  WifiOff,
 } from '@mui/icons-material';
 import Layout from '../components/StudyFocusedLayout';
 import api from '../services/api';
+import { useSocket } from '../hooks/useSocket';
 
 interface BookingsPageProps {
   setIsAuthenticated: (value: boolean) => void;
@@ -26,10 +31,100 @@ interface BookingsPageProps {
 export default function BookingsPage({ setIsAuthenticated }: BookingsPageProps) {
   const [loading, setLoading] = useState(true);
   const [bookings, setBookings] = useState<any[]>([]);
+  const [notification, setNotification] = useState<{ open: boolean; message: string; type: 'success' | 'info' | 'warning' }>({ 
+    open: false, 
+    message: '', 
+    type: 'info' 
+  });
+
+  // 🔴 NEW: Real-time WebSocket connection
+  const { socket, connected, error } = useSocket('student');
 
   useEffect(() => {
     fetchBookings();
   }, []);
+
+  // 🔴 NEW: Real-time event listeners
+  useEffect(() => {
+    if (!socket || !connected) return;
+
+    console.log('📡 [Bookings] Setting up real-time listeners');
+
+    // Listen for booking updates
+    socket.on('booking:updated', (updatedBooking) => {
+      console.log('🔔 [Real-time] Booking updated:', updatedBooking);
+      
+      setBookings((prev) =>
+        prev.map((b) => (b.id === updatedBooking.id ? updatedBooking : b))
+      );
+      
+      setNotification({
+        open: true,
+        message: 'Your booking has been updated!',
+        type: 'info',
+      });
+    });
+
+    // Listen for check-in events
+    socket.on('booking:checkin', (data) => {
+      console.log('🔔 [Real-time] Checked in:', data);
+      
+      setBookings((prev) =>
+        prev.map((b) =>
+          b.id === data.bookingId ? { ...b, status: 'checked_in' } : b
+        )
+      );
+      
+      setNotification({
+        open: true,
+        message: '✅ You have been checked in!',
+        type: 'success',
+      });
+    });
+
+    // Listen for check-out events
+    socket.on('booking:checkout', (data) => {
+      console.log('🔔 [Real-time] Checked out:', data);
+      
+      setBookings((prev) =>
+        prev.map((b) =>
+          b.id === data.bookingId ? { ...b, status: 'completed' } : b
+        )
+      );
+      
+      setNotification({
+        open: true,
+        message: 'You have been checked out. Thank you!',
+        type: 'info',
+      });
+    });
+
+    // Listen for booking cancellations
+    socket.on('booking:cancelled', (data) => {
+      console.log('🔔 [Real-time] Booking cancelled:', data);
+      
+      setBookings((prev) =>
+        prev.map((b) =>
+          b.id === data.id ? { ...b, status: 'cancelled' } : b
+        )
+      );
+      
+      setNotification({
+        open: true,
+        message: 'A booking has been cancelled',
+        type: 'warning',
+      });
+    });
+
+    // Cleanup listeners
+    return () => {
+      console.log('🔌 [Bookings] Cleaning up real-time listeners');
+      socket.off('booking:updated');
+      socket.off('booking:checkin');
+      socket.off('booking:checkout');
+      socket.off('booking:cancelled');
+    };
+  }, [socket, connected]);
 
   const fetchBookings = async () => {
     try {
@@ -102,9 +197,45 @@ export default function BookingsPage({ setIsAuthenticated }: BookingsPageProps) 
   return (
     <Layout setIsAuthenticated={setIsAuthenticated}>
       <Container maxWidth="lg">
-        <Typography variant="h4" gutterBottom fontWeight="bold">
-          My Bookings 📅
-        </Typography>
+        {/* Real-time Connection Status */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+          <Typography variant="h4" fontWeight="bold" sx={{ flexGrow: 1 }}>
+            My Bookings 📅
+          </Typography>
+          
+          {connected ? (
+            <Chip
+              icon={<Wifi />}
+              label="Live Updates"
+              color="success"
+              size="small"
+              sx={{ fontWeight: 600 }}
+            />
+          ) : (
+            <Chip
+              icon={<WifiOff />}
+              label="Offline"
+              color="default"
+              size="small"
+            />
+          )}
+        </Box>
+
+        {/* Real-time Notifications */}
+        <Snackbar
+          open={notification.open}
+          autoHideDuration={4000}
+          onClose={() => setNotification({ ...notification, open: false })}
+          anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        >
+          <Alert
+            onClose={() => setNotification({ ...notification, open: false })}
+            severity={notification.type}
+            sx={{ width: '100%', fontWeight: 600 }}
+          >
+            {notification.message}
+          </Alert>
+        </Snackbar>
 
         {bookings.length === 0 ? (
           <Box sx={{ textAlign: 'center', py: 8 }}>

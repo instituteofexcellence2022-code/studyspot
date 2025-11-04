@@ -13,10 +13,13 @@ import {
   CircularProgress,
   Chip,
   Button,
+  Alert,
+  Snackbar,
 } from '@mui/material';
-import { Search, LocationOn, Star } from '@mui/icons-material';
+import { Search, LocationOn, Star, Wifi, WifiOff } from '@mui/icons-material';
 import Layout from '../components/Layout';
 import api from '../services/api';
+import { useSocket } from '../hooks/useSocket';
 
 interface LibrariesPageProps {
   setIsAuthenticated: (value: boolean) => void;
@@ -27,10 +30,94 @@ export default function LibrariesPage({ setIsAuthenticated }: LibrariesPageProps
   const [loading, setLoading] = useState(true);
   const [libraries, setLibraries] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [notification, setNotification] = useState<{ open: boolean; message: string; type: 'success' | 'info' | 'warning' }>({ 
+    open: false, 
+    message: '', 
+    type: 'info' 
+  });
+
+  // 🔴 NEW: Real-time WebSocket connection
+  const { socket, connected } = useSocket('student');
 
   useEffect(() => {
     fetchLibraries();
   }, []);
+
+  // 🔴 NEW: Real-time event listeners
+  useEffect(() => {
+    if (!socket || !connected) return;
+
+    console.log('📡 [Libraries] Setting up real-time listeners');
+
+    // New library created
+    socket.on('library:created', (newLibrary) => {
+      console.log('🔔 [Real-time] New library:', newLibrary);
+      
+      setLibraries((prev) => [newLibrary, ...prev]);
+      
+      setNotification({
+        open: true,
+        message: `New library available: ${newLibrary.name}!`,
+        type: 'success',
+      });
+    });
+
+    // Library updated
+    socket.on('library:updated', (updatedLibrary) => {
+      console.log('🔔 [Real-time] Library updated:', updatedLibrary);
+      
+      setLibraries((prev) =>
+        prev.map((lib) => (lib.id === updatedLibrary.id ? updatedLibrary : lib))
+      );
+      
+      setNotification({
+        open: true,
+        message: `${updatedLibrary.name} has been updated!`,
+        type: 'info',
+      });
+    });
+
+    // Library deleted
+    socket.on('library:deleted', (data) => {
+      console.log('🔔 [Real-time] Library deleted:', data.id);
+      
+      setLibraries((prev) => prev.filter((lib) => lib.id !== data.id));
+      
+      setNotification({
+        open: true,
+        message: 'A library is no longer available',
+        type: 'warning',
+      });
+    });
+
+    // Pricing updated
+    socket.on('pricing:updated', (data) => {
+      console.log('🔔 [Real-time] Pricing updated:', data);
+      
+      setLibraries((prev) =>
+        prev.map((lib) =>
+          lib.id === data.libraryId
+            ? { ...lib, pricing: data.pricing, hourlyRate: data.pricing?.hourlyRate || lib.hourlyRate }
+            : lib
+        )
+      );
+      
+      setNotification({
+        open: true,
+        message: '💰 Pricing has been updated!',
+        type: 'info',
+      });
+    });
+
+    // Cleanup
+    return () => {
+      console.log('🔌 [Libraries] Cleaning up real-time listeners');
+      socket.off('library:created');
+      socket.off('library:updated');
+      socket.off('library:deleted');
+      socket.off('pricing:updated');
+    };
+  }, [socket, connected]);
 
   const fetchLibraries = async () => {
     try {
