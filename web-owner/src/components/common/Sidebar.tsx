@@ -48,6 +48,7 @@ import {
   Lightbulb,
   Event,
   Psychology,
+  Chat as ChatIcon,
   EditLocationAlt,
   Star,
   Receipt,
@@ -194,6 +195,15 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
       description: 'AI-powered lead tracking and demo class management',
       section: 'operations',
       badge: { text: 'AI', color: 'primary' }
+    },
+    {
+      label: 'Messages',
+      path: '/messages',
+      icon: <ChatIcon />,
+      roles: ['library_staff', 'library_owner', 'branch_manager', 'super_admin'],
+      description: 'Student inquiries and communication',
+      section: 'operations',
+      badge: { count: 3, color: 'error' }
     },
     {
       label: 'Issue Management',

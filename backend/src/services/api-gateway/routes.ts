@@ -18,6 +18,7 @@ const SERVICES = {
   BOOKING: process.env.BOOKING_SERVICE_URL || 'http://localhost:3007',
   CREDIT: process.env.CREDIT_SERVICE_URL || 'http://localhost:3008',
   SUBSCRIPTION: process.env.SUBSCRIPTION_SERVICE_URL || 'http://localhost:3009',
+  MESSAGE: process.env.MESSAGE_SERVICE_URL || 'http://localhost:3010',
   MESSAGING: process.env.MESSAGING_SERVICE_URL || 'http://localhost:3011',
   ANALYTICS: process.env.ANALYTICS_SERVICE_URL || 'http://localhost:3013',
 };
@@ -262,7 +263,35 @@ export function registerRoutes(fastify: FastifyInstance) {
   });
 
   // ============================================
-  // MESSAGING SERVICE ROUTES
+  // MESSAGE SERVICE ROUTES
+  // ============================================
+  fastify.all('/api/messages*', async (request, reply) => {
+    const result = await proxyToService(
+      'Message',
+      SERVICES.MESSAGE,
+      request.url,
+      request.method,
+      request.headers,
+      request.body
+    );
+    return reply.code(result.statusCode).send(result.data);
+  });
+
+  fastify.all('/api/v1/messages*', async (request, reply) => {
+    const path = request.url.replace('/api/v1', '/api');
+    const result = await proxyToService(
+      'Message',
+      SERVICES.MESSAGE,
+      path,
+      request.method,
+      request.headers,
+      request.body
+    );
+    return reply.code(result.statusCode).send(result.data);
+  });
+
+  // ============================================
+  // MESSAGING SERVICE ROUTES (Legacy)
   // ============================================
   fastify.all('/api/v1/messaging*', async (request, reply) => {
     const path = request.url.replace('/api/v1', '');
