@@ -948,6 +948,44 @@ const EnhancedSeatBooking: React.FC<EnhancedSeatBookingProps> = ({
             </Grid>
 
             <Grid item xs={12} md={4}>
+              {/* Selected Plan Details */}
+              {selectedFeePlan && (
+                <Card sx={{ mb: 2, border: 2, borderColor: 'primary.main' }}>
+                  <CardContent>
+                    <Typography variant="subtitle2" color="primary.main" gutterBottom>Selected Plan</Typography>
+                    <Typography variant="h6" fontWeight="600">{selectedFeePlan.name}</Typography>
+                    <Chip label={selectedFeePlan.type} size="small" sx={{ mt: 0.5, mb: 1 }} />
+                    
+                    <Box sx={{ my: 2 }}>
+                      <Typography variant="h4" color="primary.main" fontWeight="bold">
+                        ₹{selectedFeePlan.basePrice}
+                      </Typography>
+                      {selectedFeePlan.discount && (
+                        <Chip 
+                          label={`Save ${selectedFeePlan.discount.value}${selectedFeePlan.discount.type === 'percentage' ? '%' : '₹'}`}
+                          color="success"
+                          size="small"
+                          sx={{ mt: 0.5 }}
+                        />
+                      )}
+                    </Box>
+
+                    {selectedFeePlan.features && selectedFeePlan.features.length > 0 && (
+                      <Box>
+                        <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
+                          Includes:
+                        </Typography>
+                        <Stack spacing={0.5}>
+                          {selectedFeePlan.features.map((feature, idx) => (
+                            <Typography key={idx} variant="caption">✓ {feature}</Typography>
+                          ))}
+                        </Stack>
+                      </Box>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
               <Card>
                 <CardContent>
                   <Typography variant="h6" gutterBottom>📊 Quick Stats</Typography>
