@@ -20,8 +20,9 @@ const SERVICES = {
   SUBSCRIPTION: process.env.SUBSCRIPTION_SERVICE_URL || 'http://localhost:3009',
   MESSAGE: process.env.MESSAGE_SERVICE_URL || 'http://localhost:3010',
   COMMUNITY: process.env.COMMUNITY_SERVICE_URL || 'http://localhost:3011',
-  MESSAGING: process.env.MESSAGING_SERVICE_URL || 'http://localhost:3012',
-  ANALYTICS: process.env.ANALYTICS_SERVICE_URL || 'http://localhost:3013',
+  ATTENDANCE: process.env.ATTENDANCE_SERVICE_URL || 'http://localhost:3012',
+  MESSAGING: process.env.MESSAGING_SERVICE_URL || 'http://localhost:3013',
+  ANALYTICS: process.env.ANALYTICS_SERVICE_URL || 'http://localhost:3014',
 };
 
 /**
@@ -337,6 +338,34 @@ export function registerRoutes(fastify: FastifyInstance) {
       'Community',
       SERVICES.COMMUNITY,
       request.url,
+      request.method,
+      request.headers,
+      request.body
+    );
+    return reply.code(result.statusCode).send(result.data);
+  });
+
+  // ============================================
+  // ATTENDANCE SERVICE ROUTES
+  // ============================================
+  fastify.all('/api/attendance*', async (request, reply) => {
+    const result = await proxyToService(
+      'Attendance',
+      SERVICES.ATTENDANCE,
+      request.url,
+      request.method,
+      request.headers,
+      request.body
+    );
+    return reply.code(result.statusCode).send(result.data);
+  });
+
+  fastify.all('/api/v1/attendance*', async (request, reply) => {
+    const path = request.url.replace('/api/v1', '/api');
+    const result = await proxyToService(
+      'Attendance',
+      SERVICES.ATTENDANCE,
+      path,
       request.method,
       request.headers,
       request.body

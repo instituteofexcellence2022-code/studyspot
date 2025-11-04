@@ -19,6 +19,7 @@
     "start:subscription": "ts-node src/services/subscription-service/index.ts",
     "start:message": "ts-node src/services/message-service/index.ts",
     "start:community": "ts-node src/services/community-service/index.ts",
+    "start:attendance": "ts-node src/services/attendance-service/index.ts",
     "start:messaging": "ts-node src/services/messaging-service/index.ts",
     "start:analytics": "ts-node src/services/analytics-service/index.ts",
     "start:all": "START_ALL_SERVICES.bat",
