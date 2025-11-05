@@ -72,35 +72,16 @@ const MainLayout: React.FC = () => {
       {/* Sidebar */}
       <Sidebar open={sidebarOpen} onClose={handleToggleSidebar} />
 
-      {/* Main Content */}
-      <Box
-        component="main"
+      {/* Top App Bar - Fixed at top, stays above sidebar */}
+      <AppBar
+        position="fixed"
         sx={{
-          flexGrow: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          minHeight: '100vh',
-          width: '100%',
-          transition: theme.transitions.create(['margin', 'width'], {
-            easing: theme.transitions.easing.easeInOut,
-            duration: theme.transitions.duration.standard,
-          }),
-          // No marginLeft needed - persistent drawer pushes content automatically
+          zIndex: theme.zIndex.drawer + 1,
+          backgroundColor: '#FFFFFF',
+          color: 'text.primary',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
         }}
       >
-        {/* Top App Bar */}
-        <AppBar
-          position="fixed"
-          sx={{
-            zIndex: theme.zIndex.drawer + 1,
-            width: sidebarOpen && !isMobile ? 'calc(100% - 280px)' : '100%',
-            marginLeft: sidebarOpen && !isMobile ? '280px' : 0,
-            transition: theme.transitions.create(['margin', 'width'], {
-              easing: theme.transitions.easing.easeInOut,
-              duration: theme.transitions.duration.standard,
-            }),
-          }}
-        >
           <Toolbar>
             <IconButton
               color="inherit"
@@ -240,17 +221,17 @@ const MainLayout: React.FC = () => {
           </Toolbar>
         </AppBar>
 
-        {/* Page Content */}
-        <Box
-          component="main"
-          sx={{
-            flexGrow: 1,
-            p: 3,
-            mt: 8, // Account for AppBar height (64px default + margin)
-            minHeight: 'calc(100vh - 64px)', // Ensure content area takes full height
-            backgroundColor: theme.palette.mode === 'dark' ? '#121212' : '#f5f5f5',
-          }}
-        >
+      {/* Main Content Area */}
+      <Box
+        component="main"
+        sx={{
+          flexGrow: 1,
+          backgroundColor: theme.palette.mode === 'dark' ? '#121212' : '#f5f5f5',
+          minHeight: '100vh',
+        }}
+      >
+        <Toolbar /> {/* Spacer for AppBar */}
+        <Box sx={{ p: 3 }}>
           <Outlet />
         </Box>
       </Box>

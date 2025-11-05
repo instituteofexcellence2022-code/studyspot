@@ -10,6 +10,7 @@ import {
   Divider,
   Typography,
   Box,
+  Toolbar,
   useTheme,
   useMediaQuery,
   Avatar,
@@ -580,6 +581,8 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
       background: `linear-gradient(180deg, ${alpha(theme.palette.primary.main, 0.02)} 0%, ${theme.palette.background.default} 100%)`,
       overflow: 'hidden', // Prevent content from overflowing the drawer
     }}>
+      <Toolbar /> {/* Spacer for AppBar - matches admin portal */}
+      
       {/* Enhanced Header with Branding */}
       <Box 
         sx={{ 
