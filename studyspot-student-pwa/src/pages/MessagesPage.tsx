@@ -38,7 +38,7 @@ import {
   Schedule,
   LibraryBooks,
 } from '@mui/icons-material';
-import StudyFocusedLayout from '../components/StudyFocusedLayout';
+import MobileLayout from '../components/MobileLayout';
 import { useSocket } from '../hooks/useSocket';
 import api from '../services/api';
 import { toast } from 'react-toastify';
@@ -58,7 +58,11 @@ interface Message {
   replies?: Message[];
 }
 
-export default function MessagesPage({ darkMode, setDarkMode }: any) {
+interface MessagesPageProps {
+  setIsAuthenticated: (value: boolean) => void;
+}
+
+export default function MessagesPage({ setIsAuthenticated }: MessagesPageProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [filteredMessages, setFilteredMessages] = useState<Message[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -161,7 +165,7 @@ export default function MessagesPage({ darkMode, setDarkMode }: any) {
   ];
 
   return (
-    <StudyFocusedLayout darkMode={darkMode} setDarkMode={setDarkMode}>
+    <MobileLayout setIsAuthenticated={setIsAuthenticated}>
       <Container maxWidth="lg" sx={{ py: 3 }}>
         {/* Header */}
         <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
@@ -296,7 +300,7 @@ export default function MessagesPage({ darkMode, setDarkMode }: any) {
           </Stack>
         )}
       </Container>
-    </StudyFocusedLayout>
+    </MobileLayout>
   );
 }
 

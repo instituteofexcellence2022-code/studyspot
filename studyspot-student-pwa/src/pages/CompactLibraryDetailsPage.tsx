@@ -82,10 +82,9 @@ import {
   Message,
   Send,
 } from '@mui/icons-material';
-import StudyFocusedLayout from '../components/StudyFocusedLayout';
+import MobileLayout from '../components/MobileLayout';
 import { gradients } from '../theme/colors';
 import api from '../services/api';
-import StreamlinedSeatBooking from './StreamlinedSeatBooking';
 import { toast } from 'react-toastify';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -343,7 +342,7 @@ export default function CompactLibraryDetailsPage({ setIsAuthenticated, darkMode
 
   if (loading || !library) {
     return (
-      <StudyFocusedLayout setIsAuthenticated={setIsAuthenticated} darkMode={darkMode} setDarkMode={setDarkMode}>
+      <MobileLayout setIsAuthenticated={setIsAuthenticated}>
         <Box sx={{ bgcolor: 'background.default', minHeight: '100vh' }}>
           <Skeleton variant="rectangular" height={250} />
           <Container maxWidth="lg" sx={{ py: 2 }}>
@@ -352,12 +351,12 @@ export default function CompactLibraryDetailsPage({ setIsAuthenticated, darkMode
             <Skeleton variant="rectangular" height={200} sx={{ mt: 2 }} />
           </Container>
         </Box>
-      </StudyFocusedLayout>
+      </MobileLayout>
     );
   }
 
   return (
-    <StudyFocusedLayout setIsAuthenticated={setIsAuthenticated} darkMode={darkMode} setDarkMode={setDarkMode}>
+    <MobileLayout setIsAuthenticated={setIsAuthenticated}>
       <Box sx={{ bgcolor: 'background.default', minHeight: '100vh', pb: isMobile ? 10 : 3 }}>
         {/* Sticky Header */}
         <Paper 
@@ -760,13 +759,18 @@ export default function CompactLibraryDetailsPage({ setIsAuthenticated, darkMode
               {/* Book Seats Tab - Direct Wizard Display */}
               {tab === 2 && (
                 <Box>
-                  <StreamlinedSeatBooking
-                    darkMode={darkMode} 
-                    setDarkMode={setDarkMode}
-                    libraryId={library.id}
-                    libraryName={library.name}
-                    embedded={true}
-                  />
+                  <Typography variant="h6" sx={{ mb: 2, fontWeight: 700 }}>
+                    Book Your Seat
+                  </Typography>
+                  <Button
+                    variant="contained"
+                    fullWidth
+                    size="large"
+                    onClick={() => navigate(`/libraries/${library.id}/book`)}
+                    sx={{ borderRadius: 2, py: 1.5 }}
+                  >
+                    Book Now
+                  </Button>
                 </Box>
               )}
 
@@ -921,7 +925,7 @@ export default function CompactLibraryDetailsPage({ setIsAuthenticated, darkMode
           </DialogActions>
         </Dialog>
       </Box>
-    </StudyFocusedLayout>
+    </MobileLayout>
   );
 }
 

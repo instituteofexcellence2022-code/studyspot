@@ -29,7 +29,7 @@ import {
   Chair,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import Layout from '../components/StudyFocusedLayout';
+import Layout from '../components/MobileLayout';
 import api from '../services/api';
 
 interface Booking {

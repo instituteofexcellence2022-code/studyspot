@@ -50,7 +50,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import Layout from '../components/StudyFocusedLayout';
+import Layout from '../components/MobileLayout';
 import api from '../services/api';
 
 const COLORS = ['#667eea', '#764ba2', '#f093fb', '#f5576c', '#4facfe', '#00f2fe', '#43e97b', '#38f9d7'];

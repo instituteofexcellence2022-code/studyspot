@@ -42,7 +42,7 @@ import {
   ContactSupport,
   VideoLibrary,
 } from '@mui/icons-material';
-import Layout from '../components/StudyFocusedLayout';
+import Layout from '../components/MobileLayout';
 
 interface FAQ {
   id: string;
