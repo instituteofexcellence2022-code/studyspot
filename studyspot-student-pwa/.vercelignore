@@ -1,0 +1,55 @@
+# Ignore files to reduce deployment size and speed up builds
+
+# Dependencies (will be installed by Vercel)
+node_modules
+package-lock.json
+
+# Development files
+.env.local
+.env.development
+*.log
+npm-debug.log*
+
+# Testing
+coverage
+.nyc_output
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+__tests__
+__mocks__
+
+# Documentation
+*.md
+!README.md
+docs
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Temporary
+tmp
+temp
+*.tmp
+.cache
+
+# Build artifacts (will be generated)
+dist
+build
+.turbo
+
