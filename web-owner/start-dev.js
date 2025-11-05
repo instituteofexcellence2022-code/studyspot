@@ -8,15 +8,15 @@ console.log('🎓 STUDYSPOT - Starting Development Server');
 console.log('========================================');
 
 // Set environment variables
-process.env.PORT = '3000';
-process.env.REACT_APP_API_URL = 'http://localhost:3001';
+process.env.PORT = '3001';
+process.env.REACT_APP_API_URL = 'https://studyspot-api.onrender.com';
 process.env.REACT_APP_ENVIRONMENT = 'development';
 process.env.GENERATE_SOURCEMAP = 'false';
 process.env.DISABLE_ESLINT_PLUGIN = 'true';
 
 console.log('Environment configured:');
-console.log('- PORT: 3000');
-console.log('- API URL: http://localhost:3001');
+console.log('- PORT: 3001');
+console.log('- API URL: https://studyspot-api.onrender.com');
 console.log('- Environment: development');
 console.log('========================================');
 
