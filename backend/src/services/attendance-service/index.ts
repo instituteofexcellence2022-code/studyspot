@@ -182,7 +182,7 @@ fastify.post('/api/attendance/check-in', async (request, reply) => {
  */
 fastify.post('/api/attendance/check-out', async (request, reply) => {
   try {
-    const { userId, libraryId, qrData, location } = request.body as any;
+    const { userId, libraryId, location } = request.body as any;
 
     if (!userId || !libraryId) {
       return reply.code(400).send({ error: 'User ID and Library ID required' });
