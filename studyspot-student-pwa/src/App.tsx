@@ -1,6 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
-import { useState, useEffect, useMemo } from 'react';
+import { ThemeProvider, CssBaseline } from '@mui/material';
+import { useState } from 'react';
 
 // Auth Provider
 import { AuthProvider } from './contexts/AuthContext';
@@ -8,19 +8,24 @@ import { AuthProvider } from './contexts/AuthContext';
 // Protected Route
 import ProtectedRoute from './components/ProtectedRoute';
 
-// Pages
+// Premium Theme
+import { premiumTheme } from './theme/premiumTheme';
+
+// Auth Pages
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
-import DashboardPageEnhanced from './pages/DashboardStudyFocused';
-import LibrariesPageEnhanced from './pages/EnhancedLibrariesPage';
+
+// Premium Mobile-Optimized Pages
+import DashboardPremium from './pages/DashboardPremium';
+import LibrariesPremium from './pages/LibrariesPremium';
+import BookingsMobile from './pages/BookingsMobile';
+import ProfileMobile from './pages/ProfileMobile';
+import RewardsMobile from './pages/RewardsMobile';
+
+// Other Pages (will use mobile layout)
 import LibraryDetailsPageEnhanced from './pages/CompactLibraryDetailsPage';
-import BookingsPage from './pages/BookingsPage';
-import ProfilePageEnhanced from './pages/ProfilePageEnhanced';
-import QRScannerPage from './pages/QRScannerPage';
-import AttendancePage from './pages/AttendancePage';
 import QRAttendanceScanner from './pages/QRAttendanceScanner';
 import StudyTimerPage from './pages/StudyTimerPage';
-import RewardsPage from './pages/RewardsPage';
 import PaymentsPage from './pages/PaymentsPage';
 import ResourcesPage from './pages/ResourcesPage';
 import IssuesPage from './pages/IssuesPage';
@@ -38,56 +43,12 @@ import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 function App() {
-  const [darkMode, setDarkMode] = useState(() => {
-    const saved = localStorage.getItem('darkMode');
-    return saved ? JSON.parse(saved) : false;
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    return !!localStorage.getItem('token');
   });
 
-  // Create theme based on mode
-  const theme = useMemo(
-    () =>
-      createTheme({
-        palette: {
-          mode: darkMode ? 'dark' : 'light',
-          primary: {
-            main: '#2563eb',
-          },
-          secondary: {
-            main: '#10b981',
-          },
-          background: {
-            default: darkMode ? '#121212' : '#f5f5f5',
-            paper: darkMode ? '#1e1e1e' : '#ffffff',
-          },
-        },
-        shape: {
-          borderRadius: 8,
-        },
-        components: {
-          MuiButton: {
-            styleOverrides: {
-              root: {
-                textTransform: 'none',
-                fontWeight: 600,
-              },
-            },
-          },
-          MuiCard: {
-            styleOverrides: {
-              root: {
-                backgroundImage: 'none',
-              },
-            },
-          },
-        },
-      }),
-    [darkMode]
-  );
-
-  // Save dark mode preference
-  useEffect(() => {
-    localStorage.setItem('darkMode', JSON.stringify(darkMode));
-  }, [darkMode]);
+  // Use premium theme
+  const theme = premiumTheme;
 
   return (
     <AuthProvider>
@@ -99,12 +60,12 @@ function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
 
-            {/* Protected Routes */}
+            {/* Protected Routes - Mobile Optimized */}
             <Route
               path="/dashboard"
               element={
                 <ProtectedRoute>
-                  <DashboardPageEnhanced darkMode={darkMode} setDarkMode={setDarkMode} />
+                  <DashboardPremium setIsAuthenticated={setIsAuthenticated} />
                 </ProtectedRoute>
               }
             />
@@ -112,7 +73,7 @@ function App() {
               path="/libraries"
               element={
                 <ProtectedRoute>
-                  <LibrariesPageEnhanced darkMode={darkMode} setDarkMode={setDarkMode} />
+                  <LibrariesPremium setIsAuthenticated={setIsAuthenticated} />
                 </ProtectedRoute>
               }
             />
@@ -120,7 +81,7 @@ function App() {
               path="/libraries/:id"
               element={
                 <ProtectedRoute>
-                  <LibraryDetailsPageEnhanced darkMode={darkMode} setDarkMode={setDarkMode} />
+                  <LibraryDetailsPageEnhanced />
                 </ProtectedRoute>
               }
             />
@@ -128,7 +89,7 @@ function App() {
               path="/bookings"
               element={
                 <ProtectedRoute>
-                  <BookingsPage darkMode={darkMode} setDarkMode={setDarkMode} />
+                  <BookingsMobile setIsAuthenticated={setIsAuthenticated} />
                 </ProtectedRoute>
               }
             />
@@ -136,31 +97,7 @@ function App() {
               path="/profile"
               element={
                 <ProtectedRoute>
-                  <ProfilePageEnhanced darkMode={darkMode} setDarkMode={setDarkMode} />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/qr-scanner"
-              element={
-                <ProtectedRoute>
-                  <QRScannerPage darkMode={darkMode} setDarkMode={setDarkMode} />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/attendance"
-              element={
-                <ProtectedRoute>
-                  <QRAttendanceScanner darkMode={darkMode} setDarkMode={setDarkMode} />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/study-timer"
-              element={
-                <ProtectedRoute>
-                  <StudyTimerPage darkMode={darkMode} setDarkMode={setDarkMode} />
+                  <ProfileMobile setIsAuthenticated={setIsAuthenticated} />
                 </ProtectedRoute>
               }
             />
@@ -168,7 +105,31 @@ function App() {
               path="/rewards"
               element={
                 <ProtectedRoute>
-                  <RewardsPage darkMode={darkMode} setDarkMode={setDarkMode} />
+                  <RewardsMobile setIsAuthenticated={setIsAuthenticated} />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/qr-scanner"
+              element={
+                <ProtectedRoute>
+                  <QRAttendanceScanner setIsAuthenticated={setIsAuthenticated} />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/attendance"
+              element={
+                <ProtectedRoute>
+                  <QRAttendanceScanner setIsAuthenticated={setIsAuthenticated} />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/study-timer"
+              element={
+                <ProtectedRoute>
+                  <StudyTimerPage />
                 </ProtectedRoute>
               }
             />
@@ -176,7 +137,7 @@ function App() {
               path="/payments"
               element={
                 <ProtectedRoute>
-                  <PaymentsPage darkMode={darkMode} setDarkMode={setDarkMode} />
+                  <PaymentsPage />
                 </ProtectedRoute>
               }
             />
@@ -184,7 +145,7 @@ function App() {
               path="/resources"
               element={
                 <ProtectedRoute>
-                  <ResourcesPage darkMode={darkMode} setDarkMode={setDarkMode} />
+                  <ResourcesPage />
                 </ProtectedRoute>
               }
             />
@@ -192,7 +153,7 @@ function App() {
               path="/issues"
               element={
                 <ProtectedRoute>
-                  <IssuesPage darkMode={darkMode} setDarkMode={setDarkMode} />
+                  <IssuesPage />
                 </ProtectedRoute>
               }
             />
@@ -200,7 +161,7 @@ function App() {
               path="/support"
               element={
                 <ProtectedRoute>
-                  <SupportPage darkMode={darkMode} setDarkMode={setDarkMode} />
+                  <SupportPage />
                 </ProtectedRoute>
               }
             />
@@ -208,7 +169,7 @@ function App() {
               path="/announcements"
               element={
                 <ProtectedRoute>
-                  <AnnouncementsPage darkMode={darkMode} setDarkMode={setDarkMode} />
+                  <AnnouncementsPage />
                 </ProtectedRoute>
               }
             />
@@ -216,7 +177,7 @@ function App() {
               path="/referral"
               element={
                 <ProtectedRoute>
-                  <ReferralPage darkMode={darkMode} setDarkMode={setDarkMode} />
+                  <ReferralPage />
                 </ProtectedRoute>
               }
             />
@@ -224,7 +185,7 @@ function App() {
               path="/analytics"
               element={
                 <ProtectedRoute>
-                  <AnalyticsPage darkMode={darkMode} setDarkMode={setDarkMode} />
+                  <AnalyticsPage />
                 </ProtectedRoute>
               }
             />
@@ -232,7 +193,7 @@ function App() {
               path="/tasks-goals"
               element={
                 <ProtectedRoute>
-                  <TasksGoalsPage darkMode={darkMode} setDarkMode={setDarkMode} />
+                  <TasksGoalsPage />
                 </ProtectedRoute>
               }
             />
@@ -240,7 +201,7 @@ function App() {
               path="/community"
               element={
                 <ProtectedRoute>
-                  <CommunityPage darkMode={darkMode} setDarkMode={setDarkMode} />
+                  <CommunityPage />
                 </ProtectedRoute>
               }
             />
@@ -248,7 +209,7 @@ function App() {
               path="/favorites"
               element={
                 <ProtectedRoute>
-                  <FavoritesPage darkMode={darkMode} setDarkMode={setDarkMode} />
+                  <FavoritesPage />
                 </ProtectedRoute>
               }
             />
@@ -256,7 +217,7 @@ function App() {
               path="/manage-bookings"
               element={
                 <ProtectedRoute>
-                  <ManageBookingsPage darkMode={darkMode} setDarkMode={setDarkMode} />
+                  <ManageBookingsPage />
                 </ProtectedRoute>
               }
             />
@@ -264,7 +225,7 @@ function App() {
               path="/reviews"
               element={
                 <ProtectedRoute>
-                  <ReviewsPage darkMode={darkMode} setDarkMode={setDarkMode} />
+                  <ReviewsPage />
                 </ProtectedRoute>
               }
             />
@@ -272,7 +233,7 @@ function App() {
               path="/messages"
               element={
                 <ProtectedRoute>
-                  <MessagesPage darkMode={darkMode} setDarkMode={setDarkMode} />
+                  <MessagesPage setIsAuthenticated={setIsAuthenticated} />
                 </ProtectedRoute>
               }
             />
@@ -285,7 +246,7 @@ function App() {
           </Routes>
         </Router>
         <ToastContainer
-          position="top-right"
+          position="top-center"
           autoClose={3000}
           hideProgressBar={false}
           newestOnTop
@@ -294,7 +255,8 @@ function App() {
           pauseOnFocusLoss
           draggable
           pauseOnHover
-          theme={darkMode ? 'dark' : 'light'}
+          theme="light"
+          style={{ top: '70px' }}
         />
       </ThemeProvider>
     </AuthProvider>

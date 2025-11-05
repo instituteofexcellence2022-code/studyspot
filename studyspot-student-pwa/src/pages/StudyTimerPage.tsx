@@ -35,7 +35,7 @@ import {
   TrendingUp,
 } from '@mui/icons-material';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
-import Layout from '../components/StudyFocusedLayout';
+import Layout from '../components/MobileLayout';
 import api from '../services/api';
 
 interface StudyTimerPageProps {

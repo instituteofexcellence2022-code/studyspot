@@ -61,7 +61,7 @@ import {
   Business,
   Verified,
 } from '@mui/icons-material';
-import StudyFocusedLayout from '../components/StudyFocusedLayout';
+import MobileLayout from '../components/MobileLayout';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../hooks/useSocket';
@@ -563,7 +563,7 @@ export default function EnhancedCommunityPage({ setIsAuthenticated, darkMode, se
   };
 
   return (
-    <StudyFocusedLayout setIsAuthenticated={setIsAuthenticated} darkMode={darkMode} setDarkMode={setDarkMode}>
+    <MobileLayout setIsAuthenticated={setIsAuthenticated}>
       <Container maxWidth="lg" sx={{ py: { xs: 2, md: 3 } }}>
         {/* Header */}
         <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
@@ -938,7 +938,7 @@ export default function EnhancedCommunityPage({ setIsAuthenticated, darkMode, se
 
         {/* Keep privacy menu for additional options if needed */}
       </Container>
-    </StudyFocusedLayout>
+    </MobileLayout>
   );
 }
 

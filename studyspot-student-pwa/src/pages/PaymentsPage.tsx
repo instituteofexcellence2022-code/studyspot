@@ -32,7 +32,7 @@ import {
   Receipt,
   Download,
 } from '@mui/icons-material';
-import Layout from '../components/StudyFocusedLayout';
+import Layout from '../components/MobileLayout';
 import api from '../services/api';
 import { jsPDF } from 'jspdf';
 

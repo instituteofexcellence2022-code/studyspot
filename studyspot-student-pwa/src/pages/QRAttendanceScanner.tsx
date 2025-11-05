@@ -48,7 +48,7 @@ import {
   Videocam as VideocamIcon,
 } from '@mui/icons-material';
 import { Html5QrcodeScanner } from 'html5-qrcode';
-import StudyFocusedLayout from '../components/StudyFocusedLayout';
+import MobileLayout from '../components/MobileLayout';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
 import { toast } from 'react-toastify';
@@ -68,7 +68,11 @@ interface ActiveSession {
   duration?: string;
 }
 
-export default function QRAttendanceScanner({ darkMode, setDarkMode }: any) {
+interface QRAttendanceScannerProps {
+  setIsAuthenticated?: (value: boolean) => void;
+}
+
+export default function QRAttendanceScanner({ setIsAuthenticated }: QRAttendanceScannerProps) {
   const { user } = useAuth();
   const [scanning, setScanning] = useState(false);
   const [scanner, setScanner] = useState<Html5QrcodeScanner | null>(null);
@@ -322,7 +326,7 @@ export default function QRAttendanceScanner({ darkMode, setDarkMode }: any) {
   };
 
   return (
-    <StudyFocusedLayout darkMode={darkMode} setDarkMode={setDarkMode}>
+    <MobileLayout setIsAuthenticated={setIsAuthenticated}>
       <Container maxWidth="md" sx={{ py: 4 }}>
         {/* Header */}
         <Box sx={{ mb: 4, textAlign: 'center' }}>
@@ -691,7 +695,7 @@ export default function QRAttendanceScanner({ darkMode, setDarkMode }: any) {
           </DialogActions>
         </Dialog>
       </Container>
-    </StudyFocusedLayout>
+    </MobileLayout>
   );
 }
 
