@@ -31,6 +31,8 @@ fastify.register(cors, {
     'http://localhost:5173',
     /\.vercel\.app$/,
     /\.pages\.dev$/,
+    /\.netlify\.app$/,
+    /\.onrender\.com$/,
   ],
   credentials: true,
 });
