@@ -151,13 +151,27 @@ export default function QRAttendanceScanner({ darkMode, setDarkMode }: any) {
     setCameraError(false);
 
     try {
+      // Mobile-optimized configuration
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      const qrBoxSize = isMobile ? Math.min(window.innerWidth * 0.7, 300) : 250;
+      
       const qrScanner = new Html5QrcodeScanner(
         'qr-reader',
         {
           fps: 10,
-          qrbox: { width: 250, height: 250 },
+          qrbox: qrBoxSize, // Responsive size
           aspectRatio: 1.0,
           rememberLastUsedCamera: true,
+          // Mobile-specific settings
+          videoConstraints: isMobile ? {
+            facingMode: { ideal: "environment" }, // Prefer rear camera on mobile
+            width: { ideal: 1920 },
+            height: { ideal: 1080 }
+          } : undefined,
+          // Better mobile support
+          supportedScanTypes: [0], // QR_CODE only for faster scanning
+          showTorchButtonIfSupported: true, // Show flashlight on mobile
+          showZoomSliderIfSupported: true, // Show zoom on mobile
         },
         false
       );
@@ -416,13 +430,13 @@ export default function QRAttendanceScanner({ darkMode, setDarkMode }: any) {
                 <Chip label="OR" size="small" />
               </Divider>
 
-              {/* Alternative Methods for Laptop Users */}
+              {/* Alternative Methods */}
               <Alert severity="info" sx={{ mb: 2 }}>
                 <Typography variant="body2" fontWeight="600">
-                  💻 Using a Laptop?
+                  📱 Having Camera Issues?
                 </Typography>
                 <Typography variant="caption">
-                  Camera might not work well. Use the options below instead:
+                  If camera doesn't work or you're on a laptop, use the options below:
                 </Typography>
               </Alert>
 
@@ -474,6 +488,25 @@ export default function QRAttendanceScanner({ darkMode, setDarkMode }: any) {
               <Alert severity="info" sx={{ mb: 2 }}>
                 <Typography variant="body2">
                   Point your camera at the {activeSession ? <strong>RED</strong> : <strong>GREEN</strong>} QR code
+                </Typography>
+              </Alert>
+
+              {/* Mobile Camera Tips */}
+              <Alert severity="success" sx={{ mb: 2 }}>
+                <Typography variant="caption" fontWeight="600" display="block">
+                  📱 Mobile Tips:
+                </Typography>
+                <Typography variant="caption" display="block">
+                  • Allow camera permission when prompted
+                </Typography>
+                <Typography variant="caption" display="block">
+                  • Use the rear camera for better scanning
+                </Typography>
+                <Typography variant="caption" display="block">
+                  • Hold phone steady 6-12 inches from QR code
+                </Typography>
+                <Typography variant="caption" display="block">
+                  • Ensure good lighting on the QR code
                 </Typography>
               </Alert>
 
