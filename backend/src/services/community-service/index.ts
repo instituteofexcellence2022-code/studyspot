@@ -86,21 +86,22 @@ function anonymizeMemberName(userId: string, userName: string, userPrivacyEnable
 
 /**
  * Get privacy preference for a user in a specific community/group
+ * Note: Currently unused but kept for potential future use
  */
-async function getUserPrivacyPreference(communityId: string, userId: string): Promise<boolean> {
-  try {
-    const { data } = await supabase
-      .from('community_members')
-      .select('privacy_enabled')
-      .eq('community_id', communityId)
-      .eq('user_id', userId)
-      .single();
-    
-    return data?.privacy_enabled || false;
-  } catch (error) {
-    return false; // Default to no privacy
-  }
-}
+// async function getUserPrivacyPreference(communityId: string, userId: string): Promise<boolean> {
+//   try {
+//     const { data } = await supabase
+//       .from('community_members')
+//       .select('privacy_enabled')
+//       .eq('community_id', communityId)
+//       .eq('user_id', userId)
+//       .single();
+//     
+//     return data?.privacy_enabled || false;
+//   } catch (error) {
+//     return false; // Default to no privacy
+//   }
+// }
 
 /**
  * Create a new community (Admin only)
@@ -159,7 +160,7 @@ fastify.post('/api/communities', async (request, reply) => {
  * Get all communities
  * GET /api/communities
  */
-fastify.get('/api/communities', async (request, reply) => {
+fastify.get('/api/communities', async (_request, reply) => {
   try {
     const { data: communities, error } = await supabase
       .from('communities')
@@ -651,7 +652,7 @@ fastify.get('/api/communities/:id/members', async (request, reply) => {
 fastify.post('/api/communities/:id/messages', async (request, reply) => {
   try {
     const { id } = request.params as any;
-    const { userId, userName, message, messageType, fileUrl, fileName, fileType, userRole } = request.body as any;
+    const { userId, userName, message, messageType, fileUrl, fileName, fileType } = request.body as any;
 
     if (!userId || !message) {
       return reply.code(400).send({ error: 'Missing required fields' });
@@ -808,7 +809,7 @@ fastify.post('/api/communities/upload', async (request, reply) => {
     const filepath = `community-files/${filename}`;
 
     // Upload to Supabase Storage
-    const { data: uploadData, error } = await supabase.storage
+    const { error } = await supabase.storage
       .from('studyspot-files')
       .upload(filepath, buffer, {
         contentType: data.mimetype,
@@ -1135,7 +1136,7 @@ fastify.post('/api/communities/:id/invite-link', async (request, reply) => {
       : null;
 
     // Store invite link
-    const { data: invite, error } = await supabase
+    const { error } = await supabase
       .from('community_invites')
       .insert({
         community_id: id,
