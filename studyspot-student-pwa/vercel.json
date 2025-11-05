@@ -15,15 +15,15 @@
   "env": {
     "VITE_API_URL": "https://studyspot-api.onrender.com",
     "VITE_APP_NAME": "StudySpot Student Portal",
-    "VITE_APP_VERSION": "3.0.0",
-    "VITE_USE_MOCK": "true"
+    "VITE_APP_VERSION": "4.0.0",
+    "VITE_USE_MOCK": "false"
   },
   "build": {
     "env": {
       "VITE_API_URL": "https://studyspot-api.onrender.com",
       "VITE_APP_NAME": "StudySpot Student Portal",
-      "VITE_APP_VERSION": "3.0.0",
-      "VITE_USE_MOCK": "true",
+      "VITE_APP_VERSION": "4.0.0",
+      "VITE_USE_MOCK": "false",
       "NODE_ENV": "production"
     }
   },
