@@ -1,6 +1,10 @@
 -- =============================================
--- SUPABASE SQL MIGRATIONS - COMPLETE SCRIPT
--- Run this in Supabase SQL Editor to enable all features
+-- ⚠️ DEPRECATED - USE COMPLETE_SCHEMA_SETUP.sql INSTEAD
+-- =============================================
+-- This file assumed tables already existed, causing the error:
+-- "relation 'community_members' does not exist"
+-- 
+-- ✅ USE THIS INSTEAD: COMPLETE_SCHEMA_SETUP.sql
 -- =============================================
 
 -- =============================================
