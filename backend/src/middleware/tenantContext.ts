@@ -11,20 +11,21 @@ import { logger } from '../utils/logger';
 /**
  * Extract and attach tenant context to request
  */
-export const tenantContext = async (request: FastifyRequest, reply: FastifyReply) => {
+export const tenantContext = async (request: FastifyRequest, reply: FastifyReply): Promise<void> => {
   try {
     const user = (request as any).user;
     const headerTenantId = (request.headers['x-tenant-id'] ||
       request.headers['X-Tenant-Id']) as string | undefined;
 
     if (!user && !headerTenantId) {
-      return reply.status(HTTP_STATUS.UNAUTHORIZED).send({
+      await reply.status(HTTP_STATUS.UNAUTHORIZED).send({
         success: false,
         error: {
           code: ERROR_CODES.UNAUTHORIZED,
           message: 'User not authenticated',
         },
       });
+      return;
     }
 
     // Get tenant ID from user token or header
@@ -35,13 +36,14 @@ export const tenantContext = async (request: FastifyRequest, reply: FastifyReply
       (user?.tenant?.id as string | undefined);
 
     if (!tenantId) {
-      return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+      await reply.status(HTTP_STATUS.BAD_REQUEST).send({
         success: false,
         error: {
           code: ERROR_CODES.VALIDATION_ERROR,
           message: 'Tenant ID not found in user context',
         },
       });
+      return;
     }
 
     // Get tenant-specific database connection
@@ -57,7 +59,7 @@ export const tenantContext = async (request: FastifyRequest, reply: FastifyReply
     });
   } catch (error: any) {
     logger.error('Tenant context error:', error);
-    return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
+    await reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
       success: false,
       error: {
         code: ERROR_CODES.SERVER_ERROR,
@@ -70,18 +72,19 @@ export const tenantContext = async (request: FastifyRequest, reply: FastifyReply
 /**
  * Verify tenant status (not suspended/expired)
  */
-export const verifyTenantStatus = async (request: FastifyRequest, reply: FastifyReply) => {
+export const verifyTenantStatus = async (request: FastifyRequest, reply: FastifyReply): Promise<void> => {
   try {
     const tenantId = (request as any).tenantId;
 
     if (!tenantId) {
-      return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+      await reply.status(HTTP_STATUS.BAD_REQUEST).send({
         success: false,
         error: {
           code: ERROR_CODES.VALIDATION_ERROR,
           message: 'Tenant ID not found',
         },
       });
+      return;
     }
 
     // Check tenant status (simplified - would query database in production)
@@ -90,7 +93,7 @@ export const verifyTenantStatus = async (request: FastifyRequest, reply: Fastify
 
   } catch (error: any) {
     logger.error('Tenant status verification error:', error);
-    return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
+    await reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
       success: false,
       error: {
         code: ERROR_CODES.SERVER_ERROR,

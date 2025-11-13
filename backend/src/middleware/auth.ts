@@ -13,18 +13,19 @@ const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL || 'http://localhost:3001'
 /**
  * Authenticate request using JWT token
  */
-export const authenticate = async (request: FastifyRequest, reply: FastifyReply) => {
+export const authenticate = async (request: FastifyRequest, reply: FastifyReply): Promise<void> => {
   try {
     const authHeader = request.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return reply.status(HTTP_STATUS.UNAUTHORIZED).send({
+      await reply.status(HTTP_STATUS.UNAUTHORIZED).send({
         success: false,
         error: {
           code: ERROR_CODES.UNAUTHORIZED,
           message: 'No authorization token provided',
         },
       });
+      return;
     }
 
     const token = authHeader.split(' ')[1];
@@ -39,20 +40,21 @@ export const authenticate = async (request: FastifyRequest, reply: FastifyReply)
     );
 
     if (!response.data.success) {
-      return reply.status(HTTP_STATUS.UNAUTHORIZED).send({
+      await reply.status(HTTP_STATUS.UNAUTHORIZED).send({
         success: false,
         error: {
           code: ERROR_CODES.INVALID_TOKEN,
           message: 'Invalid or expired token',
         },
       });
+      return;
     }
 
     // Attach user to request
     (request as any).user = response.data.data;
   } catch (error: any) {
     logger.error('Authentication error:', error);
-    return reply.status(HTTP_STATUS.UNAUTHORIZED).send({
+    await reply.status(HTTP_STATUS.UNAUTHORIZED).send({
       success: false,
       error: {
         code: ERROR_CODES.INVALID_TOKEN,
@@ -66,17 +68,18 @@ export const authenticate = async (request: FastifyRequest, reply: FastifyReply)
  * Check if user has required permission
  */
 export const requirePermission = (permission: string) => {
-  return async (request: FastifyRequest, reply: FastifyReply) => {
+  return async (request: FastifyRequest, reply: FastifyReply): Promise<void> => {
     const user = (request as any).user;
 
     if (!user) {
-      return reply.status(HTTP_STATUS.UNAUTHORIZED).send({
+      await reply.status(HTTP_STATUS.UNAUTHORIZED).send({
         success: false,
         error: {
           code: ERROR_CODES.UNAUTHORIZED,
           message: 'User not authenticated',
         },
       });
+      return;
     }
 
     const userPermissions = user.permissions || [];
@@ -87,13 +90,14 @@ export const requirePermission = (permission: string) => {
     }
 
     if (!userPermissions.includes(permission)) {
-      return reply.status(HTTP_STATUS.FORBIDDEN).send({
+      await reply.status(HTTP_STATUS.FORBIDDEN).send({
         success: false,
         error: {
           code: ERROR_CODES.INSUFFICIENT_PERMISSIONS,
           message: `Missing required permission: ${permission}`,
         },
       });
+      return;
     }
   };
 };
@@ -102,27 +106,29 @@ export const requirePermission = (permission: string) => {
  * Check if user has any of the required roles
  */
 export const requireRole = (...roles: string[]) => {
-  return async (request: FastifyRequest, reply: FastifyReply) => {
+  return async (request: FastifyRequest, reply: FastifyReply): Promise<void> => {
     const user = (request as any).user;
 
     if (!user) {
-      return reply.status(HTTP_STATUS.UNAUTHORIZED).send({
+      await reply.status(HTTP_STATUS.UNAUTHORIZED).send({
         success: false,
         error: {
           code: ERROR_CODES.UNAUTHORIZED,
           message: 'User not authenticated',
         },
       });
+      return;
     }
 
     if (!roles.includes(user.role)) {
-      return reply.status(HTTP_STATUS.FORBIDDEN).send({
+      await reply.status(HTTP_STATUS.FORBIDDEN).send({
         success: false,
         error: {
           code: ERROR_CODES.INSUFFICIENT_PERMISSIONS,
           message: `Required role: ${roles.join(' or ')}`,
         },
       });
+      return;
     }
   };
 };
