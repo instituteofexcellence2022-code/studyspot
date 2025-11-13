@@ -80,6 +80,10 @@ fastify.register(rateLimit, {
 const resolveTenantId = (user: any) => user?.tenant_id || user?.tenantId || null;
 
 const generateAccessToken = (user: any) => {
+  if (!fastify.jwt) {
+    throw new Error('JWT plugin not initialized');
+  }
+
   const tenantId = resolveTenantId(user);
   const roles = Array.isArray(user?.roles)
     ? user.roles
