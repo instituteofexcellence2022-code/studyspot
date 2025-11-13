@@ -54,11 +54,8 @@ fastify.register(rateLimit, {
   allowList: ['127.0.0.1'], // Whitelist localhost for testing
   skipOnError: false, // Don't skip on errors
   ban: 3, // Ban after 3 violations (15 requests in 15 min)
-  onBanReach: (req: any, key: string) => {
-    logger.warn(`Rate limit ban reached for IP: ${key}`, {
-      ip: req.ip,
-      headers: req.headers,
-    });
+  onBanReach: (_req: any, key: string) => {
+    logger.warn(`Rate limit ban reached for IP: ${key}`);
   },
   errorResponseBuilder: (req: any, context: any) => {
     return {
@@ -222,7 +219,7 @@ fastify.post('/api/test/socket-event', async (request, reply) => {
 });
 
 // Get WebSocket connection stats
-fastify.get('/api/test/socket-stats', async (request, reply) => {
+fastify.get('/api/test/socket-stats', async (_request, reply) => {
   try {
     const io = (fastify as any).io;
     
@@ -828,7 +825,7 @@ fastify.post('/api/v1/auth/student/login', async (request, reply) => {
 });
 
 // Tenant login (placeholder for future)
-fastify.post('/api/v1/auth/tenant/login', async (request, reply) => {
+fastify.post('/api/v1/auth/tenant/login', async (_request, reply) => {
   // TODO: Implement tenant login
   return reply.status(HTTP_STATUS.NOT_FOUND).send({
     success: false,
