@@ -642,8 +642,21 @@ fastify.post('/api/auth/register', async (request, reply) => {
     const user = result.rows[0];
 
     // Generate tokens for immediate login
-    const accessToken = generateAccessToken(user);
-    const refreshToken = generateRefreshToken(user);
+    let accessToken, refreshToken;
+    try {
+      accessToken = generateAccessToken(user);
+      refreshToken = generateRefreshToken(user);
+    } catch (tokenError: any) {
+      logger.error('Token generation failed:', tokenError);
+      return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.SERVER_ERROR,
+          message: 'Token generation failed',
+          details: tokenError.message,
+        },
+      });
+    }
 
     // Store refresh token (optional - won't fail if table missing)
     try {
