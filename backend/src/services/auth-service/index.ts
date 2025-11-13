@@ -57,7 +57,7 @@ fastify.register(rateLimit, {
   onBanReach: (_req: any, key: string) => {
     logger.warn(`Rate limit ban reached for IP: ${key}`);
   },
-  errorResponseBuilder: (req: any, context: any) => {
+  errorResponseBuilder: (_req: any, context: any) => {
     return {
       success: false,
       error: {
