@@ -28,10 +28,13 @@ export class AuthClient {
 
   async login(credentials: Credentials): Promise<LoginResponse> {
     const { provider, storage } = this.options;
-    const response = await this.request<LoginResponse>(
+    const rawResponse = await this.request<any>(
       provider.loginPath ?? DEFAULT_ENDPOINTS.login,
       credentials
     );
+
+    // Handle backend response wrapping (data.data or data)
+    const response = (rawResponse as any).data || rawResponse;
 
     this.persistTokens(response.tokens, storage);
     return response;

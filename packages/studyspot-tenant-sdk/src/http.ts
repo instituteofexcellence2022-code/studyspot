@@ -42,12 +42,59 @@ export function createApiClient(options: ApiClientOptions) {
     return config;
   });
 
+  // Response interceptor with automatic token refresh
   instance.interceptors.response.use(
     (response) => response,
-    (error) => {
+    async (error) => {
+      const originalRequest = error.config;
+
+      // If 401 error and we haven't tried refreshing yet
+      if (error.response?.status === 401 && !originalRequest._retry) {
+        originalRequest._retry = true;
+
+        try {
+          // Get current tokens
+          const tokens = tokenStorage.read();
+          
+          if (tokens?.refreshToken) {
+            // Try to refresh the access token
+            const response = await axios.post(
+              `${baseURL}/api/auth/refresh`,
+              { refreshToken: tokens.refreshToken },
+              { headers: { 'Content-Type': 'application/json' } }
+            );
+
+            const newTokens = response.data?.data?.tokens || response.data?.tokens;
+            
+            if (newTokens?.accessToken) {
+              // Update stored tokens
+              tokenStorage.write({
+                accessToken: newTokens.accessToken,
+                refreshToken: newTokens.refreshToken || tokens.refreshToken,
+                expiresAt: newTokens.expiresAt,
+                tenantId: tokens.tenantId,
+              });
+
+              // Retry the original request with new token
+              originalRequest.headers['Authorization'] = `Bearer ${newTokens.accessToken}`;
+              return instance(originalRequest);
+            }
+          }
+        } catch (refreshError) {
+          // Refresh failed, clear tokens and redirect to login
+          tokenStorage.clear();
+          if (typeof onUnauthorized === 'function') {
+            onUnauthorized();
+          }
+          return Promise.reject(refreshError);
+        }
+      }
+
+      // If still 401 after retry or no refresh token, logout
       if (error.response?.status === 401 && typeof onUnauthorized === 'function') {
         onUnauthorized();
       }
+      
       return Promise.reject(error);
     }
   );

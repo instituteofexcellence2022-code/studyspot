@@ -15,11 +15,33 @@ class AuthService {
     }
   }
 
-  async register(data: RegisterRequest): Promise<User> {
+  async register(data: RegisterRequest): Promise<LoginResponse> {
     try {
       const response = await api.post('/api/auth/register', data);
       const payload = response.data?.data || response.data;
-      return payload.user || payload;
+      
+      // Backend returns tokens + user on successful registration
+      if (payload.tokens && payload.user) {
+        // Store tokens using SDK
+        tokenStorage.write({
+          accessToken: payload.tokens.accessToken,
+          refreshToken: payload.tokens.refreshToken,
+          expiresAt: payload.tokens.expiresAt,
+          tenantId: payload.user.tenantId,
+        });
+        this.setUser(payload.user);
+        
+        return {
+          user: payload.user,
+          tokens: payload.tokens,
+        };
+      }
+      
+      // Fallback: If no tokens returned, auto-login the user
+      return await this.login({
+        email: data.email,
+        password: data.password,
+      });
     } catch (error: any) {
       throw this.handleError(error);
     }

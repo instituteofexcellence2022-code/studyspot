@@ -107,13 +107,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
 
-      await activeAuthService.register(data);
+      const response = await activeAuthService.register(data);
 
-      setState(prev => ({
-        ...prev,
+      // Auto-login after successful registration
+      setState({
+        user: response.user,
+        isAuthenticated: true,
         isLoading: false,
         error: null,
-      }));
+      });
     } catch (error: any) {
       setState(prev => ({
         ...prev,

@@ -81,14 +81,29 @@ class AuthService {
       return await mockAuthService.register(email, password, name, role);
     }
 
-    const response = await authClient.login({ email, password });
-    this.persistAuthResponse(response);
+    // Split name into first and last name
+    const nameParts = name.trim().split(' ');
+    const firstName = nameParts[0] || '';
+    const lastName = nameParts.slice(1).join(' ') || '';
+
+    // Call actual registration endpoint
+    const response = await apiService.post<any>('/api/auth/register', {
+      firstName,
+      lastName,
+      email,
+      password,
+      role: role || 'library_owner',
+    });
+
+    const authData = response?.data || response;
+    this.persistAuthResponse(authData);
+    
     return {
       success: true,
       message: 'Registration successful',
       data: {
         user: this.user!,
-        token: response.tokens.accessToken,
+        token: authData.tokens.accessToken,
       },
     };
   }
@@ -105,17 +120,25 @@ class AuthService {
       return await mockAuthService.registerDetailed(userData);
     }
 
-    const response = await authClient.login({
+    // Call actual registration endpoint
+    const response = await apiService.post<any>('/api/auth/register', {
+      firstName: userData.firstName,
+      lastName: userData.lastName,
       email: userData.email,
       password: userData.password,
+      phone: userData.phone,
+      role: userData.role || 'library_owner',
     });
-    this.persistAuthResponse(response);
+
+    const authData = response?.data || response;
+    this.persistAuthResponse(authData);
+    
     return {
       success: true,
       message: 'Registration successful',
       data: {
         user: this.user!,
-        token: response.tokens.accessToken,
+        token: authData.tokens.accessToken,
       },
     };
   }
