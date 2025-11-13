@@ -126,6 +126,7 @@ const limiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => req.path?.startsWith('/health'),
 });
 
 app.use(limiter);
