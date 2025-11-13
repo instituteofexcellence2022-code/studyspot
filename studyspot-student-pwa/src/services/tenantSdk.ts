@@ -6,10 +6,11 @@ import {
   type AuthProviderConfig,
 } from 'studyspot-tenant-sdk';
 
+const DEFAULT_AUTH_BASE = 'https://studyspot-auth.onrender.com';
 const DEFAULT_API_BASE = 'https://studyspot-api.onrender.com';
 
 const authBaseUrl =
-  import.meta.env.VITE_AUTH_URL || import.meta.env.VITE_API_URL || DEFAULT_API_BASE;
+  import.meta.env.VITE_AUTH_URL || DEFAULT_AUTH_BASE;
 
 const authConfig: AuthProviderConfig = {
   baseUrl: authBaseUrl,
@@ -19,8 +20,8 @@ const authConfig: AuthProviderConfig = {
   enableRefresh: true,
 };
 
-if (!import.meta.env.VITE_AUTH_URL && !import.meta.env.VITE_API_URL) {
-  console.warn('[StudySpot] Missing VITE_AUTH_URL or VITE_API_URL for AuthClient, using default base URL');
+if (!import.meta.env.VITE_AUTH_URL) {
+  console.warn('[StudySpot] Missing VITE_AUTH_URL for AuthClient, using default auth service URL');
 }
 
 const storageAdapter =

@@ -2,6 +2,8 @@ import api from './api';
 import { authClient, tokenStorage } from './tenantSdk';
 import type { LoginRequest, RegisterRequest, LoginResponse, User } from '../types/auth';
 
+const AUTH_SERVICE_BASE = import.meta.env.VITE_AUTH_URL || 'https://studyspot-auth.onrender.com';
+
 class AuthService {
   private readonly USER_KEY = 'studyspot_user';
 
@@ -43,6 +45,46 @@ class AuthService {
         password: data.password,
       });
     } catch (error: any) {
+      // If API gateway is unreachable or returns 5xx, try auth service directly
+      if (!error?.response || error.response?.status >= 500) {
+        try {
+          const fallbackResponse = await fetch(`${AUTH_SERVICE_BASE}/api/auth/register`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+          });
+
+          if (!fallbackResponse.ok) {
+            const fallbackError = await fallbackResponse.json().catch(() => ({}));
+            throw new Error(fallbackError?.error?.message || 'Registration failed (fallback)');
+          }
+
+          const payload = await fallbackResponse.json();
+          const result = payload.data || payload;
+
+          if (result.tokens && result.user) {
+            tokenStorage.write({
+              accessToken: result.tokens.accessToken,
+              refreshToken: result.tokens.refreshToken,
+              expiresAt: result.tokens.expiresAt,
+              tenantId: result.user.tenantId,
+            });
+            this.setUser(result.user);
+            return {
+              user: result.user,
+              tokens: result.tokens,
+            };
+          }
+
+          return await this.login({
+            email: data.email,
+            password: data.password,
+          });
+        } catch (fallbackError: any) {
+          throw this.handleError(fallbackError);
+        }
+      }
+
       throw this.handleError(error);
     }
   }
