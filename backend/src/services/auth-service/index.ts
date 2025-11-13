@@ -352,10 +352,17 @@ fastify.post('/api/v1/auth/admin/login', async (request, reply) => {
     );
 
     // Update last login
-    await coreDb.query(
-      'UPDATE admin_users SET last_login_at = NOW(), last_login_ip = $1 WHERE id = $2',
-      [request.ip, user.id]
-    );
+    try {
+      await coreDb.query(
+        'UPDATE admin_users SET last_login_at = NOW(), last_login_ip = $1 WHERE id = $2',
+        [request.ip, user.id]
+      );
+    } catch (updateError: any) {
+      logger.warn('Last login update failed', {
+        userId: user.id,
+        error: updateError.message,
+      });
+    }
 
     // Create audit log
     await coreDb.query(
