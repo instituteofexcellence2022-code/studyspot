@@ -510,11 +510,18 @@ fastify.post('/api/auth/login', async (request, reply) => {
     const refreshToken = generateRefreshToken(user);
 
     // Store refresh token
-    await coreDb.query(
-      `INSERT INTO refresh_tokens (user_id, user_type, token, expires_at)
-       VALUES ($1, $2, $3, NOW() + INTERVAL '7 days')`,
-      [user.id, user.role || 'student', refreshToken]
-    );
+    try {
+      await coreDb.query(
+        `INSERT INTO refresh_tokens (user_id, user_type, token, expires_at)
+         VALUES ($1, $2, $3, NOW() + INTERVAL '7 days')`,
+        [user.id, user.role || 'student', refreshToken]
+      );
+    } catch (tokenError: any) {
+      logger.warn('Refresh token insert failed', {
+        userId: user.id,
+        error: tokenError.message,
+      });
+    }
 
     // Update last login
     await coreDb.query(
@@ -523,11 +530,18 @@ fastify.post('/api/auth/login', async (request, reply) => {
     );
 
     // Create audit log
-    await coreDb.query(
-      `INSERT INTO audit_logs (user_id, user_type, action, ip_address)
-       VALUES ($1, $2, $3, $4)`,
-      [user.id, user.role || 'student', 'login', request.ip]
-    );
+    try {
+      await coreDb.query(
+        `INSERT INTO audit_logs (user_id, user_type, action, ip_address)
+         VALUES ($1, $2, $3, $4)`,
+        [user.id, user.role || 'student', 'login', request.ip]
+      );
+    } catch (auditError: any) {
+      logger.warn('Audit log insert failed', {
+        userId: user.id,
+        error: auditError.message,
+      });
+    }
 
     // Remove sensitive data
     return {
