@@ -1,11 +1,14 @@
 import React from 'react';
 import { PolarAngleAxis as RechartsPolarAngleAxis } from 'recharts';
 
-export type PolarAngleAxisCompatProps = React.ComponentProps<typeof RechartsPolarAngleAxis>;
+// Workaround for Recharts TypeScript issue with PolarAngleAxis
+// This component wraps PolarAngleAxis to make it compatible with React 19
 
-const PolarAngleAxisCompat: React.FC<PolarAngleAxisCompatProps> = (props) => (
+const PolarAngleAxisCompat: React.FC<any> = (props) => {
+  // Cast to any to bypass TypeScript's JSX component type checking
+  const Component = RechartsPolarAngleAxis as any;
   // eslint-disable-next-line react/jsx-props-no-spreading
-  <RechartsPolarAngleAxis {...props} />
-);
+  return <Component {...props} />;
+};
 
 export default PolarAngleAxisCompat;
