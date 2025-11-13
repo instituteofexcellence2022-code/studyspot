@@ -100,6 +100,20 @@ export function registerRoutes(fastify: FastifyInstance) {
   // ============================================
   // AUTH SERVICE ROUTES
   // ============================================
+  // Route for /api/auth/* (student portal uses this)
+  fastify.all('/api/auth/*', async (request, reply) => {
+    const result = await proxyToService(
+      'Auth',
+      SERVICES.AUTH,
+      request.url,
+      request.method,
+      request.headers,
+      request.body
+    );
+    return reply.code(result.statusCode).send(result.data);
+  });
+
+  // Route for /api/v1/auth/* (admin portal uses this)
   fastify.all('/api/v1/auth/*', async (request, reply) => {
     const path = request.url.replace('/api/v1', '');
     const result = await proxyToService(
