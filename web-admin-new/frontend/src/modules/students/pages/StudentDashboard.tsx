@@ -80,6 +80,7 @@ import {
   Tooltip as RechartsTooltip,
   Legend,
   ResponsiveContainer,
+  type PieLabelRenderProps,
 } from 'recharts';
 
 const COLORS = ['#E91E63', '#9C27B0', '#2196F3', '#4CAF50', '#FF9800'];
@@ -613,7 +614,15 @@ const StudentDashboard: React.FC = () => {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={(entry) => `${entry.type}: ${entry.percentage}%`}
+                  label={({ payload, percent }: PieLabelRenderProps) => {
+                    const value =
+                      percent != null
+                        ? (percent * 100).toFixed(1)
+                        : payload?.percentage != null
+                        ? (payload.percentage as number).toFixed(1)
+                        : '0';
+                    return `${payload?.type ?? payload?.name ?? ''}: ${value}%`;
+                  }}
                   outerRadius={100}
                   fill="#8884d8"
                   dataKey="count"
@@ -1448,7 +1457,15 @@ const StudentDashboard: React.FC = () => {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={(entry) => `${entry.library}: ${entry.percentage}%`}
+                  label={({ payload, percent }: PieLabelRenderProps) => {
+                    const value =
+                      percent != null
+                        ? (percent * 100).toFixed(1)
+                        : payload?.percentage != null
+                        ? (payload.percentage as number).toFixed(1)
+                        : '0';
+                    return `${payload?.library ?? payload?.name ?? ''}: ${value}%`;
+                  }}
                   outerRadius={100}
                   fill="#8884d8"
                   dataKey="students"
@@ -1513,7 +1530,15 @@ const StudentDashboard: React.FC = () => {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={(entry) => `${entry.percentage}%`}
+                  label={({ percent, payload }: PieLabelRenderProps) => {
+                    const value =
+                      percent != null
+                        ? (percent * 100).toFixed(1)
+                        : payload?.percentage != null
+                        ? (payload.percentage as number).toFixed(1)
+                        : '0';
+                    return `${value}%`;
+                  }}
                   outerRadius={100}
                   fill="#8884d8"
                   dataKey="count"

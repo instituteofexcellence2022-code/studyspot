@@ -34,6 +34,7 @@ import {
 } from '@mui/icons-material';
 import Layout from '../components/MobileLayout';
 import api from '../services/api';
+import { authService } from '../services/auth.service';
 import { jsPDF } from 'jspdf';
 
 interface Transaction {
@@ -161,6 +162,7 @@ export default function PaymentsPage({ setIsAuthenticated, darkMode, setDarkMode
       document.body.appendChild(script);
 
       script.onload = () => {
+        const currentUser = authService.getUser() ?? {};
         const options = {
           key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_dummy',
           amount: order.amount,
@@ -184,9 +186,9 @@ export default function PaymentsPage({ setIsAuthenticated, darkMode, setDarkMode
             }
           },
           prefill: {
-            name: JSON.parse(localStorage.getItem('user') || '{}').firstName || '',
-            email: JSON.parse(localStorage.getItem('user') || '{}').email || '',
-            contact: JSON.parse(localStorage.getItem('user') || '{}').phone || '',
+            name: currentUser.firstName || '',
+            email: currentUser.email || '',
+            contact: currentUser.phone || '',
           },
           theme: {
             color: '#2563eb',
@@ -221,7 +223,7 @@ export default function PaymentsPage({ setIsAuthenticated, darkMode, setDarkMode
     
     // Student Details
     doc.setFontSize(10);
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const user = authService.getUser() ?? {};
     doc.text('STUDENT DETAILS', 20, 55);
     doc.setFontSize(9);
     doc.text(`Name: ${user.name || 'Student'}`, 20, 62);

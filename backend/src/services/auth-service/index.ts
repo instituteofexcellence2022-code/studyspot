@@ -49,18 +49,42 @@ fastify.register(jwt, {
 // HELPER FUNCTIONS
 // ============================================
 
+const resolveTenantId = (user: any) => user?.tenant_id || user?.tenantId || null;
+
 const generateAccessToken = (user: any) => {
-  return fastify.jwt.sign(
-    {
-      userId: user.id,
-      email: user.email,
-      role: user.role,
-      tenantId: user.tenant_id,
-      permissions: user.permissions,
-      type: 'access',
-    },
-    { expiresIn: process.env.JWT_ACCESS_TOKEN_EXPIRY || '15m' }
-  );
+  const tenantId = resolveTenantId(user);
+  const roles = Array.isArray(user?.roles)
+    ? user.roles
+    : user?.role
+    ? [user.role]
+    : [];
+
+  const payload: Record<string, unknown> = {
+    sub: user.id,
+    userId: user.id,
+    email: user.email,
+    roles,
+    permissions: user.permissions ?? [],
+    tenantId,
+    tenant_id: tenantId,
+    type: 'access',
+  };
+
+  if (tenantId) {
+    payload.tenant = {
+      id: tenantId,
+      slug: user?.tenant_slug ?? null,
+      plan: user?.tenant_plan ?? null,
+    };
+  }
+
+  if (user?.first_name || user?.firstName) {
+    payload.name = `${user.first_name ?? user.firstName ?? ''} ${user.last_name ?? user.lastName ?? ''}`.trim();
+  }
+
+  return fastify.jwt.sign(payload, {
+    expiresIn: process.env.JWT_ACCESS_TOKEN_EXPIRY || '15m',
+  });
 };
 
 const generateRefreshToken = (user: any) => {
@@ -71,6 +95,45 @@ const generateRefreshToken = (user: any) => {
     },
     { expiresIn: process.env.JWT_REFRESH_TOKEN_EXPIRY || '7d' }
   );
+};
+
+const extractExpiryTimestamp = (token: string): number | null => {
+  try {
+    const decoded = fastify.jwt.decode(token) as { exp?: number } | null;
+    if (decoded?.exp) {
+      return decoded.exp * 1000;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+};
+
+const formatUserResponse = (user: any) => ({
+  id: user.id,
+  email: user.email,
+  firstName: user.first_name ?? user.firstName ?? null,
+  lastName: user.last_name ?? user.lastName ?? null,
+  role: user.role ?? null,
+  tenantId: resolveTenantId(user),
+  status: user.is_active === false ? 'inactive' : 'active',
+  createdAt: user.created_at ?? null,
+  updatedAt: user.updated_at ?? null,
+  phone: user.phone ?? user.phone_number ?? null,
+});
+
+const buildAuthPayload = (user: any, tokens: { accessToken: string; refreshToken?: string }) => {
+  const expiresAt = extractExpiryTimestamp(tokens.accessToken);
+
+  return {
+    user: formatUserResponse(user),
+    token: tokens.accessToken,
+    tokens: {
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+      expiresAt,
+    },
+  };
 };
 
 // ============================================
@@ -248,15 +311,9 @@ fastify.post('/api/v1/auth/admin/login', async (request, reply) => {
     );
 
     // Remove sensitive data
-    const { password_hash, ...safeUser } = user;
-
     return {
       success: true,
-      data: {
-        user: safeUser,
-        accessToken,
-        refreshToken,
-      },
+      data: buildAuthPayload(user, { accessToken, refreshToken }),
       message: 'Login successful',
     };
   } catch (error: any) {
@@ -419,28 +476,9 @@ fastify.post('/api/auth/login', async (request, reply) => {
     );
 
     // Remove sensitive data
-    const { password_hash, ...safeUser } = user;
-
     return {
       success: true,
-      data: {
-        user: {
-          id: safeUser.id,
-          email: safeUser.email,
-          firstName: safeUser.first_name,
-          lastName: safeUser.last_name,
-          role: safeUser.role,
-          tenantId: safeUser.tenant_id,
-          status: safeUser.is_active ? 'active' : 'inactive',
-          createdAt: safeUser.created_at,
-          updatedAt: safeUser.updated_at,
-        },
-        token: accessToken,
-        tokens: {
-          accessToken,
-          refreshToken,
-        },
-      },
+      data: buildAuthPayload(user, { accessToken, refreshToken }),
       message: 'Login successful',
     };
   } catch (error: any) {
@@ -528,24 +566,13 @@ fastify.post('/api/auth/register', async (request, reply) => {
 
     return {
       success: true,
-      data: {
-        user: {
-          id: user.id,
-          email: user.email,
-          firstName: user.first_name,
-          lastName: user.last_name,
-          role: user.role,
-          phone: phone || null,
-          status: user.is_active ? 'active' : 'inactive',
-          createdAt: user.created_at,
-          updatedAt: user.updated_at,
+      data: buildAuthPayload(
+        {
+          ...user,
+          phone,
         },
-        token: accessToken,
-        tokens: {
-          accessToken,
-          refreshToken,
-        },
-      },
+        { accessToken, refreshToken }
+      ),
       message: 'Registration successful',
     };
   } catch (error: any) {
@@ -627,24 +654,9 @@ fastify.post('/api/v1/auth/student/login', async (request, reply) => {
       [user.id, 'student', refreshToken]
     );
 
-    // Remove sensitive data
-    const { password_hash, ...safeUser } = user;
-
     return {
       success: true,
-      data: {
-        user: {
-          id: safeUser.id,
-          email: safeUser.email,
-          firstName: safeUser.first_name,
-          lastName: safeUser.last_name,
-          role: safeUser.role,
-        },
-        tokens: {
-          accessToken,
-          refreshToken,
-        },
-      },
+      data: buildAuthPayload(user, { accessToken, refreshToken }),
       message: 'Login successful',
     };
   } catch (error: any) {
@@ -671,11 +683,16 @@ fastify.post('/api/v1/auth/tenant/login', async (request, reply) => {
   });
 });
 
-// Logout
-fastify.post('/api/v1/auth/logout', async (request, reply) => {
+const logoutHandler = async (request: any, reply: any) => {
   try {
-    const token = request.headers.authorization?.split(' ')[1];
-    if (!token) {
+    const body = (request.body ?? {}) as { refreshToken?: string };
+    const refreshTokenFromBody = body.refreshToken;
+    const accessToken =
+      request.headers.authorization?.startsWith('Bearer ')
+        ? request.headers.authorization.split(' ')[1]
+        : undefined;
+
+    if (!refreshTokenFromBody && !accessToken) {
       return reply.status(HTTP_STATUS.UNAUTHORIZED).send({
         success: false,
         error: {
@@ -685,11 +702,25 @@ fastify.post('/api/v1/auth/logout', async (request, reply) => {
       });
     }
 
-    // Revoke refresh token
-    await coreDb.query(
-      'UPDATE refresh_tokens SET revoked_at = NOW() WHERE token = $1',
-      [token]
-    );
+    if (refreshTokenFromBody) {
+      await coreDb.query('UPDATE refresh_tokens SET revoked_at = NOW() WHERE token = $1', [
+        refreshTokenFromBody,
+      ]);
+    }
+
+    if (accessToken) {
+      try {
+        const decoded = fastify.jwt.verify(accessToken) as { userId?: string; tenantId?: string };
+        if (decoded?.userId) {
+          await coreDb.query(
+            'UPDATE refresh_tokens SET revoked_at = NOW() WHERE user_id = $1 AND revoked_at IS NULL',
+            [decoded.userId]
+          );
+        }
+      } catch (error) {
+        logger.warn('Failed to decode access token during logout', error);
+      }
+    }
 
     return {
       success: true,
@@ -705,12 +736,15 @@ fastify.post('/api/v1/auth/logout', async (request, reply) => {
       },
     });
   }
-});
+};
 
-// Refresh token
-fastify.post('/api/v1/auth/refresh', async (request, reply) => {
+fastify.post('/api/v1/auth/logout', logoutHandler);
+fastify.post('/api/auth/logout', logoutHandler);
+
+const refreshHandler = async (request: any, reply: any) => {
   try {
-    const { refreshToken } = request.body as { refreshToken: string };
+    const body = (request.body ?? {}) as { refreshToken?: string; token?: string };
+    const refreshToken = body.refreshToken || body.token;
 
     if (!refreshToken) {
       return reply.status(HTTP_STATUS.BAD_REQUEST).send({
@@ -722,16 +756,23 @@ fastify.post('/api/v1/auth/refresh', async (request, reply) => {
       });
     }
 
-    // Verify refresh token
-    const decoded = fastify.jwt.verify(refreshToken) as any;
+    const decoded = fastify.jwt.verify(refreshToken) as { userId?: string; type?: string };
+    if (decoded?.type !== 'refresh' || !decoded?.userId) {
+      return reply.status(HTTP_STATUS.UNAUTHORIZED).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.INVALID_TOKEN,
+          message: 'Invalid refresh token',
+        },
+      });
+    }
 
-    // Check if token is revoked
-    const result = await coreDb.query(
+    const tokenRow = await coreDb.query(
       'SELECT * FROM refresh_tokens WHERE token = $1 AND revoked_at IS NULL AND expires_at > NOW()',
       [refreshToken]
     );
 
-    if (!result.rows.length) {
+    if (!tokenRow.rows.length) {
       return reply.status(HTTP_STATUS.UNAUTHORIZED).send({
         success: false,
         error: {
@@ -741,7 +782,6 @@ fastify.post('/api/v1/auth/refresh', async (request, reply) => {
       });
     }
 
-    // Get user
     const userResult = await coreDb.query(
       'SELECT * FROM admin_users WHERE id = $1 AND is_active = true',
       [decoded.userId]
@@ -758,15 +798,11 @@ fastify.post('/api/v1/auth/refresh', async (request, reply) => {
     }
 
     const user = userResult.rows[0];
-
-    // Generate new access token
     const newAccessToken = generateAccessToken(user);
 
     return {
       success: true,
-      data: {
-        accessToken: newAccessToken,
-      },
+      data: buildAuthPayload(user, { accessToken: newAccessToken, refreshToken }),
     };
   } catch (error: any) {
     logger.error('Refresh token error:', error);
@@ -778,7 +814,10 @@ fastify.post('/api/v1/auth/refresh', async (request, reply) => {
       },
     });
   }
-});
+};
+
+fastify.post('/api/v1/auth/refresh', refreshHandler);
+fastify.post('/api/auth/refresh', refreshHandler);
 
 // Verify token (for other services)
 fastify.post('/api/v1/auth/verify', async (request, reply) => {

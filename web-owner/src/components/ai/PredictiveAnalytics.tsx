@@ -39,7 +39,6 @@ import {
   RadarChart,
   Radar,
   PolarGrid,
-  PolarAngleAxis,
   PolarRadiusAxis,
   XAxis,
   YAxis,
@@ -48,6 +47,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
+import PolarAngleAxis from '../common/PolarAngleAxisCompat';
 
 interface Prediction {
   id: string;
@@ -359,7 +359,6 @@ const PredictiveAnalytics: React.FC = () => {
             <ResponsiveContainer width="100%" height={300}>
               <RadarChart data={skillAnalysis}>
                 <PolarGrid />
-                <PolarAngleAxis dataKey="skill" />
                 <PolarRadiusAxis angle={90} domain={[0, 100]} />
                 <Radar
                   name="Current Level"

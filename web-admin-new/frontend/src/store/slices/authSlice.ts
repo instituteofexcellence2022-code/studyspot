@@ -5,6 +5,7 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { AuthState, User, LoginCredentials } from '../../types';
 import { storage } from '../../utils/storage';
+import { adminAuthService } from '../../services/authService';
 
 // Initial state
 const initialState: AuthState = {
@@ -16,43 +17,16 @@ const initialState: AuthState = {
   error: null,
 };
 
-// Mock user for development
-const MOCK_USER: User = {
-  id: '1',
-  email: 'admin@studyspot.com',
-  name: 'Super Admin',
-  role: 'super_admin',
-  tenantId: null,
-  status: 'active',
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
-};
-
-// Async thunks
 export const login = createAsyncThunk(
   'auth/login',
   async (credentials: LoginCredentials, { rejectWithValue }) => {
     try {
-      // Mock login - simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      if (credentials.email === 'admin@studyspot.com' && credentials.password === 'admin123') {
-        const token = 'mock-jwt-token-' + Date.now();
-        const refreshToken = 'mock-refresh-token-' + Date.now();
-
-        // Store tokens
-        storage.setAuthToken(token);
-        storage.setRefreshToken(refreshToken);
-        storage.set('admin_user', MOCK_USER);
-
-        return {
-          user: MOCK_USER,
-          token,
-          refreshToken,
-        };
-      }
-
-      return rejectWithValue('Invalid email or password');
+      const response = await adminAuthService.login(credentials);
+      return {
+        user: response.user,
+        token: response.token,
+        refreshToken: response.refreshToken ?? null,
+      };
     } catch (error: any) {
       return rejectWithValue(error.message || 'Login failed');
     }
@@ -63,8 +37,7 @@ export const logout = createAsyncThunk(
   'auth/logout',
   async (_, { rejectWithValue }) => {
     try {
-      // Clear auth data
-      storage.clearAuthData();
+      await adminAuthService.logout();
       return null;
     } catch (error: any) {
       return rejectWithValue(error.message || 'Logout failed');

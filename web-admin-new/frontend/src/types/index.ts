@@ -29,7 +29,7 @@ export interface LoginCredentials {
 export interface LoginResponse {
   user: User;
   token: string;
-  refreshToken: string;
+  refreshToken: string | null;
 }
 
 export interface AuthState {

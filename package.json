@@ -1,5 +1,17 @@
 {
+  "name": "studyspot-platform",
+  "private": true,
+  "version": "0.0.0",
+  "workspaces": [
+    "packages/*",
+    "studyspot-student-pwa",
+    "web-owner",
+    "web-admin-new/frontend"
+  ],
   "dependencies": {
     "@tanstack/react-query": "^5.90.5"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3"
   }
 }

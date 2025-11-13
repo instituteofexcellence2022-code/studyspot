@@ -37,6 +37,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import Layout from '../components/MobileLayout';
 import { advancedGradients, glassEffects } from '../theme/premiumTheme';
 import api from '../services/api';
+import { authService } from '../services/auth.service';
 
 interface Referral {
   id: string;
@@ -49,7 +50,7 @@ interface Referral {
 }
 
 export default function ReferralPage({ setIsAuthenticated }: { setIsAuthenticated: (value: boolean) => void }) {
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const user = authService.getUser() ?? {};
   const [referralCode] = useState(`STUDY${user.id?.slice(-6).toUpperCase() || 'CODE123'}`);
   const [referralLink] = useState(`https://studyspot.app/register?ref=${referralCode}`);
   const [copied, setCopied] = useState(false);

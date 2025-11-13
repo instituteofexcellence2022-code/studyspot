@@ -67,6 +67,7 @@ import {
   Tooltip as RechartsTooltip,
   Legend,
   ResponsiveContainer,
+  type PieLabelRenderProps,
 } from 'recharts';
 
 const COLORS = ['#E91E63', '#9C27B0', '#2196F3', '#4CAF50', '#FF9800'];
@@ -449,7 +450,11 @@ const ReferralLoyaltyDashboard: React.FC = () => {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={(entry) => `${entry.tier}: ${entry.percentage}%`}
+                  label={({ payload, percent }: PieLabelRenderProps) =>
+                    `${payload?.tier ?? payload?.name ?? ''}: ${
+                      percent != null ? (percent * 100).toFixed(1) : '0'
+                    }%`
+                  }
                   outerRadius={100}
                   fill="#8884d8"
                   dataKey="members"

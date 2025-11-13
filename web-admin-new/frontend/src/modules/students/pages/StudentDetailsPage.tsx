@@ -68,6 +68,7 @@ import {
   Tooltip as RechartsTooltip,
   Legend,
   ResponsiveContainer,
+  type PieLabelRenderProps,
 } from 'recharts';
 
 interface TabPanelProps {
@@ -872,7 +873,15 @@ const StudentDetailsPage: React.FC = () => {
                         cx="50%"
                         cy="50%"
                         labelLine={false}
-                        label={(entry) => `${entry.percentage}%`}
+                        label={({ percent, payload }: PieLabelRenderProps) => {
+                          const value =
+                            percent != null
+                              ? (percent * 100).toFixed(1)
+                              : payload?.percentage != null
+                              ? (payload.percentage as number).toFixed(1)
+                              : '0';
+                          return `${value}%`;
+                        }}
                         outerRadius={100}
                         fill="#8884d8"
                         dataKey="amount"

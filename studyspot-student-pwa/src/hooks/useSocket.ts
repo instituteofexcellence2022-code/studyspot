@@ -29,6 +29,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
+import { tokenStorage } from '../services/tenantSdk';
 
 const SOCKET_URL = import.meta.env.VITE_API_URL || 'https://studyspot-api.onrender.com';
 
@@ -45,7 +46,7 @@ export function useSocket(role: string = 'student'): UseSocketReturn {
 
   useEffect(() => {
     // Get auth token
-    const token = localStorage.getItem('studyspot_token');
+    const token = tokenStorage.read()?.accessToken;
 
     // Initialize Socket.io connection
     console.log('🔌 Initializing WebSocket connection to:', SOCKET_URL);

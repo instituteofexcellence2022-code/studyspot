@@ -82,7 +82,6 @@ import {
   Scatter,
   RadarChart,
   PolarGrid,
-  PolarAngleAxis,
   PolarRadiusAxis,
   Radar,
 } from 'recharts';

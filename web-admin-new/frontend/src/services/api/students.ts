@@ -32,37 +32,37 @@ export const getAllStudents = async (
   filters?: Partial<StudentFilters>
 ): Promise<ApiResponse<Student[]>> => {
   try {
-    const response = await api.get('/students', { params: filters });
-    return { success: true, data: response.data };
+    const { data } = await api.get<Student[]>('/students', { params: filters });
+    return { success: true, data };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: false, error: error?.message ?? 'Failed to fetch students' };
   }
 };
 
 export const getStudentById = async (id: string): Promise<ApiResponse<Student>> => {
   try {
-    const response = await api.get(`/students/${id}`);
-    return { success: true, data: response.data };
+    const { data } = await api.get<Student>(`/students/${id}`);
+    return { success: true, data };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: false, error: error?.message ?? 'Failed to fetch student' };
   }
 };
 
 export const createStudent = async (data: Partial<Student>): Promise<ApiResponse<Student>> => {
   try {
-    const response = await api.post('/students', data);
-    return { success: true, data: response.data };
+    const result = await api.post<Student>('/students', data);
+    return { success: true, data: result.data };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: false, error: error?.message ?? 'Failed to create student' };
   }
 };
 
 export const updateStudent = async (id: string, data: Partial<Student>): Promise<ApiResponse<Student>> => {
   try {
-    const response = await api.put(`/students/${id}`, data);
-    return { success: true, data: response.data };
+    const result = await api.put<Student>(`/students/${id}`, data);
+    return { success: true, data: result.data };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: false, error: error?.message ?? 'Failed to update student' };
   }
 };
 
@@ -81,19 +81,19 @@ export const deleteStudent = async (id: string): Promise<ApiResponse<void>> => {
 
 export const getStudentBookings = async (studentId: string): Promise<ApiResponse<StudentBooking[]>> => {
   try {
-    const response = await api.get(`/students/${studentId}/bookings`);
-    return { success: true, data: response.data };
+    const { data } = await api.get<StudentBooking[]>(`/students/${studentId}/bookings`);
+    return { success: true, data };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: false, error: error?.message ?? 'Failed to fetch bookings' };
   }
 };
 
 export const getStudentPayments = async (studentId: string): Promise<ApiResponse<StudentPayment[]>> => {
   try {
-    const response = await api.get(`/students/${studentId}/payments`);
-    return { success: true, data: response.data };
+    const { data } = await api.get<StudentPayment[]>(`/students/${studentId}/payments`);
+    return { success: true, data };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: false, error: error?.message ?? 'Failed to fetch payments' };
   }
 };
 
@@ -102,28 +102,28 @@ export const getStudentAttendance = async (
   dateRange?: { startDate: string; endDate: string }
 ): Promise<ApiResponse<StudentAttendance[]>> => {
   try {
-    const response = await api.get(`/students/${studentId}/attendance`, { params: dateRange });
-    return { success: true, data: response.data };
+    const { data } = await api.get<StudentAttendance[]>(`/students/${studentId}/attendance`, { params: dateRange });
+    return { success: true, data };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: false, error: error?.message ?? 'Failed to fetch attendance' };
   }
 };
 
 export const getStudentCommunications = async (studentId: string): Promise<ApiResponse<StudentCommunication[]>> => {
   try {
-    const response = await api.get(`/students/${studentId}/communications`);
-    return { success: true, data: response.data };
+    const { data } = await api.get<StudentCommunication[]>(`/students/${studentId}/communications`);
+    return { success: true, data };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: false, error: error?.message ?? 'Failed to fetch communications' };
   }
 };
 
 export const getStudentComplaints = async (studentId: string): Promise<ApiResponse<StudentComplaint[]>> => {
   try {
-    const response = await api.get(`/students/${studentId}/complaints`);
-    return { success: true, data: response.data };
+    const { data } = await api.get<StudentComplaint[]>(`/students/${studentId}/complaints`);
+    return { success: true, data };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: false, error: error?.message ?? 'Failed to fetch complaints' };
   }
 };
 
@@ -135,37 +135,37 @@ export const getStudentAnalytics = async (
   filters?: Partial<StudentFilters>
 ): Promise<ApiResponse<StudentAnalytics>> => {
   try {
-    const response = await api.get('/students/analytics', { params: filters });
-    return { success: true, data: response.data };
+    const { data } = await api.get<StudentAnalytics>('/students/analytics', { params: filters });
+    return { success: true, data };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: false, error: error?.message ?? 'Failed to fetch analytics' };
   }
 };
 
 export const getDashboardData = async (): Promise<ApiResponse<StudentDashboardData>> => {
   try {
-    const response = await api.get('/students/dashboard');
-    return { success: true, data: response.data };
+    const { data } = await api.get<StudentDashboardData>('/students/dashboard');
+    return { success: true, data };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: false, error: error?.message ?? 'Failed to fetch student dashboard data' };
   }
 };
 
 export const getChurnRiskStudents = async (): Promise<ApiResponse<Student[]>> => {
   try {
-    const response = await api.get('/students/churn-risk');
-    return { success: true, data: response.data };
+    const { data } = await api.get<Student[]>('/students/churn-risk');
+    return { success: true, data };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: false, error: error?.message ?? 'Failed to fetch churn risk students' };
   }
 };
 
 export const getTopActiveStudents = async (limit: number = 10): Promise<ApiResponse<Student[]>> => {
   try {
-    const response = await api.get('/students/top-active', { params: { limit } });
-    return { success: true, data: response.data };
+    const { data } = await api.get<Student[]>('/students/top-active', { params: { limit } });
+    return { success: true, data };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: false, error: error?.message ?? 'Failed to fetch top active students' };
   }
 };
 
@@ -177,10 +177,10 @@ export const bulkUpdateStudents = async (
   operation: StudentBulkOperation
 ): Promise<ApiResponse<{ updated: number }>> => {
   try {
-    const response = await api.post('/students/bulk-update', operation);
-    return { success: true, data: response.data };
+    const { data } = await api.post<{ updated: number }>('/students/bulk-update', operation);
+    return { success: true, data };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: false, error: error?.message ?? 'Failed to run bulk update' };
   }
 };
 
@@ -191,10 +191,10 @@ export const bulkSendMessage = async (data: {
   subject?: string;
 }): Promise<ApiResponse<{ sent: number }>> => {
   try {
-    const response = await api.post('/students/bulk-message', data);
-    return { success: true, data: response.data };
+    const result = await api.post<{ sent: number }>('/students/bulk-message', data);
+    return { success: true, data: result.data };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: false, error: error?.message ?? 'Failed to send bulk message' };
   }
 };
 
@@ -203,13 +203,13 @@ export const exportStudents = async (
   format: 'csv' | 'excel' | 'pdf' = 'csv'
 ): Promise<ApiResponse<Blob>> => {
   try {
-    const response = await api.get('/students/export', {
+    const { data } = await api.get<Blob>('/students/export', {
       params: { ...filters, format },
       responseType: 'blob',
     });
-    return { success: true, data: response.data };
+    return { success: true, data };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: false, error: error?.message ?? 'Failed to export students' };
   }
 };
 
@@ -219,19 +219,19 @@ export const exportStudents = async (
 
 export const suspendStudent = async (id: string, reason: string): Promise<ApiResponse<Student>> => {
   try {
-    const response = await api.post(`/students/${id}/suspend`, { reason });
-    return { success: true, data: response.data };
+    const { data } = await api.post<Student>(`/students/${id}/suspend`, { reason });
+    return { success: true, data };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: false, error: error?.message ?? 'Failed to suspend student' };
   }
 };
 
 export const reactivateStudent = async (id: string): Promise<ApiResponse<Student>> => {
   try {
-    const response = await api.post(`/students/${id}/reactivate`);
-    return { success: true, data: response.data };
+    const { data } = await api.post<Student>(`/students/${id}/reactivate`);
+    return { success: true, data };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: false, error: error?.message ?? 'Failed to reactivate student' };
   }
 };
 

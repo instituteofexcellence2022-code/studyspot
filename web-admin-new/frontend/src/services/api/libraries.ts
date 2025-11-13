@@ -30,8 +30,8 @@ export const getAllLibraries = async (
   filters?: Partial<LibraryFilters>
 ): Promise<ApiResponse<Library[]>> => {
   try {
-    const response = await api.get('/libraries', { params: filters });
-    return { success: true, data: response.data };
+    const { data } = await api.get<Library[]>('/libraries', { params: filters });
+    return { success: true, data };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
@@ -39,8 +39,8 @@ export const getAllLibraries = async (
 
 export const getLibraryById = async (id: string): Promise<ApiResponse<Library>> => {
   try {
-    const response = await api.get(`/libraries/${id}`);
-    return { success: true, data: response.data };
+    const { data } = await api.get<Library>(`/libraries/${id}`);
+    return { success: true, data };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
@@ -48,8 +48,8 @@ export const getLibraryById = async (id: string): Promise<ApiResponse<Library>> 
 
 export const updateLibrary = async (id: string, data: Partial<Library>): Promise<ApiResponse<Library>> => {
   try {
-    const response = await api.put(`/libraries/${id}`, data);
-    return { success: true, data: response.data };
+    const { data: result } = await api.put<Library>(`/libraries/${id}`, data);
+    return { success: true, data: result };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
@@ -70,8 +70,8 @@ export const deleteLibrary = async (id: string): Promise<ApiResponse<void>> => {
 
 export const getLibraryPerformance = async (id: string): Promise<ApiResponse<LibraryPerformance>> => {
   try {
-    const response = await api.get(`/libraries/${id}/performance`);
-    return { success: true, data: response.data };
+    const { data } = await api.get<LibraryPerformance>(`/libraries/${id}/performance`);
+    return { success: true, data };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
@@ -81,8 +81,8 @@ export const getLibraryAnalytics = async (
   filters?: Partial<LibraryFilters>
 ): Promise<ApiResponse<LibraryAnalytics>> => {
   try {
-    const response = await api.get('/libraries/analytics', { params: filters });
-    return { success: true, data: response.data };
+    const { data } = await api.get<LibraryAnalytics>('/libraries/analytics', { params: filters });
+    return { success: true, data };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
@@ -90,8 +90,8 @@ export const getLibraryAnalytics = async (
 
 export const getDashboardData = async (): Promise<ApiResponse<LibraryDashboardData>> => {
   try {
-    const response = await api.get('/libraries/dashboard');
-    return { success: true, data: response.data };
+    const { data } = await api.get<LibraryDashboardData>('/libraries/dashboard');
+    return { success: true, data };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
@@ -99,8 +99,8 @@ export const getDashboardData = async (): Promise<ApiResponse<LibraryDashboardDa
 
 export const compareLibraries = async (libraryIds: string[]): Promise<ApiResponse<LibraryComparison>> => {
   try {
-    const response = await api.post('/libraries/compare', { libraryIds });
-    return { success: true, data: response.data };
+    const { data } = await api.post<LibraryComparison>('/libraries/compare', { libraryIds });
+    return { success: true, data };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
@@ -112,8 +112,8 @@ export const compareLibraries = async (libraryIds: string[]): Promise<ApiRespons
 
 export const getRealTimeOccupancy = async (): Promise<ApiResponse<RealTimeOccupancy[]>> => {
   try {
-    const response = await api.get('/libraries/realtime-occupancy');
-    return { success: true, data: response.data };
+    const { data } = await api.get<RealTimeOccupancy[]>('/libraries/realtime-occupancy');
+    return { success: true, data };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
@@ -121,8 +121,8 @@ export const getRealTimeOccupancy = async (): Promise<ApiResponse<RealTimeOccupa
 
 export const getLibraryOccupancy = async (id: string): Promise<ApiResponse<RealTimeOccupancy>> => {
   try {
-    const response = await api.get(`/libraries/${id}/occupancy`);
-    return { success: true, data: response.data };
+    const { data } = await api.get<RealTimeOccupancy>(`/libraries/${id}/occupancy`);
+    return { success: true, data };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
@@ -134,8 +134,8 @@ export const getLibraryOccupancy = async (id: string): Promise<ApiResponse<RealT
 
 export const getPendingApprovals = async (): Promise<ApiResponse<LibraryApproval[]>> => {
   try {
-    const response = await api.get('/libraries/pending-approvals');
-    return { success: true, data: response.data };
+    const { data } = await api.get<LibraryApproval[]>('/libraries/pending-approvals');
+    return { success: true, data };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
@@ -146,8 +146,8 @@ export const approveLibrary = async (
   notes?: string
 ): Promise<ApiResponse<Library>> => {
   try {
-    const response = await api.post(`/libraries/${id}/approve`, { notes });
-    return { success: true, data: response.data };
+    const { data } = await api.post<Library>(`/libraries/${id}/approve`, { notes });
+    return { success: true, data };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
@@ -183,8 +183,8 @@ export const requestChanges = async (
 
 export const suspendLibrary = async (id: string, reason: string): Promise<ApiResponse<Library>> => {
   try {
-    const response = await api.post(`/libraries/${id}/suspend`, { reason });
-    return { success: true, data: response.data };
+    const { data } = await api.post<Library>(`/libraries/${id}/suspend`, { reason });
+    return { success: true, data };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
@@ -192,8 +192,8 @@ export const suspendLibrary = async (id: string, reason: string): Promise<ApiRes
 
 export const reactivateLibrary = async (id: string): Promise<ApiResponse<Library>> => {
   try {
-    const response = await api.post(`/libraries/${id}/reactivate`);
-    return { success: true, data: response.data };
+    const { data } = await api.post<Library>(`/libraries/${id}/reactivate`);
+    return { success: true, data };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
@@ -204,11 +204,11 @@ export const exportLibraries = async (
   format: 'csv' | 'excel' | 'pdf' = 'csv'
 ): Promise<ApiResponse<Blob>> => {
   try {
-    const response = await api.get('/libraries/export', {
+    const { data } = await api.get<Blob>('/libraries/export', {
       params: { ...filters, format },
       responseType: 'blob',
     });
-    return { success: true, data: response.data };
+    return { success: true, data };
   } catch (error: any) {
     return { success: false, error: error.message };
   }

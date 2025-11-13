@@ -1,0 +1,53 @@
+import {
+  AuthClient,
+  BrowserStorageAdapter,
+  TokenStorage,
+  createApiClient,
+  type AuthProviderConfig,
+} from 'studyspot-tenant-sdk';
+
+const DEFAULT_API_BASE = 'https://studyspot-api.onrender.com';
+
+const authBaseUrl =
+  import.meta.env.VITE_AUTH_URL || import.meta.env.VITE_API_URL || DEFAULT_API_BASE;
+
+const authConfig: AuthProviderConfig = {
+  baseUrl: authBaseUrl,
+  loginPath: '/api/auth/login',
+  refreshPath: '/api/auth/refresh',
+  logoutPath: '/api/auth/logout',
+  enableRefresh: true,
+};
+
+if (!import.meta.env.VITE_AUTH_URL && !import.meta.env.VITE_API_URL) {
+  console.warn('[StudySpot] Missing VITE_AUTH_URL or VITE_API_URL for AuthClient, using default base URL');
+}
+
+const storageAdapter =
+  typeof window !== 'undefined'
+    ? new BrowserStorageAdapter(window.localStorage)
+    : undefined;
+
+export const tokenStorage = new TokenStorage(
+  storageAdapter ?? {
+    getItem: () => null,
+    setItem: () => undefined,
+    removeItem: () => undefined,
+  }
+);
+
+export const authClient = new AuthClient({
+  provider: authConfig,
+  storage: tokenStorage,
+});
+
+export const apiClient = createApiClient({
+  baseURL: import.meta.env.VITE_API_URL || DEFAULT_API_BASE,
+  tokenStorage,
+  getTenantId: () => tokenStorage.read()?.tenantId ?? null,
+  onUnauthorized: () => {
+    tokenStorage.clear();
+    window.location.href = '/login';
+  },
+});
+
