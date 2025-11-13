@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test API Gateway</title>
+</head>
+<body>
+    <h1>StudySpot API Gateway Test</h1>
+    
+    <h2>1. Health Check</h2>
+    <button onclick="testHealth()">Test Health</button>
+    <pre id="health-result"></pre>
+
+    <h2>2. Test Login Endpoint</h2>
+    <button onclick="testLogin()">Test Login</button>
+    <pre id="login-result"></pre>
+
+    <h2>3. Test Register Endpoint</h2>
+    <button onclick="testRegister()">Test Register</button>
+    <pre id="register-result"></pre>
+
+    <script>
+        const API_URL = 'https://studyspot-api.onrender.com';
+
+        async function testHealth() {
+            const result = document.getElementById('health-result');
+            result.textContent = 'Testing...';
+            
+            try {
+                const response = await fetch(`${API_URL}/health`);
+                const data = await response.json();
+                result.textContent = `✅ SUCCESS (${response.status})\n${JSON.stringify(data, null, 2)}`;
+            } catch (error) {
+                result.textContent = `❌ ERROR: ${error.message}`;
+            }
+        }
+
+        async function testLogin() {
+            const result = document.getElementById('login-result');
+            result.textContent = 'Testing...';
+            
+            try {
+                const response = await fetch(`${API_URL}/api/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: 'test@example.com',
+                        password: 'test123'
+                    })
+                });
+                const data = await response.json();
+                result.textContent = `Response (${response.status})\n${JSON.stringify(data, null, 2)}`;
+            } catch (error) {
+                result.textContent = `❌ ERROR: ${error.message}`;
+            }
+        }
+
+        async function testRegister() {
+            const result = document.getElementById('register-result');
+            result.textContent = 'Testing...';
+            
+            try {
+                const response = await fetch(`${API_URL}/api/auth/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        firstName: 'Test',
+                        lastName: 'User',
+                        email: 'test' + Date.now() + '@example.com',
+                        password: 'test123'
+                    })
+                });
+                const data = await response.json();
+                result.textContent = `Response (${response.status})\n${JSON.stringify(data, null, 2)}`;
+            } catch (error) {
+                result.textContent = `❌ ERROR: ${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html>
+

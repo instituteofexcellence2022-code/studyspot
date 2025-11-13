@@ -45,6 +45,7 @@ export const apiClient = createApiClient({
   baseURL: import.meta.env.VITE_API_URL || DEFAULT_API_BASE,
   tokenStorage,
   getTenantId: () => tokenStorage.read()?.tenantId ?? null,
+  requestTimeoutMs: 10000, // 10 seconds timeout to prevent hanging
   onUnauthorized: () => {
     tokenStorage.clear();
     window.location.href = '/login';

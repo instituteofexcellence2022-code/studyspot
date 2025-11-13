@@ -168,17 +168,43 @@ const buildAuthPayload = (user: any, tokens: { accessToken: string; refreshToken
 // ROUTES
 // ============================================
 
-// Health check
-fastify.get('/health', async () => {
-  return {
+// Health check (with optional DB check)
+fastify.get('/health', async (request, reply) => {
+  const checkDb = (request.query as any)?.checkDb === 'true';
+  
+  const health: any = {
     success: true,
     data: {
       status: 'healthy',
       service: 'auth-service',
       timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
       websocket: 'enabled',
     },
   };
+
+  // Optional database connectivity check (slower)
+  if (checkDb) {
+    try {
+      const startTime = Date.now();
+      await coreDb.query('SELECT 1');
+      const dbLatency = Date.now() - startTime;
+      health.data.database = {
+        status: 'connected',
+        latency: `${dbLatency}ms`,
+      };
+    } catch (error: any) {
+      health.success = false;
+      health.data.status = 'unhealthy';
+      health.data.database = {
+        status: 'disconnected',
+        error: error.message,
+      };
+      return reply.status(503).send(health);
+    }
+  }
+
+  return health;
 });
 
 // WebSocket test endpoint - Test real-time events

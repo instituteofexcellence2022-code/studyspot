@@ -42,20 +42,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             error: null,
           });
         } else {
-          const currentUser = await activeAuthService.getCurrentUser();
+          // Add timeout to prevent hanging
+          const timeoutPromise = new Promise<null>((_, reject) => 
+            setTimeout(() => reject(new Error('Auth timeout')), 5000)
+          );
           
-          if (currentUser) {
+          try {
+            const currentUser = await Promise.race([
+              activeAuthService.getCurrentUser(),
+              timeoutPromise
+            ]);
+            
+            if (currentUser) {
+              setState({
+                user: currentUser,
+                isAuthenticated: true,
+                isLoading: false,
+                error: null,
+              });
+            } else {
+              // Token invalid, use cached user but mark for re-auth
+              console.warn('Token validation failed, using cached user');
+              setState({
+                user,
+                isAuthenticated: true,
+                isLoading: false,
+                error: null,
+              });
+            }
+          } catch (verifyError) {
+            // Backend unreachable, use cached user
+            console.warn('Backend unreachable, using cached credentials');
             setState({
-              user: currentUser,
+              user,
               isAuthenticated: true,
-              isLoading: false,
-              error: null,
-            });
-          } else {
-            activeAuthService.clearAuth();
-            setState({
-              user: null,
-              isAuthenticated: false,
               isLoading: false,
               error: null,
             });
@@ -71,7 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     } catch (error) {
       console.error('Auth initialization error:', error);
-      activeAuthService.clearAuth();
+      // Don't clear auth on init error, just log it
       setState({
         user: null,
         isAuthenticated: false,

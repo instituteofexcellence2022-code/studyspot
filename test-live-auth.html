@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Live Auth Service</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 1200px; margin: 50px auto; padding: 20px; }
+        h1 { color: #2ecc71; }
+        h2 { color: #3498db; margin-top: 30px; }
+        button { 
+            background: #3498db; 
+            color: white; 
+            border: none; 
+            padding: 12px 24px; 
+            border-radius: 5px; 
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover { background: #2980b9; }
+        button.success { background: #2ecc71; }
+        button.success:hover { background: #27ae60; }
+        pre { 
+            background: #f8f9fa; 
+            padding: 15px; 
+            border-radius: 5px; 
+            overflow-x: auto;
+            border-left: 4px solid #3498db;
+        }
+        .success { color: #2ecc71; font-weight: bold; }
+        .error { color: #e74c3c; font-weight: bold; }
+        .section { margin: 20px 0; padding: 20px; border: 1px solid #ddd; border-radius: 8px; }
+    </style>
+</head>
+<body>
+    <h1>🎉 StudySpot Auth Service - LIVE TEST</h1>
+    <p><strong>Auth Service URL:</strong> <a href="https://studyspot-auth.onrender.com" target="_blank">https://studyspot-auth.onrender.com</a></p>
+
+    <div class="section">
+        <h2>1. Health Check</h2>
+        <button onclick="testHealth()">🏥 Test Health Endpoint</button>
+        <pre id="health-result">Click button to test...</pre>
+    </div>
+
+    <div class="section">
+        <h2>2. Test Registration (New User)</h2>
+        <button onclick="testRegister()">📝 Register New User</button>
+        <pre id="register-result">Click button to test...</pre>
+    </div>
+
+    <div class="section">
+        <h2>3. Test Login</h2>
+        <button onclick="testLogin()">🔐 Login with Registered User</button>
+        <pre id="login-result">Click button to test...</pre>
+    </div>
+
+    <div class="section">
+        <h2>4. Test Get Profile (/api/auth/me)</h2>
+        <button onclick="testProfile()">👤 Get Current User Profile</button>
+        <pre id="profile-result">Click button to test...</pre>
+    </div>
+
+    <div class="section">
+        <h2>5. Test Rate Limiting</h2>
+        <button onclick="testRateLimit()">⚡ Test Rate Limit (5 requests)</button>
+        <pre id="ratelimit-result">Click button to test...</pre>
+    </div>
+
+    <div class="section">
+        <h2>6. Test Password Validation</h2>
+        <button onclick="testWeakPassword()">❌ Try Weak Password</button>
+        <pre id="password-result">Click button to test...</pre>
+    </div>
+
+    <script>
+        const API_URL = 'https://studyspot-auth.onrender.com';
+        let accessToken = null;
+        let testEmail = 'test' + Date.now() + '@example.com';
+
+        async function testHealth() {
+            const result = document.getElementById('health-result');
+            result.textContent = '⏳ Testing...';
+            
+            try {
+                const response = await fetch(`${API_URL}/health`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    result.innerHTML = `<span class="success">✅ SUCCESS (${response.status})</span>\n${JSON.stringify(data, null, 2)}`;
+                } else {
+                    result.innerHTML = `<span class="error">❌ FAILED (${response.status})</span>\n${JSON.stringify(data, null, 2)}`;
+                }
+            } catch (error) {
+                result.innerHTML = `<span class="error">❌ ERROR:</span> ${error.message}`;
+            }
+        }
+
+        async function testRegister() {
+            const result = document.getElementById('register-result');
+            result.textContent = '⏳ Registering new user...';
+            
+            try {
+                const response = await fetch(`${API_URL}/api/auth/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        firstName: 'Test',
+                        lastName: 'User',
+                        email: testEmail,
+                        password: 'Test@1234'  // Strong password
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    accessToken = data.data.tokens.accessToken;
+                    result.innerHTML = `<span class="success">✅ REGISTRATION SUCCESS (${response.status})</span>\n` +
+                                     `Email: ${testEmail}\n` +
+                                     `Token: ${accessToken.substring(0, 20)}...\n` +
+                                     `Full Response:\n${JSON.stringify(data, null, 2)}`;
+                } else {
+                    result.innerHTML = `<span class="error">❌ REGISTRATION FAILED (${response.status})</span>\n${JSON.stringify(data, null, 2)}`;
+                }
+            } catch (error) {
+                result.innerHTML = `<span class="error">❌ ERROR:</span> ${error.message}`;
+            }
+        }
+
+        async function testLogin() {
+            const result = document.getElementById('login-result');
+            
+            if (!testEmail) {
+                result.innerHTML = '<span class="error">⚠️ Please register a user first!</span>';
+                return;
+            }
+            
+            result.textContent = '⏳ Logging in...';
+            
+            try {
+                const response = await fetch(`${API_URL}/api/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: testEmail,
+                        password: 'Test@1234'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    accessToken = data.data.tokens.accessToken;
+                    result.innerHTML = `<span class="success">✅ LOGIN SUCCESS (${response.status})</span>\n` +
+                                     `Email: ${data.data.user.email}\n` +
+                                     `Name: ${data.data.user.firstName} ${data.data.user.lastName}\n` +
+                                     `Token: ${accessToken.substring(0, 20)}...\n` +
+                                     `Full Response:\n${JSON.stringify(data, null, 2)}`;
+                } else {
+                    result.innerHTML = `<span class="error">❌ LOGIN FAILED (${response.status})</span>\n${JSON.stringify(data, null, 2)}`;
+                }
+            } catch (error) {
+                result.innerHTML = `<span class="error">❌ ERROR:</span> ${error.message}`;
+            }
+        }
+
+        async function testProfile() {
+            const result = document.getElementById('profile-result');
+            
+            if (!accessToken) {
+                result.innerHTML = '<span class="error">⚠️ Please login first to get a token!</span>';
+                return;
+            }
+            
+            result.textContent = '⏳ Fetching profile...';
+            
+            try {
+                const response = await fetch(`${API_URL}/api/auth/me`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    result.innerHTML = `<span class="success">✅ PROFILE FETCH SUCCESS (${response.status})</span>\n` +
+                                     `Email: ${data.data.user.email}\n` +
+                                     `Name: ${data.data.user.firstName} ${data.data.user.lastName}\n` +
+                                     `Role: ${data.data.user.role}\n` +
+                                     `Status: ${data.data.user.status}\n` +
+                                     `Full Response:\n${JSON.stringify(data, null, 2)}`;
+                } else {
+                    result.innerHTML = `<span class="error">❌ PROFILE FETCH FAILED (${response.status})</span>\n${JSON.stringify(data, null, 2)}`;
+                }
+            } catch (error) {
+                result.innerHTML = `<span class="error">❌ ERROR:</span> ${error.message}`;
+            }
+        }
+
+        async function testRateLimit() {
+            const result = document.getElementById('ratelimit-result');
+            result.textContent = '⏳ Testing rate limit (sending 6 requests rapidly)...';
+            
+            const testResults = [];
+            
+            try {
+                for (let i = 1; i <= 6; i++) {
+                    const response = await fetch(`${API_URL}/api/auth/login`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            email: 'fake@test.com',
+                            password: 'fake'
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    testResults.push(`Request ${i}: ${response.status} - ${data.error?.code || 'OK'}`);
+                }
+                
+                const hasRateLimit = testResults.some(r => r.includes('RATE_LIMIT'));
+                
+                if (hasRateLimit) {
+                    result.innerHTML = `<span class="success">✅ RATE LIMITING WORKS!</span>\n` +
+                                     testResults.join('\n') + '\n\n' +
+                                     'Rate limit kicked in after 5 requests! 🎉';
+                } else {
+                    result.innerHTML = `<span class="error">⚠️ Rate limiting might not be working</span>\n` +
+                                     testResults.join('\n');
+                }
+            } catch (error) {
+                result.innerHTML = `<span class="error">❌ ERROR:</span> ${error.message}`;
+            }
+        }
+
+        async function testWeakPassword() {
+            const result = document.getElementById('password-result');
+            result.textContent = '⏳ Testing weak password validation...';
+            
+            try {
+                const response = await fetch(`${API_URL}/api/auth/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        firstName: 'Weak',
+                        lastName: 'Password',
+                        email: 'weak' + Date.now() + '@test.com',
+                        password: '123'  // Weak password
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.status === 400 && data.error?.message?.includes('Password must')) {
+                    result.innerHTML = `<span class="success">✅ PASSWORD VALIDATION WORKS!</span>\n` +
+                                     `Status: ${response.status}\n` +
+                                     `Error: ${data.error.message}\n\n` +
+                                     'Weak password was correctly rejected! 🎉';
+                } else {
+                    result.innerHTML = `<span class="error">⚠️ Unexpected response (${response.status})</span>\n${JSON.stringify(data, null, 2)}`;
+                }
+            } catch (error) {
+                result.innerHTML = `<span class="error">❌ ERROR:</span> ${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html>
+

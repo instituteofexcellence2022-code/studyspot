@@ -70,7 +70,7 @@ fastify.addHook('onResponse', async (request, reply) => {
 // ROUTES
 // ============================================
 
-// Health check
+// Simple health check (fast, no DB check)
 fastify.get('/health', async (request, reply) => {
   return {
     success: true,
@@ -78,6 +78,7 @@ fastify.get('/health', async (request, reply) => {
       status: 'healthy',
       timestamp: new Date().toISOString(),
       version: '1.0.0',
+      uptime: process.uptime(),
       service: 'api-gateway',
     },
   };
