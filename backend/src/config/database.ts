@@ -16,10 +16,12 @@ const coreDbConfig: PoolConfig = {
   user: process.env.CORE_DB_USER || 'postgres',
   password: process.env.CORE_DB_PASSWORD || '',
   ssl: process.env.CORE_DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
-  min: parseInt(process.env.CORE_DB_POOL_MIN || '2'),
-  max: parseInt(process.env.CORE_DB_POOL_MAX || '10'),
+  min: parseInt(process.env.CORE_DB_POOL_MIN || '1'), // Reduced for free tier
+  max: parseInt(process.env.CORE_DB_POOL_MAX || '5'), // Reduced for free tier
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
+  connectionTimeoutMillis: 20000, // Increased from 2000ms to 20000ms (20s)
+  query_timeout: 15000, // 15 second query timeout
+  statement_timeout: 15000, // 15 second statement timeout
 };
 
 // Core database pool
@@ -67,10 +69,12 @@ class TenantDatabaseManager {
       user: process.env.CORE_DB_USER,
       password: process.env.CORE_DB_PASSWORD,
       ssl: process.env.CORE_DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
-      min: 2,
-      max: 10,
+      min: 1, // Reduced for free tier
+      max: 5, // Reduced for free tier
       idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 2000,
+      connectionTimeoutMillis: 20000, // Increased from 2000ms to 20000ms
+      query_timeout: 15000,
+      statement_timeout: 15000,
     });
 
     // Cache connection

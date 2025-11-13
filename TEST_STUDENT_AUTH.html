@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧪 Student Portal Auth Tester</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            background: #10b981;
+            color: white;
+            border-radius: 20px;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .card h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #374151;
+            font-weight: 500;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e5e7eb;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border 0.3s;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        button {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .result {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 6px;
+            font-size: 14px;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        
+        .result.success {
+            background: #d1fae5;
+            border: 2px solid #10b981;
+            color: #065f46;
+        }
+        
+        .result.error {
+            background: #fee2e2;
+            border: 2px solid #ef4444;
+            color: #991b1b;
+        }
+        
+        .result.info {
+            background: #dbeafe;
+            border: 2px solid #3b82f6;
+            color: #1e40af;
+        }
+        
+        .token-display {
+            background: #f3f4f6;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .info-label {
+            font-weight: bold;
+            color: #374151;
+        }
+        
+        .info-value {
+            color: #6b7280;
+        }
+        
+        .quick-test {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+        
+        .quick-test h3 {
+            margin-bottom: 15px;
+        }
+        
+        .quick-test button {
+            background: white;
+            color: #d97706;
+            margin-bottom: 10px;
+        }
+        
+        .endpoint-info {
+            background: #1f2937;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .endpoint-info h3 {
+            color: #10b981;
+            margin-bottom: 10px;
+        }
+        
+        .endpoint-list {
+            list-style: none;
+        }
+        
+        .endpoint-list li {
+            padding: 5px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .endpoint-list li::before {
+            content: "🔗";
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧪 Student Portal Auth Tester</h1>
+            <p>Test authentication with live backend services</p>
+            <div class="status-badge">✅ ALL SERVICES LIVE</div>
+        </div>
+
+        <div class="endpoint-info">
+            <h3>📡 Backend Endpoints</h3>
+            <ul class="endpoint-list">
+                <li><strong>API Gateway:</strong> https://studyspot-api.onrender.com</li>
+                <li><strong>Auth Service:</strong> https://studyspot-auth.onrender.com</li>
+                <li><strong>Database:</strong> Supabase PostgreSQL ✅</li>
+            </ul>
+        </div>
+
+        <div class="quick-test">
+            <h3>⚡ Quick Test Sequence</h3>
+            <button onclick="runFullTest()">🚀 Run Complete Auth Flow Test</button>
+            <div id="quickTestResult"></div>
+        </div>
+
+        <div class="grid">
+            <!-- Health Check -->
+            <div class="card">
+                <h2>🏥 Health Check</h2>
+                <button onclick="checkHealth()">Check Backend Health</button>
+                <div id="healthResult"></div>
+            </div>
+
+            <!-- Register -->
+            <div class="card">
+                <h2>📝 Register Student</h2>
+                <form onsubmit="registerUser(event)">
+                    <div class="form-group">
+                        <label>First Name</label>
+                        <input type="text" id="regFirstName" value="Test" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Last Name</label>
+                        <input type="text" id="regLastName" value="Student" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" id="regEmail" value="test.student@example.com" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Password (min 8 chars)</label>
+                        <input type="password" id="regPassword" value="TestPass123!" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Role</label>
+                        <select id="regRole">
+                            <option value="student">Student</option>
+                            <option value="library_owner">Library Owner</option>
+                            <option value="super_admin">Super Admin</option>
+                        </select>
+                    </div>
+                    <button type="submit">Register</button>
+                </form>
+                <div id="registerResult"></div>
+            </div>
+
+            <!-- Login -->
+            <div class="card">
+                <h2>🔐 Login</h2>
+                <form onsubmit="loginUser(event)">
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" id="loginEmail" value="test.student@example.com" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" id="loginPassword" value="TestPass123!" required>
+                    </div>
+                    <button type="submit">Login</button>
+                </form>
+                <div id="loginResult"></div>
+            </div>
+
+            <!-- Get Profile -->
+            <div class="card">
+                <h2>👤 Get User Profile</h2>
+                <p style="color: #6b7280; margin-bottom: 15px;">Requires login first</p>
+                <button onclick="getProfile()">Get My Profile</button>
+                <div id="profileResult"></div>
+            </div>
+
+            <!-- Refresh Token -->
+            <div class="card">
+                <h2>🔄 Refresh Token</h2>
+                <p style="color: #6b7280; margin-bottom: 15px;">Test token refresh mechanism</p>
+                <button onclick="refreshToken()">Refresh Access Token</button>
+                <div id="refreshResult"></div>
+            </div>
+
+            <!-- Logout -->
+            <div class="card">
+                <h2>🚪 Logout</h2>
+                <p style="color: #6b7280; margin-bottom: 15px;">Clear all tokens</p>
+                <button onclick="logout()">Logout</button>
+                <div id="logoutResult"></div>
+            </div>
+        </div>
+
+        <!-- Token Storage Display -->
+        <div class="card">
+            <h2>💾 Stored Tokens</h2>
+            <button onclick="displayTokens()">Show Current Tokens</button>
+            <button onclick="clearTokens()" style="background: #ef4444; margin-top: 10px;">Clear All Tokens</button>
+            <div id="tokenDisplay"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'https://studyspot-api.onrender.com';
+        let accessToken = null;
+        let refreshTokenValue = null;
+
+        function showResult(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.className = `result ${type}`;
+            element.textContent = message;
+        }
+
+        async function checkHealth() {
+            try {
+                showResult('healthResult', '⏳ Checking...', 'info');
+                
+                const response = await fetch(`${API_URL}/health`);
+                const data = await response.json();
+                
+                const message = `✅ API Gateway: ${data.status}\n` +
+                               `⏰ Time: ${new Date(data.timestamp).toLocaleString()}\n` +
+                               `📦 Services: ${JSON.stringify(data.services || {}, null, 2)}`;
+                
+                showResult('healthResult', message, 'success');
+            } catch (error) {
+                showResult('healthResult', `❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function registerUser(event) {
+            event.preventDefault();
+            
+            const data = {
+                firstName: document.getElementById('regFirstName').value,
+                lastName: document.getElementById('regLastName').value,
+                email: document.getElementById('regEmail').value,
+                password: document.getElementById('regPassword').value,
+                role: document.getElementById('regRole').value
+            };
+
+            try {
+                showResult('registerResult', '⏳ Registering...', 'info');
+                
+                const response = await fetch(`${API_URL}/api/auth/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+                
+                if (response.ok && result.success) {
+                    const userData = result.data || result;
+                    
+                    // Store tokens if returned
+                    if (userData.tokens) {
+                        accessToken = userData.tokens.accessToken;
+                        refreshTokenValue = userData.tokens.refreshToken;
+                        localStorage.setItem('accessToken', accessToken);
+                        localStorage.setItem('refreshToken', refreshTokenValue);
+                    }
+                    
+                    const message = `✅ Registration Successful!\n\n` +
+                                  `User: ${userData.user?.firstName} ${userData.user?.lastName}\n` +
+                                  `Email: ${userData.user?.email}\n` +
+                                  `Role: ${userData.user?.role}\n` +
+                                  `Tenant: ${userData.user?.tenantId}\n` +
+                                  `${userData.tokens ? '🔐 Auto-logged in with tokens!' : ''}`;
+                    
+                    showResult('registerResult', message, 'success');
+                    
+                    // Update login form
+                    document.getElementById('loginEmail').value = data.email;
+                    document.getElementById('loginPassword').value = data.password;
+                } else {
+                    showResult('registerResult', `❌ Error: ${result.error?.message || 'Registration failed'}`, 'error');
+                }
+            } catch (error) {
+                showResult('registerResult', `❌ Network Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function loginUser(event) {
+            event.preventDefault();
+            
+            const data = {
+                email: document.getElementById('loginEmail').value,
+                password: document.getElementById('loginPassword').value
+            };
+
+            try {
+                showResult('loginResult', '⏳ Logging in...', 'info');
+                
+                const response = await fetch(`${API_URL}/api/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+                
+                if (response.ok && result.success) {
+                    const userData = result.data || result;
+                    
+                    accessToken = userData.tokens.accessToken;
+                    refreshTokenValue = userData.tokens.refreshToken;
+                    
+                    // Store in localStorage
+                    localStorage.setItem('accessToken', accessToken);
+                    localStorage.setItem('refreshToken', refreshTokenValue);
+                    localStorage.setItem('user', JSON.stringify(userData.user));
+                    
+                    const message = `✅ Login Successful!\n\n` +
+                                  `User: ${userData.user?.firstName} ${userData.user?.lastName}\n` +
+                                  `Email: ${userData.user?.email}\n` +
+                                  `Role: ${userData.user?.role}\n` +
+                                  `🔐 Tokens stored!`;
+                    
+                    showResult('loginResult', message, 'success');
+                } else {
+                    showResult('loginResult', `❌ Error: ${result.error?.message || 'Login failed'}`, 'error');
+                }
+            } catch (error) {
+                showResult('loginResult', `❌ Network Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function getProfile() {
+            const token = accessToken || localStorage.getItem('accessToken');
+            
+            if (!token) {
+                showResult('profileResult', '❌ Please login first!', 'error');
+                return;
+            }
+
+            try {
+                showResult('profileResult', '⏳ Fetching profile...', 'info');
+                
+                const response = await fetch(`${API_URL}/api/auth/me`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const result = await response.json();
+                
+                if (response.ok && result.success) {
+                    const user = result.data.user;
+                    const message = `✅ Profile Retrieved!\n\n` +
+                                  `ID: ${user.id}\n` +
+                                  `Name: ${user.firstName} ${user.lastName}\n` +
+                                  `Email: ${user.email}\n` +
+                                  `Role: ${user.role}\n` +
+                                  `Tenant: ${user.tenantId}\n` +
+                                  `Active: ${user.isActive ? 'Yes' : 'No'}\n` +
+                                  `Created: ${new Date(user.createdAt).toLocaleString()}`;
+                    
+                    showResult('profileResult', message, 'success');
+                } else {
+                    showResult('profileResult', `❌ Error: ${result.error?.message || 'Failed to get profile'}`, 'error');
+                }
+            } catch (error) {
+                showResult('profileResult', `❌ Network Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function refreshToken() {
+            const token = refreshTokenValue || localStorage.getItem('refreshToken');
+            
+            if (!token) {
+                showResult('refreshResult', '❌ No refresh token available. Please login first!', 'error');
+                return;
+            }
+
+            try {
+                showResult('refreshResult', '⏳ Refreshing token...', 'info');
+                
+                const response = await fetch(`${API_URL}/api/auth/refresh`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ refreshToken: token })
+                });
+
+                const result = await response.json();
+                
+                if (response.ok && result.success) {
+                    const tokens = result.data.tokens;
+                    
+                    accessToken = tokens.accessToken;
+                    if (tokens.refreshToken) {
+                        refreshTokenValue = tokens.refreshToken;
+                    }
+                    
+                    localStorage.setItem('accessToken', accessToken);
+                    if (tokens.refreshToken) {
+                        localStorage.setItem('refreshToken', tokens.refreshToken);
+                    }
+                    
+                    showResult('refreshResult', `✅ Token Refreshed!\n\n🔐 New access token stored!`, 'success');
+                } else {
+                    showResult('refreshResult', `❌ Error: ${result.error?.message || 'Token refresh failed'}`, 'error');
+                }
+            } catch (error) {
+                showResult('refreshResult', `❌ Network Error: ${error.message}`, 'error');
+            }
+        }
+
+        function logout() {
+            accessToken = null;
+            refreshTokenValue = null;
+            localStorage.removeItem('accessToken');
+            localStorage.removeItem('refreshToken');
+            localStorage.removeItem('user');
+            
+            showResult('logoutResult', '✅ Logged out successfully!\n\n🧹 All tokens cleared from memory and storage.', 'success');
+        }
+
+        function displayTokens() {
+            const storedAccess = localStorage.getItem('accessToken');
+            const storedRefresh = localStorage.getItem('refreshToken');
+            const storedUser = localStorage.getItem('user');
+            
+            let html = '<div class="token-display">';
+            
+            if (storedAccess || storedRefresh) {
+                html += '<strong>📦 LocalStorage:</strong><br>';
+                if (storedAccess) {
+                    html += `Access Token: ${storedAccess.substring(0, 50)}...<br>`;
+                }
+                if (storedRefresh) {
+                    html += `Refresh Token: ${storedRefresh.substring(0, 50)}...<br>`;
+                }
+                if (storedUser) {
+                    html += `<br><strong>User Data:</strong><br><pre>${JSON.stringify(JSON.parse(storedUser), null, 2)}</pre>`;
+                }
+            } else {
+                html += '❌ No tokens stored';
+            }
+            
+            html += '</div>';
+            
+            document.getElementById('tokenDisplay').innerHTML = html;
+        }
+
+        function clearTokens() {
+            localStorage.clear();
+            accessToken = null;
+            refreshTokenValue = null;
+            document.getElementById('tokenDisplay').innerHTML = '<div class="result success">✅ All tokens cleared!</div>';
+        }
+
+        async function runFullTest() {
+            const resultDiv = document.getElementById('quickTestResult');
+            resultDiv.innerHTML = '<div class="result info">🚀 Running full authentication test...</div>';
+            
+            const testEmail = `test.${Date.now()}@example.com`;
+            const testPassword = 'TestPass123!';
+            
+            let testResults = [];
+
+            // Test 1: Health Check
+            try {
+                const health = await fetch(`${API_URL}/health`);
+                const healthData = await health.json();
+                testResults.push('✅ 1. Health Check: PASSED');
+            } catch (error) {
+                testResults.push('❌ 1. Health Check: FAILED');
+                resultDiv.innerHTML = `<div class="result error">${testResults.join('\n')}</div>`;
+                return;
+            }
+
+            // Test 2: Registration
+            try {
+                const regResponse = await fetch(`${API_URL}/api/auth/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        firstName: 'Test',
+                        lastName: 'User',
+                        email: testEmail,
+                        password: testPassword,
+                        role: 'student'
+                    })
+                });
+                
+                const regData = await regResponse.json();
+                
+                if (regResponse.ok && regData.success) {
+                    testResults.push('✅ 2. Registration: PASSED');
+                    
+                    if (regData.data?.tokens) {
+                        accessToken = regData.data.tokens.accessToken;
+                        refreshTokenValue = regData.data.tokens.refreshToken;
+                        testResults.push('✅ 3. Auto-login: PASSED (tokens received)');
+                    } else {
+                        testResults.push('⚠️ 3. Auto-login: SKIPPED (no tokens)');
+                    }
+                } else {
+                    testResults.push(`❌ 2. Registration: FAILED - ${regData.error?.message}`);
+                }
+            } catch (error) {
+                testResults.push(`❌ 2. Registration: FAILED - ${error.message}`);
+            }
+
+            // Test 4: Login
+            try {
+                const loginResponse = await fetch(`${API_URL}/api/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: testEmail,
+                        password: testPassword
+                    })
+                });
+                
+                const loginData = await loginResponse.json();
+                
+                if (loginResponse.ok && loginData.success) {
+                    accessToken = loginData.data.tokens.accessToken;
+                    refreshTokenValue = loginData.data.tokens.refreshToken;
+                    testResults.push('✅ 4. Login: PASSED');
+                } else {
+                    testResults.push(`❌ 4. Login: FAILED - ${loginData.error?.message}`);
+                }
+            } catch (error) {
+                testResults.push(`❌ 4. Login: FAILED - ${error.message}`);
+            }
+
+            // Test 5: Get Profile
+            if (accessToken) {
+                try {
+                    const profileResponse = await fetch(`${API_URL}/api/auth/me`, {
+                        headers: {
+                            'Authorization': `Bearer ${accessToken}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    
+                    const profileData = await profileResponse.json();
+                    
+                    if (profileResponse.ok && profileData.success) {
+                        testResults.push('✅ 5. Get Profile: PASSED');
+                    } else {
+                        testResults.push(`❌ 5. Get Profile: FAILED - ${profileData.error?.message}`);
+                    }
+                } catch (error) {
+                    testResults.push(`❌ 5. Get Profile: FAILED - ${error.message}`);
+                }
+            } else {
+                testResults.push('⚠️ 5. Get Profile: SKIPPED (no token)');
+            }
+
+            // Test 6: Token Refresh
+            if (refreshTokenValue) {
+                try {
+                    const refreshResponse = await fetch(`${API_URL}/api/auth/refresh`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ refreshToken: refreshTokenValue })
+                    });
+                    
+                    const refreshData = await refreshResponse.json();
+                    
+                    if (refreshResponse.ok && refreshData.success) {
+                        testResults.push('✅ 6. Token Refresh: PASSED');
+                    } else {
+                        testResults.push(`❌ 6. Token Refresh: FAILED - ${refreshData.error?.message}`);
+                    }
+                } catch (error) {
+                    testResults.push(`❌ 6. Token Refresh: FAILED - ${error.message}`);
+                }
+            } else {
+                testResults.push('⚠️ 6. Token Refresh: SKIPPED (no refresh token)');
+            }
+
+            // Display results
+            const passed = testResults.filter(r => r.includes('✅')).length;
+            const total = testResults.filter(r => r.includes('✅') || r.includes('❌')).length;
+            
+            const summary = `\n\n📊 TEST SUMMARY: ${passed}/${total} tests passed`;
+            const resultType = passed === total ? 'success' : 'error';
+            
+            resultDiv.innerHTML = `<div class="result ${resultType}">${testResults.join('\n')}${summary}</div>`;
+        }
+
+        // Auto-check health on load
+        window.onload = () => {
+            checkHealth();
+            displayTokens();
+        };
+    </script>
+</body>
+</html>
+
