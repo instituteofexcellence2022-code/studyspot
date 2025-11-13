@@ -9,7 +9,7 @@ import { Pool } from 'pg';
 // REQUEST EXTENSIONS
 // ============================================
 
-export interface AuthenticatedRequest extends FastifyRequest {
+export interface AuthenticatedRequest {
   user?: {
     id: string;
     email: string;
