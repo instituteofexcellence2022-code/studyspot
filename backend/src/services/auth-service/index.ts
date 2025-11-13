@@ -1083,6 +1083,10 @@ fastify.post('/api/v1/auth/verify', async (request, reply) => {
 
 const start = async () => {
   try {
+    // Wait for all plugins to be ready before starting server
+    await fastify.ready();
+    logger.info('✅ All Fastify plugins loaded');
+    
     await fastify.listen({ port: PORT, host: '0.0.0.0' });
     logger.info(`🔐 Auth Service running on port ${PORT}`);
     
