@@ -521,6 +521,18 @@ fastify.post('/api/auth/register', async (request, reply) => {
       });
     }
 
+    // Validate password strength
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+    if (!passwordRegex.test(password)) {
+      return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.VALIDATION_ERROR,
+          message: 'Password must be at least 8 characters and contain uppercase, lowercase, number, and special character (@$!%*?&)',
+        },
+      });
+    }
+
     // Check if user already exists
     const existingUser = await coreDb.query(
       'SELECT id FROM admin_users WHERE email = $1',
@@ -593,6 +605,119 @@ fastify.post('/api/auth/register', async (request, reply) => {
       error: {
         code: ERROR_CODES.SERVER_ERROR,
         message: 'Registration failed',
+      },
+    });
+  }
+});
+
+// Get current user (me) endpoint - used by all portals
+fastify.get('/api/auth/me', async (request, reply) => {
+  try {
+    const authHeader = request.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return reply.status(HTTP_STATUS.UNAUTHORIZED).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.UNAUTHORIZED,
+          message: 'No token provided',
+        },
+      });
+    }
+
+    const token = authHeader.substring(7);
+    const decoded = fastify.jwt.verify(token) as any;
+
+    const result = await coreDb.query(
+      'SELECT * FROM admin_users WHERE id = $1',
+      [decoded.userId]
+    );
+
+    if (!result.rows.length) {
+      return reply.status(HTTP_STATUS.NOT_FOUND).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.NOT_FOUND,
+          message: 'User not found',
+        },
+      });
+    }
+
+    const user = result.rows[0];
+
+    // Check if user is active
+    if (!user.is_active) {
+      return reply.status(HTTP_STATUS.UNAUTHORIZED).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.UNAUTHORIZED,
+          message: 'Account is inactive',
+        },
+      });
+    }
+
+    return {
+      success: true,
+      data: {
+        user: formatUserResponse(user),
+      },
+    };
+  } catch (error: any) {
+    logger.error('Get current user error:', error);
+    return reply.status(HTTP_STATUS.UNAUTHORIZED).send({
+      success: false,
+      error: {
+        code: ERROR_CODES.UNAUTHORIZED,
+        message: 'Invalid or expired token',
+      },
+    });
+  }
+});
+
+// Profile endpoint (alias for /me)
+fastify.get('/api/auth/profile', async (request, reply) => {
+  try {
+    const authHeader = request.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return reply.status(HTTP_STATUS.UNAUTHORIZED).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.UNAUTHORIZED,
+          message: 'No token provided',
+        },
+      });
+    }
+
+    const token = authHeader.substring(7);
+    const decoded = fastify.jwt.verify(token) as any;
+
+    const result = await coreDb.query(
+      'SELECT * FROM admin_users WHERE id = $1',
+      [decoded.userId]
+    );
+
+    if (!result.rows.length) {
+      return reply.status(HTTP_STATUS.NOT_FOUND).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.NOT_FOUND,
+          message: 'User not found',
+        },
+      });
+    }
+
+    return {
+      success: true,
+      data: {
+        user: formatUserResponse(result.rows[0]),
+      },
+    };
+  } catch (error: any) {
+    logger.error('Get profile error:', error);
+    return reply.status(HTTP_STATUS.UNAUTHORIZED).send({
+      success: false,
+      error: {
+        code: ERROR_CODES.UNAUTHORIZED,
+        message: 'Invalid or expired token',
       },
     });
   }
