@@ -2,14 +2,14 @@
 // GLOBAL TYPE DEFINITIONS
 // ============================================
 
-import { Request } from 'fastify';
+import { FastifyRequest } from 'fastify';
 import { Pool } from 'pg';
 
 // ============================================
 // REQUEST EXTENSIONS
 // ============================================
 
-export interface AuthenticatedRequest extends Request {
+export interface AuthenticatedRequest extends FastifyRequest {
   user?: {
     id: string;
     email: string;
