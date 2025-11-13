@@ -686,6 +686,7 @@ fastify.post('/api/auth/register', async (request, reply) => {
     };
   } catch (error: any) {
     logger.error('Register error:', error);
+    logger.error('Error details:', { code: error.code, message: error.message, stack: error.stack });
     
     if (error.code === '23505') { // Unique violation
       return reply.status(HTTP_STATUS.BAD_REQUEST).send({
@@ -703,6 +704,8 @@ fastify.post('/api/auth/register', async (request, reply) => {
         code: ERROR_CODES.SERVER_ERROR,
         message: 'Registration failed',
         details: error.message,
+        errorCode: error.code,
+        errorName: error.name,
       },
     });
   }
