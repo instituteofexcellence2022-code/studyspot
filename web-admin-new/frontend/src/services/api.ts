@@ -3,108 +3,32 @@
 // Centralized API client for backend communication
 // ============================================
 
-import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
+import { apiClient } from './sdk';
 
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:3000/api/v1';
+const api = apiClient;
 
-// ============================================
-// AXIOS INSTANCE
-// ============================================
-
-const api: AxiosInstance = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: 30000,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-// ============================================
-// REQUEST INTERCEPTOR
-// ============================================
-
-api.interceptors.request.use(
-  (config) => {
-    // Add auth token
-    const token = localStorage.getItem('accessToken');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-
-    // Add tenant context if available
-    const tenantId = localStorage.getItem('tenantId');
-    if (tenantId) {
-      config.headers['x-tenant-id'] = tenantId;
-    }
-
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
-
-// ============================================
-// RESPONSE INTERCEPTOR
-// ============================================
-
-api.interceptors.response.use(
-  (response) => {
-    return response;
-  },
-  async (error) => {
-    const originalRequest = error.config;
-
-    // Handle 401 Unauthorized - try to refresh token
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-
-      try {
-        const refreshToken = localStorage.getItem('refreshToken');
-        if (refreshToken) {
-          const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
-            refreshToken,
-          });
-
-          const { accessToken } = response.data.data;
-          localStorage.setItem('accessToken', accessToken);
-
-          // Retry original request
-          originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-          return api(originalRequest);
-        }
-      } catch (refreshError) {
-        // Refresh failed, logout user
-        localStorage.clear();
-        window.location.href = '/login';
-        return Promise.reject(refreshError);
-      }
-    }
-
-    return Promise.reject(error);
-  }
-);
-
-// ============================================
-// API METHODS
-// ============================================
+type RequestConfig = Parameters<typeof api.get>[1];
 
 export const apiService = {
-  // Generic methods
-  get: <T = any>(url: string, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> =>
-    api.get(url, config),
+  get<T = any>(url: string, config?: RequestConfig) {
+    return api.get<T>(url, config);
+  },
 
-  post: <T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> =>
-    api.post(url, data, config),
+  post<T = any>(url: string, data?: any, config?: RequestConfig) {
+    return api.post<T>(url, data, config);
+  },
 
-  put: <T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> =>
-    api.put(url, data, config),
+  put<T = any>(url: string, data?: any, config?: RequestConfig) {
+    return api.put<T>(url, data, config);
+  },
 
-  patch: <T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> =>
-    api.patch(url, data, config),
+  patch<T = any>(url: string, data?: any, config?: RequestConfig) {
+    return api.patch<T>(url, data, config);
+  },
 
-  delete: <T = any>(url: string, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> =>
-    api.delete(url, config),
+  delete<T = any>(url: string, config?: RequestConfig) {
+    return api.delete<T>(url, config);
+  },
 
   // ============================================
   // AUTH ENDPOINTS

@@ -1,0 +1,182 @@
+import { jwtDecode } from 'jwt-decode';
+import type { AuthProviderConfig, LoginResponse, TenantClaims, TokenSet } from './types';
+import { TokenStorage, TokenStorageSchema } from './storage';
+
+const DEFAULT_ENDPOINTS = {
+  login: '/auth/login',
+  refresh: '/auth/refresh',
+  logout: '/auth/logout',
+};
+
+export interface Credentials {
+  email: string;
+  password: string;
+}
+
+export interface AuthClientOptions {
+  provider: AuthProviderConfig;
+  storage: TokenStorage;
+  fetcher?: typeof fetch;
+}
+
+export class AuthClient {
+  private readonly fetcher: typeof fetch;
+
+  constructor(private readonly options: AuthClientOptions) {
+    this.fetcher = options.fetcher ?? fetch.bind(globalThis);
+  }
+
+  async login(credentials: Credentials): Promise<LoginResponse> {
+    const { provider, storage } = this.options;
+    const response = await this.request<LoginResponse>(
+      provider.loginPath ?? DEFAULT_ENDPOINTS.login,
+      credentials
+    );
+
+    this.persistTokens(response.tokens, storage);
+    return response;
+  }
+
+  async refresh(): Promise<TokenSet | null> {
+    const { provider, storage } = this.options;
+
+    if (provider.enableRefresh === false) {
+      return null;
+    }
+
+    const tokens = storage.read();
+    if (!tokens?.refreshToken) {
+      return null;
+    }
+
+    const response = await this.request<{ tokens: TokenSet }>(
+      provider.refreshPath ?? DEFAULT_ENDPOINTS.refresh,
+      { refreshToken: tokens.refreshToken }
+    );
+
+    this.persistTokens(response.tokens, storage);
+    return response.tokens;
+  }
+
+  async logout(): Promise<void> {
+    const { provider, storage } = this.options;
+    try {
+      await this.request(provider.logoutPath ?? DEFAULT_ENDPOINTS.logout, undefined, 'POST', false);
+    } finally {
+      storage.clear();
+    }
+  }
+
+  readClaims(): TenantClaims | null {
+    const snapshot = this.options.storage.read();
+    if (!snapshot?.accessToken) return null;
+
+    try {
+      const decoded = jwtDecode<{
+        tenant_id?: string;
+        tenant?: { id?: string; slug?: string; plan?: string };
+        roles?: string[];
+        permissions?: string[];
+        exp?: number;
+        iat?: number;
+      }>(snapshot.accessToken);
+
+      const tenantId = decoded.tenant_id ?? decoded.tenant?.id;
+      if (!tenantId) return null;
+
+      return {
+        tenantId,
+        tenantSlug: decoded.tenant?.slug,
+        plan: decoded.tenant?.plan,
+        roles: (decoded.roles ?? []).map((role: string) => role as TenantClaims['roles'][number]),
+        permissions: decoded.permissions,
+        issuedAt: (decoded.iat ?? 0) * 1000,
+        expiresAt: (decoded.exp ?? 0) * 1000,
+      };
+    } catch (error) {
+      console.warn('[StudySpot SDK] Failed to decode token claims', error);
+      return null;
+    }
+  }
+
+  private persistTokens(tokens: TokenSet, storage: TokenStorage): void {
+    storage.write({
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+      expiresAt: tokens.expiresAt,
+      tenantId: this.extractTenantId(tokens.accessToken),
+    });
+  }
+
+  private extractTenantId(token: string): string | undefined {
+    try {
+      const decoded = jwtDecode<{ tenant_id?: string; tenant?: { id?: string } }>(token);
+      return decoded.tenant_id ?? decoded.tenant?.id ?? undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  private async request<T = unknown>(
+    path: string,
+    body?: unknown,
+    method: 'POST' | 'GET' | 'PUT' | 'PATCH' | 'DELETE' = 'POST',
+    includeCredentials = true
+  ): Promise<T> {
+    const { provider } = this.options;
+    const url = new URL(path, provider.baseUrl).toString();
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    if (includeCredentials) {
+      const snapshot = this.options.storage.read();
+      if (snapshot?.accessToken) {
+        headers.Authorization = `Bearer ${snapshot.accessToken}`;
+      }
+    }
+
+    const shouldSendCredentials =
+      includeCredentials && this.isSameOrigin(url);
+
+    const response = await this.fetcher(url, {
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+      credentials: shouldSendCredentials ? 'include' : 'omit',
+    });
+
+    if (!response.ok) {
+      const message = await response.text();
+      throw new Error(
+        `[StudySpot SDK] Auth request failed (${response.status} ${response.statusText}): ${message}`
+      );
+    }
+
+    return (await response.json()) as T;
+  }
+
+  private isSameOrigin(targetUrl: string): boolean {
+    if (typeof window === 'undefined' || !window.location) {
+      return true;
+    }
+
+    try {
+      const target = new URL(targetUrl);
+      return target.origin === window.location.origin;
+    } catch {
+      return false;
+    }
+  }
+}
+
+export function buildTokenSnapshot(tokens: TokenSet, tenantId?: string): TokenStorageSchema {
+  return {
+    accessToken: tokens.accessToken,
+    refreshToken: tokens.refreshToken,
+    expiresAt: tokens.expiresAt,
+    tenantId,
+  };
+}
+

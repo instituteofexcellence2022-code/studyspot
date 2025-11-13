@@ -70,6 +70,7 @@ import {
   Tooltip as RechartsTooltip,
   Legend,
   ResponsiveContainer,
+  type PieLabelRenderProps,
 } from 'recharts';
 
 const COLORS = ['#E91E63', '#9C27B0', '#2196F3', '#4CAF50', '#FF9800'];
@@ -633,7 +634,16 @@ const LibraryOversightDashboard: React.FC = () => {
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={(entry: any) => `${entry.type}: ${entry.percentage}%`}
+                    label={({ payload, percent }: PieLabelRenderProps) => {
+                      const label = payload?.type ?? payload?.name ?? '';
+                      const value =
+                        percent != null
+                          ? (percent * 100).toFixed(1)
+                          : payload?.percentage != null
+                          ? (Number(payload.percentage) || 0).toFixed(1)
+                          : '0.0';
+                      return `${label}: ${value}%`;
+                    }}
                     outerRadius={100}
                     fill="#8884d8"
                     dataKey="count"

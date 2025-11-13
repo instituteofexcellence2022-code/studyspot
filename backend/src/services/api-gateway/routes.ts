@@ -7,22 +7,39 @@ import { FastifyInstance } from 'fastify';
 import axios from 'axios';
 import { logger } from '../../utils/logger';
 
+const DEFAULT_SERVICE_URLS = {
+  AUTH: 'https://studyspot-auth.onrender.com',
+  USER: 'https://studyspot-users.onrender.com',
+  TENANT: 'https://studyspot-tenants.onrender.com',
+  STUDENT: 'https://studyspot-students.onrender.com',
+  LIBRARY: 'https://studyspot-libraries.onrender.com',
+  PAYMENT: 'https://studyspot-payments.onrender.com',
+  BOOKING: 'https://studyspot-bookings.onrender.com',
+  CREDIT: 'https://studyspot-credits.onrender.com',
+  SUBSCRIPTION: 'https://studyspot-subscriptions.onrender.com',
+  MESSAGE: 'https://studyspot-messages.onrender.com',
+  COMMUNITY: 'https://studyspot-communities.onrender.com',
+  ATTENDANCE: 'https://studyspot-attendance.onrender.com',
+  MESSAGING: 'https://studyspot-messaging.onrender.com',
+  ANALYTICS: 'https://studyspot-analytics.onrender.com',
+};
+
 // Service URLs from environment
 const SERVICES = {
-  AUTH: process.env.AUTH_SERVICE_URL || 'http://localhost:3001',
-  USER: process.env.USER_SERVICE_URL || 'http://localhost:3002',
-  TENANT: process.env.TENANT_SERVICE_URL || 'http://localhost:3003',
-  STUDENT: process.env.STUDENT_SERVICE_URL || 'http://localhost:3004',
-  LIBRARY: process.env.LIBRARY_SERVICE_URL || 'http://localhost:3005',
-  PAYMENT: process.env.PAYMENT_SERVICE_URL || 'http://localhost:3006',
-  BOOKING: process.env.BOOKING_SERVICE_URL || 'http://localhost:3007',
-  CREDIT: process.env.CREDIT_SERVICE_URL || 'http://localhost:3008',
-  SUBSCRIPTION: process.env.SUBSCRIPTION_SERVICE_URL || 'http://localhost:3009',
-  MESSAGE: process.env.MESSAGE_SERVICE_URL || 'http://localhost:3010',
-  COMMUNITY: process.env.COMMUNITY_SERVICE_URL || 'http://localhost:3011',
-  ATTENDANCE: process.env.ATTENDANCE_SERVICE_URL || 'http://localhost:3012',
-  MESSAGING: process.env.MESSAGING_SERVICE_URL || 'http://localhost:3013',
-  ANALYTICS: process.env.ANALYTICS_SERVICE_URL || 'http://localhost:3014',
+  AUTH: process.env.AUTH_SERVICE_URL || DEFAULT_SERVICE_URLS.AUTH,
+  USER: process.env.USER_SERVICE_URL || DEFAULT_SERVICE_URLS.USER,
+  TENANT: process.env.TENANT_SERVICE_URL || DEFAULT_SERVICE_URLS.TENANT,
+  STUDENT: process.env.STUDENT_SERVICE_URL || DEFAULT_SERVICE_URLS.STUDENT,
+  LIBRARY: process.env.LIBRARY_SERVICE_URL || DEFAULT_SERVICE_URLS.LIBRARY,
+  PAYMENT: process.env.PAYMENT_SERVICE_URL || DEFAULT_SERVICE_URLS.PAYMENT,
+  BOOKING: process.env.BOOKING_SERVICE_URL || DEFAULT_SERVICE_URLS.BOOKING,
+  CREDIT: process.env.CREDIT_SERVICE_URL || DEFAULT_SERVICE_URLS.CREDIT,
+  SUBSCRIPTION: process.env.SUBSCRIPTION_SERVICE_URL || DEFAULT_SERVICE_URLS.SUBSCRIPTION,
+  MESSAGE: process.env.MESSAGE_SERVICE_URL || DEFAULT_SERVICE_URLS.MESSAGE,
+  COMMUNITY: process.env.COMMUNITY_SERVICE_URL || DEFAULT_SERVICE_URLS.COMMUNITY,
+  ATTENDANCE: process.env.ATTENDANCE_SERVICE_URL || DEFAULT_SERVICE_URLS.ATTENDANCE,
+  MESSAGING: process.env.MESSAGING_SERVICE_URL || DEFAULT_SERVICE_URLS.MESSAGING,
+  ANALYTICS: process.env.ANALYTICS_SERVICE_URL || DEFAULT_SERVICE_URLS.ANALYTICS,
 };
 
 /**

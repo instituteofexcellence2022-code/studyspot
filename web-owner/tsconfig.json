@@ -18,7 +18,14 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+    "baseUrl": ".",
+    "paths": {
+      "studyspot-tenant-sdk": [
+        "../packages/studyspot-tenant-sdk/dist",
+        "../packages/studyspot-tenant-sdk/src"
+      ]
+    }
   },
   "include": [
     "src"

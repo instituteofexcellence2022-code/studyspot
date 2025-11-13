@@ -72,6 +72,7 @@ import {
   Tooltip as RechartsTooltip,
   Legend,
   ResponsiveContainer,
+  type PieLabelRenderProps,
 } from 'recharts';
 import paymentService from '../../../services/api/payments';
 
@@ -1049,7 +1050,16 @@ const PaymentManagementComplete: React.FC = () => {
                         cx="50%"
                         cy="50%"
                         labelLine={false}
-                        label={(entry: any) => `${entry.method}: ${entry.percentage.toFixed(1)}%`}
+                        label={({ payload, percent }: PieLabelRenderProps) => {
+                          const label = payload?.method ?? payload?.name ?? '';
+                          const value =
+                            percent != null
+                              ? (percent * 100).toFixed(1)
+                              : payload?.percentage != null
+                              ? (Number(payload.percentage) || 0).toFixed(1)
+                              : '0.0';
+                          return `${label}: ${value}%`;
+                        }}
                         outerRadius={100}
                         fill="#8884d8"
                         dataKey="count"

@@ -14,8 +14,10 @@ import { logger } from '../utils/logger';
 export const tenantContext = async (request: FastifyRequest, reply: FastifyReply) => {
   try {
     const user = (request as any).user;
+    const headerTenantId = (request.headers['x-tenant-id'] ||
+      request.headers['X-Tenant-Id']) as string | undefined;
 
-    if (!user) {
+    if (!user && !headerTenantId) {
       return reply.status(HTTP_STATUS.UNAUTHORIZED).send({
         success: false,
         error: {
@@ -25,8 +27,12 @@ export const tenantContext = async (request: FastifyRequest, reply: FastifyReply
       });
     }
 
-    // Get tenant ID from user token
-    const tenantId = user.tenantId;
+    // Get tenant ID from user token or header
+    const tenantId =
+      headerTenantId ||
+      user?.tenantId ||
+      user?.tenant_id ||
+      (user?.tenant?.id as string | undefined);
 
     if (!tenantId) {
       return reply.status(HTTP_STATUS.BAD_REQUEST).send({
@@ -47,7 +53,7 @@ export const tenantContext = async (request: FastifyRequest, reply: FastifyReply
 
     logger.info('Tenant context attached', {
       tenantId,
-      userId: user.userId,
+      userId: user?.userId ?? user?.id ?? null,
     });
   } catch (error: any) {
     logger.error('Tenant context error:', error);

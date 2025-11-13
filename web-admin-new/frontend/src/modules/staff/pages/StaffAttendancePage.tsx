@@ -90,6 +90,7 @@ import {
   Tooltip as RechartsTooltip,
   Legend,
   ResponsiveContainer,
+  type PieLabelRenderProps,
 } from 'recharts';
 
 const COLORS = ['#4CAF50', '#F44336', '#FF9800', '#2196F3', '#9C27B0', '#E91E63'];
@@ -748,7 +749,11 @@ const StaffAttendancePage: React.FC = () => {
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={(entry) => `${entry.time}\n${entry.percentage}%`}
+                    label={({ payload, percent }: PieLabelRenderProps) =>
+                      `${payload?.time ?? ''}\n${
+                        percent != null ? (percent * 100).toFixed(1) : '0'
+                      }%`
+                    }
                     outerRadius={80}
                     fill="#8884d8"
                     dataKey="count"
@@ -971,7 +976,11 @@ const StaffAttendancePage: React.FC = () => {
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={(entry) => `${entry.name}\n${entry.percentage}%`}
+                    label={({ payload, percent }: PieLabelRenderProps) =>
+                      `${payload?.name ?? ''}\n${
+                        percent != null ? (percent * 100).toFixed(1) : '0'
+                      }%`
+                    }
                     outerRadius={90}
                     fill="#8884d8"
                     dataKey="value"

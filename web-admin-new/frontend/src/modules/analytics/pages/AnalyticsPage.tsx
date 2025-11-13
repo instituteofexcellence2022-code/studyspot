@@ -78,6 +78,7 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
+  type PieLabelRenderProps,
 } from 'recharts';
 import { useAppSelector } from '../../../hooks/redux';
 import type { TimeRange } from '../types';
@@ -514,7 +515,16 @@ const AnalyticsPage: React.FC = () => {
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={(entry: any) => `${entry.plan}: ${entry.percentage.toFixed(1)}%`}
+                    label={({ payload, percent }: PieLabelRenderProps) => {
+                      const label = payload?.plan ?? payload?.name ?? '';
+                      const value =
+                        percent != null
+                          ? (percent * 100).toFixed(1)
+                          : payload?.percentage != null
+                          ? (Number(payload.percentage) || 0).toFixed(1)
+                          : '0.0';
+                      return `${label}: ${value}%`;
+                    }}
                     outerRadius={100}
                     fill="#8884d8"
                     dataKey="count"
@@ -916,7 +926,16 @@ const AnalyticsPage: React.FC = () => {
                       cx="50%"
                       cy="50%"
                       labelLine={false}
-                      label={(entry: any) => `${entry.plan}: ${entry.percentage.toFixed(1)}%`}
+                      label={({ payload, percent }: PieLabelRenderProps) => {
+                        const label = payload?.plan ?? payload?.name ?? '';
+                        const value =
+                          percent != null
+                            ? (percent * 100).toFixed(1)
+                            : payload?.percentage != null
+                            ? (Number(payload.percentage) || 0).toFixed(1)
+                            : '0.0';
+                        return `${label}: ${value}%`;
+                      }}
                       outerRadius={70}
                       fill="#8884d8"
                       dataKey="count"

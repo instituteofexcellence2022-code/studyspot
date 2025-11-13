@@ -1,0 +1,22 @@
+{
+  "name": "studyspot-tenant-sdk",
+  "version": "0.1.0",
+  "description": "Shared authentication and tenant-scoped client utilities for StudySpot portals",
+  "main": "dist/index.cjs",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts",
+    "lint": "eslint \"src/**/*.{ts,tsx}\" --max-warnings=0"
+  },
+  "dependencies": {
+    "axios": "^1.13.1",
+    "jwt-decode": "^4.0.0"
+  },
+  "devDependencies": {
+    "tsup": "^8.3.0",
+    "typescript": "^5.4.5"
+  }
+}
+

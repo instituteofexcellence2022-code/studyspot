@@ -33,6 +33,7 @@ import { useNavigate } from 'react-router-dom';
 import MobileLayout from '../components/MobileLayout';
 import { advancedGradients, glassEffects } from '../theme/premiumTheme';
 import api from '../services/api';
+import { authService } from '../services/auth.service';
 
 interface DashboardPremiumProps {
   setIsAuthenticated: (value: boolean) => void;
@@ -58,7 +59,7 @@ export default function DashboardPremium({ setIsAuthenticated }: DashboardPremiu
   const [showInstallPrompt, setShowInstallPrompt] = useState(true);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
 
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const user = authService.getUser() ?? {};
   const currentHour = new Date().getHours();
   const greeting = currentHour < 12 ? 'Good Morning' : currentHour < 17 ? 'Good Afternoon' : 'Good Evening';
 

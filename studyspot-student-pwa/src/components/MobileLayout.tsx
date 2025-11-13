@@ -48,6 +48,7 @@ import {
 } from '@mui/icons-material';
 import MobileBottomNav from './MobileBottomNav';
 import { gradients } from '../theme/mobileTheme';
+import { authService } from '../services/auth.service';
 
 interface MobileLayoutProps {
   children: ReactNode;
@@ -60,7 +61,7 @@ export default function MobileLayout({ children, setIsAuthenticated }: MobileLay
   const theme = useTheme();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const user = authService.getUser() ?? {};
 
   const menuSections = [
     {
@@ -110,11 +111,15 @@ export default function MobileLayout({ children, setIsAuthenticated }: MobileLay
     },
   ];
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    setIsAuthenticated(false);
-    navigate('/login');
+  const handleLogout = async () => {
+    try {
+      await authService.logout();
+    } catch (error) {
+      console.warn('Logout failed, clearing local state anyway', error);
+    } finally {
+      setIsAuthenticated(false);
+      navigate('/login');
+    }
   };
 
   return (

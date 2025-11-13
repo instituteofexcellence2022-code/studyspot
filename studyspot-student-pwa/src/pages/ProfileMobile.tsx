@@ -27,6 +27,7 @@ import MobileLayout from '../components/MobileLayout';
 import { GradientCard } from '../components/MobileCard';
 import { ListItem, StatCard, SectionHeader } from '../components/MobileComponents';
 import { gradients } from '../theme/mobileTheme';
+import { authService } from '../services/auth.service';
 
 interface ProfileMobileProps {
   setIsAuthenticated: (value: boolean) => void;
@@ -34,7 +35,7 @@ interface ProfileMobileProps {
 
 export default function ProfileMobile({ setIsAuthenticated }: ProfileMobileProps) {
   const navigate = useNavigate();
-  const [user, setUser] = useState(() => JSON.parse(localStorage.getItem('user') || '{}'));
+  const [user, setUser] = useState(() => authService.getUser() ?? {});
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editedUser, setEditedUser] = useState({
     firstName: user.firstName || '',
@@ -63,23 +64,23 @@ export default function ProfileMobile({ setIsAuthenticated }: ProfileMobileProps
   };
 
   const handleSaveProfile = () => {
-    const updatedUser = {
-      ...user,
-      ...editedUser,
-    };
-    localStorage.setItem('user', JSON.stringify(updatedUser));
-    setUser(updatedUser);
+    authService.updateUser(editedUser);
+    setUser(authService.getUser() ?? {});
     setEditDialogOpen(false);
     // Show success message
     alert('Profile updated successfully!');
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     if (confirm('Are you sure you want to logout?')) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      setIsAuthenticated(false);
-      navigate('/login');
+      try {
+        await authService.logout();
+      } catch (error) {
+        console.warn('Failed to logout cleanly', error);
+      } finally {
+        setIsAuthenticated(false);
+        navigate('/login');
+      }
     }
   };
 

@@ -39,7 +39,6 @@ import {
   RadarChart,
   Radar,
   PolarGrid,
-  PolarAngleAxis,
   PolarRadiusAxis,
   LineChart,
   Line,
@@ -55,6 +54,7 @@ import {
   Pie,
   Cell,
 } from 'recharts';
+import PolarAngleAxis from '../common/PolarAngleAxisCompat';
 
 interface Pattern {
   id: string;
@@ -254,7 +254,6 @@ const StudyPatternAnalysis: React.FC = () => {
             <ResponsiveContainer width="100%" height={350}>
               <RadarChart data={timePatterns}>
                 <PolarGrid />
-                <PolarAngleAxis dataKey="time" />
                 <PolarRadiusAxis angle={90} domain={[0, 100]} />
                 <Radar
                   name="Productivity"
