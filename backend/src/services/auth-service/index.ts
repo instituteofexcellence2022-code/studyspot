@@ -8,6 +8,7 @@ import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import jwt from '@fastify/jwt';
+import rateLimit from '@fastify/rate-limit';
 import bcrypt from 'bcrypt';
 import dotenv from 'dotenv';
 import { coreDb } from '../../config/database';
@@ -43,6 +44,36 @@ fastify.register(helmet);
 
 fastify.register(jwt, {
   secret: process.env.JWT_SECRET || 'your-secret-key-change-in-production',
+});
+
+// Rate limiting for auth endpoints
+fastify.register(rateLimit, {
+  max: 5, // 5 requests
+  timeWindow: '15 minutes', // per 15 minutes
+  cache: 10000, // Cache up to 10k different IPs
+  allowList: ['127.0.0.1'], // Whitelist localhost for testing
+  skipOnError: false, // Don't skip on errors
+  ban: 3, // Ban after 3 violations (15 requests in 15 min)
+  onBanReach: (req: any, key: string) => {
+    logger.warn(`Rate limit ban reached for IP: ${key}`, {
+      ip: req.ip,
+      headers: req.headers,
+    });
+  },
+  errorResponseBuilder: (req: any, context: any) => {
+    return {
+      success: false,
+      error: {
+        code: 'RATE_LIMIT_EXCEEDED',
+        message: 'Too many authentication attempts. Please try again in 15 minutes.',
+        retryAfter: context.ttl,
+      },
+    };
+  },
+  keyGenerator: (req: any) => {
+    // Use IP address as rate limit key
+    return req.ip || req.headers['x-forwarded-for'] || req.headers['x-real-ip'] || 'unknown';
+  },
 });
 
 // ============================================
