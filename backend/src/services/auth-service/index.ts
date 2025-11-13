@@ -645,12 +645,16 @@ fastify.post('/api/auth/register', async (request, reply) => {
     const accessToken = generateAccessToken(user);
     const refreshToken = generateRefreshToken(user);
 
-    // Store refresh token
-    await coreDb.query(
-      `INSERT INTO refresh_tokens (user_id, user_type, token, expires_at)
-       VALUES ($1, $2, $3, NOW() + INTERVAL '7 days')`,
-      [user.id, userRole, refreshToken]
-    );
+    // Store refresh token (optional - won't fail if table missing)
+    try {
+      await coreDb.query(
+        `INSERT INTO refresh_tokens (user_id, user_type, token, expires_at)
+         VALUES ($1, $2, $3, NOW() + INTERVAL '7 days')`,
+        [user.id, userRole, refreshToken]
+      );
+    } catch (tokenError: any) {
+      logger.warn('Failed to store refresh token:', tokenError.message);
+    }
 
     return {
       success: true,
@@ -681,6 +685,7 @@ fastify.post('/api/auth/register', async (request, reply) => {
       error: {
         code: ERROR_CODES.SERVER_ERROR,
         message: 'Registration failed',
+        details: error.message,
       },
     });
   }
