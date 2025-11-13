@@ -630,27 +630,38 @@ fastify.post('/api/auth/register', async (request, reply) => {
     }
 
     // Hash password
+    console.log('[REGISTER] Step 1: Hashing password...');
     const passwordHash = await bcrypt.hash(password, 10);
+    console.log('[REGISTER] Step 2: Password hashed successfully');
 
     // Determine user role (default to student if not specified)
     const userRole = role || 'student';
 
     // Create user
+    console.log('[REGISTER] Step 3: Inserting user into database...');
     const result = await coreDb.query(
       `INSERT INTO admin_users (email, password_hash, first_name, last_name, role, is_active, created_at, updated_at)
        VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
        RETURNING id, email, first_name, last_name, role, is_active, created_at, updated_at`,
       [email.toLowerCase(), passwordHash, firstName, lastName, userRole, true]
     );
+    console.log('[REGISTER] Step 4: User inserted successfully');
 
     const user = result.rows[0];
+    console.log('[REGISTER] Step 5: User object:', { id: user.id, email: user.email });
 
     // Generate tokens for immediate login
     let accessToken, refreshToken;
     try {
+      console.log('[REGISTER] Step 6: Generating access token...');
       accessToken = generateAccessToken(user);
+      console.log('[REGISTER] Step 7: Access token generated');
+      
+      console.log('[REGISTER] Step 8: Generating refresh token...');
       refreshToken = generateRefreshToken(user);
+      console.log('[REGISTER] Step 9: Refresh token generated');
     } catch (tokenError: any) {
+      console.error('[REGISTER] Token generation failed:', tokenError);
       logger.error('Token generation failed:', tokenError);
       return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
         success: false,
@@ -658,6 +669,7 @@ fastify.post('/api/auth/register', async (request, reply) => {
           code: ERROR_CODES.SERVER_ERROR,
           message: 'Token generation failed',
           details: tokenError.message,
+          stack: tokenError.stack,
         },
       });
     }
