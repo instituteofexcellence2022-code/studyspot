@@ -139,6 +139,19 @@ export default function LoginPage() {
             </Alert>
           )}
 
+          {/* Demo Credentials */}
+          <Alert severity="info" sx={{ mb: 2, borderRadius: 2 }}>
+            <Typography variant="body2" fontWeight="600" gutterBottom>
+              🎓 Demo Account
+            </Typography>
+            <Typography variant="body2" component="div">
+              Email: <strong>demo@studyspot.com</strong>
+            </Typography>
+            <Typography variant="body2" component="div">
+              Password: <strong>Demo@123</strong>
+            </Typography>
+          </Alert>
+
           {/* Form */}
           <form onSubmit={handleSubmit} noValidate>
             <TextField
