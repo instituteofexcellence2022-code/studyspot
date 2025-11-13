@@ -563,6 +563,7 @@ fastify.post('/api/auth/login', async (request, reply) => {
       error: {
         code: ERROR_CODES.SERVER_ERROR,
         message: 'Login failed',
+        details: error?.message ?? 'Unknown error',
       },
     });
   }
