@@ -654,22 +654,31 @@ fastify.post('/api/auth/register', async (request, reply) => {
     let accessToken, refreshToken;
     try {
       console.log('[REGISTER] Step 6: Generating access token...');
+      console.log('[REGISTER] User object for token:', { id: user.id, email: user.email, role: user.role });
+      console.log('[REGISTER] JWT plugin available:', !!fastify.jwt);
       accessToken = generateAccessToken(user);
-      console.log('[REGISTER] Step 7: Access token generated');
+      console.log('[REGISTER] Step 7: Access token generated, length:', accessToken?.length);
       
       console.log('[REGISTER] Step 8: Generating refresh token...');
       refreshToken = generateRefreshToken(user);
-      console.log('[REGISTER] Step 9: Refresh token generated');
+      console.log('[REGISTER] Step 9: Refresh token generated, length:', refreshToken?.length);
     } catch (tokenError: any) {
       console.error('[REGISTER] Token generation failed:', tokenError);
+      console.error('[REGISTER] Token error details:', {
+        message: tokenError.message,
+        name: tokenError.name,
+        code: tokenError.code,
+        stack: tokenError.stack?.substring(0, 500),
+      });
       logger.error('Token generation failed:', tokenError);
       return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
         success: false,
         error: {
           code: ERROR_CODES.SERVER_ERROR,
           message: 'Token generation failed',
-          details: tokenError.message,
-          stack: tokenError.stack,
+          details: tokenError.message || 'Unknown token generation error',
+          errorName: tokenError.name,
+          errorCode: tokenError.code,
         },
       });
     }
@@ -685,15 +694,34 @@ fastify.post('/api/auth/register', async (request, reply) => {
       logger.warn('Failed to store refresh token:', tokenError.message);
     }
 
-    return {
-      success: true,
-      data: buildAuthPayload(
+    // Build auth payload
+    console.log('[REGISTER] Step 10: Building auth payload...');
+    let authPayload;
+    try {
+      authPayload = buildAuthPayload(
         {
           ...user,
           phone,
         },
         { accessToken, refreshToken }
-      ),
+      );
+      console.log('[REGISTER] Step 11: Auth payload built successfully');
+    } catch (payloadError: any) {
+      console.error('[REGISTER] Auth payload build failed:', payloadError);
+      logger.error('Auth payload build failed:', payloadError);
+      return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.SERVER_ERROR,
+          message: 'Failed to build auth payload',
+          details: payloadError.message || 'Unknown error',
+        },
+      });
+    }
+
+    return {
+      success: true,
+      data: authPayload,
       message: 'Registration successful',
     };
   } catch (error: any) {
