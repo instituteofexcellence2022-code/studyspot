@@ -303,12 +303,29 @@ export class AuthClient {
 
     if (!response.ok) {
       const message = await response.text();
+      console.error('[StudySpot SDK] Request failed:', {
+        status: response.status,
+        statusText: response.statusText,
+        message,
+        url,
+      });
       throw new Error(
         `[StudySpot SDK] Auth request failed (${response.status} ${response.statusText}): ${message}`
       );
     }
 
-    return (await response.json()) as T;
+    const jsonResponse = await response.json();
+    console.log('[StudySpot SDK] Raw HTTP response received:', {
+      type: typeof jsonResponse,
+      keys: jsonResponse ? Object.keys(jsonResponse) : 'null/undefined',
+      hasSuccess: 'success' in (jsonResponse || {}),
+      hasData: 'data' in (jsonResponse || {}),
+      successValue: (jsonResponse as any)?.success,
+      dataType: typeof (jsonResponse as any)?.data,
+      dataKeys: (jsonResponse as any)?.data ? Object.keys((jsonResponse as any).data) : 'no data',
+    });
+    
+    return jsonResponse as T;
   }
 
   private isSameOrigin(targetUrl: string): boolean {
