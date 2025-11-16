@@ -10,6 +10,18 @@ class AuthService {
   async login(credentials: LoginRequest): Promise<LoginResponse> {
     try {
       const response = await authClient.login(credentials);
+      
+      // Validate response structure
+      if (!response || !response.tokens || !response.tokens.accessToken) {
+        console.error('[AuthService] Invalid login response:', response);
+        throw new Error('Invalid login response: tokens not found');
+      }
+      
+      if (!response.user) {
+        console.error('[AuthService] Invalid login response: user not found');
+        throw new Error('Invalid login response: user not found');
+      }
+      
       this.setUser(response.user);
       return response;
     } catch (error: any) {

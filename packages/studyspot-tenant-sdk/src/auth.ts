@@ -78,8 +78,27 @@ export class AuthClient {
       hasRefreshToken: !!response.tokens.refreshToken,
     });
 
-    this.persistTokens(response.tokens, storage);
-    return response;
+    try {
+      this.persistTokens(response.tokens, storage);
+    } catch (persistError: any) {
+      console.error('[StudySpot SDK] Failed to persist tokens:', persistError);
+      console.error('[StudySpot SDK] Tokens object:', response.tokens);
+      throw new Error(`Failed to persist tokens: ${persistError.message}`);
+    }
+
+    // Ensure response has the expected structure
+    const loginResponse: LoginResponse = {
+      user: response.user,
+      tokens: response.tokens,
+    };
+
+    console.log('[StudySpot SDK] Login successful, returning response:', {
+      hasUser: !!loginResponse.user,
+      hasTokens: !!loginResponse.tokens,
+      hasAccessToken: !!loginResponse.tokens?.accessToken,
+    });
+
+    return loginResponse;
   }
 
   async refresh(): Promise<TokenSet | null> {
