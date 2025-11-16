@@ -151,13 +151,6 @@ export default function CompactLibraryDetailsPage({ setIsAuthenticated, darkMode
   const [currentImage, setCurrentImage] = useState(0);
   const [messageDialogOpen, setMessageDialogOpen] = useState(false);
   const [messageText, setMessageText] = useState('');
-  const [bookingData, setBookingData] = useState({
-    date: '',
-    shift: '',
-    seatNumber: '',
-  });
-  const [availableSeats, setAvailableSeats] = useState<string[]>([]);
-  const [submittingBooking, setSubmittingBooking] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -644,17 +637,7 @@ export default function CompactLibraryDetailsPage({ setIsAuthenticated, darkMode
                 <Button 
                   variant="contained" 
                   size="large"
-                  onClick={() => {
-                    console.log('[BOOK NOW] Button clicked, switching to tab 2');
-                    setTab(2);
-                    // Scroll to tabs section after a brief delay
-                    setTimeout(() => {
-                      const tabsElement = document.querySelector('[role="tablist"]');
-                      if (tabsElement) {
-                        tabsElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                      }
-                    }, 100);
-                  }}
+                  onClick={() => navigate(`/libraries/${id}/book`)}
                   sx={{ 
                     fontWeight: 'bold',
                     px: 3,
@@ -758,7 +741,6 @@ export default function CompactLibraryDetailsPage({ setIsAuthenticated, darkMode
             >
               <Tab label="About" />
               <Tab label="Amenities" />
-              <Tab label="🪑 Book Seats" icon={<EventSeat fontSize="small" />} iconPosition="start" />
               <Tab label="Rules" />
               <Tab label={`Reviews (${reviews.length})`} />
             </Tabs>
@@ -815,302 +797,8 @@ export default function CompactLibraryDetailsPage({ setIsAuthenticated, darkMode
                 </Grid>
               )}
 
-              {/* Book Seats Tab - Inline Booking Form */}
-              {tab === 2 && (
-                <Box sx={{ minHeight: 200, p: 2 }}>
-                  <Typography variant="h6" sx={{ mb: 3, fontWeight: 700 }}>
-                    Book Your Seat
-                  </Typography>
-                  
-                  {loading && (
-                    <Box sx={{ textAlign: 'center', py: 4 }}>
-                      <CircularProgress sx={{ mb: 2 }} />
-                      <Typography variant="body2" color="text.secondary">
-                        Loading library details...
-                      </Typography>
-                    </Box>
-                  )}
-
-                  {!loading && !library && (
-                    <Alert severity="error" sx={{ mb: 2 }}>
-                      Library information not available. Please refresh the page.
-                    </Alert>
-                  )}
-
-                  {!loading && library && (
-                    <Box>
-
-                  {/* Step 1: Select Date */}
-                  <Box sx={{ mb: 3 }}>
-                    <Typography variant="subtitle2" fontWeight="600" sx={{ mb: 1.5 }}>
-                      <CalendarMonth sx={{ fontSize: 18, verticalAlign: 'middle', mr: 0.5 }} />
-                      Select Date
-                    </Typography>
-                    <TextField
-                      fullWidth
-                      type="date"
-                      label="Booking Date"
-                      value={bookingData.date}
-                      onChange={(e) => {
-                        setBookingData({ ...bookingData, date: e.target.value, shift: '', seatNumber: '' });
-                        setAvailableSeats([]);
-                      }}
-                      InputLabelProps={{ shrink: true }}
-                      inputProps={{
-                        min: new Date().toISOString().split('T')[0],
-                      }}
-                      required
-                    />
-                  </Box>
-
-                  {/* Step 2: Select Shift */}
-                  {bookingData.date && (
-                    <Box sx={{ mb: 3 }}>
-                      <Typography variant="subtitle2" fontWeight="600" sx={{ mb: 1.5 }}>
-                        <Schedule sx={{ fontSize: 18, verticalAlign: 'middle', mr: 0.5 }} />
-                        Choose Shift
-                      </Typography>
-                      <TextField
-                        fullWidth
-                        select
-                        label="Time Shift"
-                        value={bookingData.shift}
-                        onChange={(e) => {
-                          setBookingData({ ...bookingData, shift: e.target.value, seatNumber: '' });
-                          // Generate available seats when shift is selected
-                          if (library) {
-                            const seats: string[] = [];
-                            const maxSeats = Math.min(library.availableSeats || 20, 20);
-                            for (let i = 1; i <= maxSeats; i++) {
-                              seats.push(`A-${i.toString().padStart(2, '0')}`);
-                            }
-                            setAvailableSeats(seats);
-                          }
-                        }}
-                        required
-                      >
-                        <MenuItem value="morning">
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-                            <span>Morning (6 AM - 12 PM)</span>
-                            <Chip label={`₹${(library?.hourlyRate || 50) * 6}`} size="small" color="primary" variant="outlined" />
-                          </Box>
-                        </MenuItem>
-                        <MenuItem value="afternoon">
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-                            <span>Afternoon (12 PM - 6 PM)</span>
-                            <Chip label={`₹${(library?.hourlyRate || 50) * 6}`} size="small" color="primary" variant="outlined" />
-                          </Box>
-                        </MenuItem>
-                        <MenuItem value="evening">
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-                            <span>Evening (6 PM - 11 PM)</span>
-                            <Chip label={`₹${Math.round((library?.hourlyRate || 50) * 5 * 0.9)}`} size="small" color="primary" variant="outlined" />
-                          </Box>
-                        </MenuItem>
-                        <MenuItem value="full_day">
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-                            <span>Full Day (6 AM - 11 PM)</span>
-                            <Chip label={`₹${library?.dailyRate || 300}`} size="small" color="primary" variant="outlined" />
-                          </Box>
-                        </MenuItem>
-                      </TextField>
-                    </Box>
-                  )}
-
-                  {/* Step 3: Select Seat */}
-                  {bookingData.date && bookingData.shift && (
-                    <Box sx={{ mb: 3 }}>
-                      <Typography variant="subtitle2" fontWeight="600" sx={{ mb: 1.5 }}>
-                        <EventSeat sx={{ fontSize: 18, verticalAlign: 'middle', mr: 0.5 }} />
-                        Select Seat
-                      </Typography>
-                      <Grid container spacing={1.5}>
-                        {availableSeats.map((seat) => (
-                          <Grid item xs={6} sm={4} key={seat}>
-                            <Button
-                              fullWidth
-                              variant={bookingData.seatNumber === seat ? 'contained' : 'outlined'}
-                              onClick={() => setBookingData({ ...bookingData, seatNumber: seat })}
-                              sx={{
-                                py: 1.5,
-                                borderRadius: 2,
-                                ...(bookingData.seatNumber === seat && {
-                                  background: gradients.primary,
-                                }),
-                              }}
-                            >
-                              {seat}
-                            </Button>
-                          </Grid>
-                        ))}
-                      </Grid>
-                      {availableSeats.length === 0 && (
-                        <Alert severity="warning" sx={{ mt: 2 }}>
-                          No seats available for the selected date and shift.
-                        </Alert>
-                      )}
-                    </Box>
-                  )}
-
-                  {/* Booking Summary & Submit */}
-                  {bookingData.date && bookingData.shift && bookingData.seatNumber && (
-                    <Box sx={{ mt: 3 }}>
-                      <Paper variant="outlined" sx={{ p: 2, mb: 2, bgcolor: 'action.hover' }}>
-                        <Typography variant="subtitle2" fontWeight="600" gutterBottom>
-                          Booking Summary
-                        </Typography>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                          <Typography variant="body2" color="text.secondary">Date:</Typography>
-                          <Typography variant="body2" fontWeight="600">
-                            {new Date(bookingData.date).toLocaleDateString()}
-                          </Typography>
-                        </Box>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                          <Typography variant="body2" color="text.secondary">Shift:</Typography>
-                          <Typography variant="body2" fontWeight="600">
-                            {bookingData.shift === 'morning' ? 'Morning (6 AM - 12 PM)' :
-                             bookingData.shift === 'afternoon' ? 'Afternoon (12 PM - 6 PM)' :
-                             bookingData.shift === 'evening' ? 'Evening (6 PM - 11 PM)' :
-                             'Full Day (6 AM - 11 PM)'}
-                          </Typography>
-                        </Box>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                          <Typography variant="body2" color="text.secondary">Seat:</Typography>
-                          <Typography variant="body2" fontWeight="600">{bookingData.seatNumber}</Typography>
-                        </Box>
-                        <Divider sx={{ my: 1 }} />
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <Typography variant="h6" fontWeight="700">Total:</Typography>
-                          <Typography variant="h6" fontWeight="700" color="primary.main">
-                            ₹{bookingData.shift === 'full_day' ? (library?.dailyRate || 300) :
-                               bookingData.shift === 'evening' ? Math.round((library?.hourlyRate || 50) * 5 * 0.9) :
-                               (library?.hourlyRate || 50) * 6}
-                          </Typography>
-                        </Box>
-                      </Paper>
-
-                      <Button
-                        variant="contained"
-                        fullWidth
-                        size="large"
-                        disabled={submittingBooking}
-                        onClick={async () => {
-                          if (!library || !user) {
-                            toast.error('Missing required information');
-                            return;
-                          }
-
-                          setSubmittingBooking(true);
-                          try {
-                            const shiftMap: Record<string, { start: string; end: string; hours: number }> = {
-                              morning: { start: '06:00:00', end: '12:00:00', hours: 6 },
-                              afternoon: { start: '12:00:00', end: '18:00:00', hours: 6 },
-                              evening: { start: '18:00:00', end: '23:00:00', hours: 5 },
-                              full_day: { start: '06:00:00', end: '23:00:00', hours: 17 },
-                            };
-
-                            const selectedShift = shiftMap[bookingData.shift];
-                            if (!selectedShift) {
-                              toast.error('Invalid shift selected');
-                              return;
-                            }
-                            
-                            const totalAmount = bookingData.shift === 'full_day' ? (library?.dailyRate || 300) :
-                                               bookingData.shift === 'evening' ? Math.round((library?.hourlyRate || 50) * 5 * 0.9) :
-                                               (library?.hourlyRate || 50) * 6;
-
-                            // Map frontend format to backend format
-                            const bookingPayload = {
-                              user_id: user.id,
-                              library_id: library.id,
-                              seat_id: bookingData.seatNumber, // Backend expects seat_id, but we're sending seatNumber
-                              start_time: `${bookingData.date}T${selectedShift.start}`,
-                              end_time: `${bookingData.date}T${selectedShift.end}`,
-                              total_amount: totalAmount,
-                              status: 'confirmed',
-                              payment_status: 'pending', // Default payment status
-                            };
-
-                            console.log('[BOOKING] Sending payload:', bookingPayload);
-                            
-                            const response = await api.post('/api/bookings', bookingPayload);
-                            console.log('[BOOKING] Response:', response.data);
-                            toast.success('Booking created successfully!');
-                            
-                            // Reset form
-                            setBookingData({ date: '', shift: '', seatNumber: '' });
-                            setAvailableSeats([]);
-                            
-                            // Navigate to bookings page after a short delay
-                            setTimeout(() => {
-                              navigate('/bookings');
-                            }, 1500);
-                          } catch (error: any) {
-                            console.error('[BOOKING] Creation failed:', error);
-                            console.error('[BOOKING] Error details:', {
-                              status: error.response?.status,
-                              statusText: error.response?.statusText,
-                              data: error.response?.data,
-                              message: error.message,
-                              code: error.code,
-                            });
-                            
-                            // Don't logout on service errors - show user-friendly message
-                            if (error.response?.status === 401) {
-                              const errorData = error.response?.data;
-                              const errorMsg = errorData?.error?.message || errorData?.message || '';
-                              
-                              // Check if it's a service error vs auth error
-                              if (errorMsg.includes('Service') || errorMsg.includes('not found') || errorMsg.includes('unavailable')) {
-                                toast.error('Booking service is not available. Please try again later.');
-                              } else {
-                                toast.error('Session expired. Please login again.');
-                                // Only logout on actual auth errors
-                                setTimeout(() => {
-                                  tokenStorage.clear();
-                                  window.location.href = '/login';
-                                }, 2000);
-                              }
-                            } else if (error.response?.status === 404) {
-                              toast.error('Booking service not found. Please contact support.');
-                            } else if (error.response?.status >= 500) {
-                              toast.error('Server error. Please try again later.');
-                            } else {
-                              const errorMessage = error.response?.data?.error?.message || 
-                                                  error.response?.data?.message || 
-                                                  error.message || 
-                                                  'Failed to create booking. Please try again.';
-                              toast.error(errorMessage);
-                            }
-                          } finally {
-                            setSubmittingBooking(false);
-                          }
-                        }}
-                        sx={{
-                          background: gradients.primary,
-                          borderRadius: 2,
-                          py: 1.5,
-                          fontWeight: 'bold',
-                        }}
-                      >
-                        {submittingBooking ? 'Processing...' : 'Confirm Booking'}
-                      </Button>
-                    </Box>
-                  )}
-
-                  {/* Show Book Now button if no data selected */}
-                  {(!bookingData.date || !bookingData.shift || !bookingData.seatNumber) && (
-                    <Alert severity="info" sx={{ mt: 2 }}>
-                      Select date, shift, and seat to proceed with booking
-                    </Alert>
-                  )}
-                    </Box>
-                  )}
-                </Box>
-              )}
-
               {/* Rules Tab */}
-              {tab === 3 && library && (
+              {tab === 2 && library && (
                 <List dense sx={{ py: 0 }}>
                   {(library.rules || []).map((rule, index) => (
                     <ListItem key={index} sx={{ px: 0, py: 0.5 }}>
@@ -1130,7 +818,7 @@ export default function CompactLibraryDetailsPage({ setIsAuthenticated, darkMode
               )}
 
               {/* Reviews Tab */}
-              {tab === 4 && library && (
+              {tab === 3 && library && (
                 <Box>
                   {/* Overall Rating */}
                   <Paper sx={{ p: 2, mb: 2, bgcolor: 'action.hover', borderRadius: 2, textAlign: 'center' }}>
@@ -1190,17 +878,7 @@ export default function CompactLibraryDetailsPage({ setIsAuthenticated, darkMode
           <Fab
             variant="extended"
             color="primary"
-            onClick={() => {
-              console.log('[FAB] Book Seats Now clicked, switching to tab 2');
-              setTab(2);
-              // Scroll to tabs section
-              setTimeout(() => {
-                const tabsElement = document.querySelector('[role="tablist"]');
-                if (tabsElement) {
-                  tabsElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }
-              }, 100);
-            }}
+            onClick={() => navigate(`/libraries/${id}/book`)}
             sx={{
               position: 'fixed',
               bottom: 16,
