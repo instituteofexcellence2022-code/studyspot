@@ -695,19 +695,25 @@ fastify.post('/api/auth/register', async (request, reply) => {
       });
     }
 
-    // Store refresh token (optional - won't fail if table missing)
+    // Store refresh token (optional - skip if database has triggers that require tenant)
+    // TODO: Re-enable once tenant validation is fixed in database
     try {
-      await coreDb.query(
-        `INSERT INTO refresh_tokens (user_id, user_type, token, expires_at)
-         VALUES ($1, $2, $3, NOW() + INTERVAL '7 days')`,
-        [user.id, userRole, refreshToken]
-      );
+      console.log('[REGISTER] Step 10: Storing refresh token...');
+      // Temporarily skip refresh token storage to avoid database trigger errors
+      // await coreDb.query(
+      //   `INSERT INTO refresh_tokens (user_id, user_type, token, expires_at)
+      //    VALUES ($1, $2, $3, NOW() + INTERVAL '7 days')`,
+      //   [user.id, userRole, refreshToken]
+      // );
+      console.log('[REGISTER] Step 11: Refresh token storage skipped (temporary)');
     } catch (tokenError: any) {
+      console.warn('[REGISTER] Failed to store refresh token (non-critical):', tokenError.message);
       logger.warn('Failed to store refresh token:', tokenError.message);
+      // Don't throw - this is optional
     }
 
     // Build auth payload
-    console.log('[REGISTER] Step 10: Building auth payload...');
+    console.log('[REGISTER] Step 12: Building auth payload...');
     let authPayload;
     try {
       authPayload = buildAuthPayload(
@@ -717,7 +723,7 @@ fastify.post('/api/auth/register', async (request, reply) => {
         },
         { accessToken, refreshToken }
       );
-      console.log('[REGISTER] Step 11: Auth payload built successfully');
+      console.log('[REGISTER] Step 13: Auth payload built successfully');
     } catch (payloadError: any) {
       console.error('[REGISTER] Auth payload build failed:', payloadError);
       logger.error('Auth payload build failed:', payloadError);
