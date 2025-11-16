@@ -64,7 +64,7 @@ export function createApiClient(options: ApiClientOptions) {
               { headers: { 'Content-Type': 'application/json' } }
             );
 
-            const newTokens = response.data?.data?.tokens || response.data?.tokens;
+            const newTokens = (response.data as any)?.data?.tokens || (response.data as any)?.tokens;
             
             if (newTokens?.accessToken) {
               // Update stored tokens
