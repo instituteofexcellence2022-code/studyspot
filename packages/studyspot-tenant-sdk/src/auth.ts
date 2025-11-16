@@ -39,10 +39,17 @@ export class AuthClient {
       hasData: !!(rawResponse as any)?.data,
       dataKeys: (rawResponse as any)?.data ? Object.keys((rawResponse as any).data) : 'no data',
       dataTokens: !!(rawResponse as any)?.data?.tokens,
+      fullResponse: JSON.stringify(rawResponse, null, 2).substring(0, 500), // First 500 chars
     });
 
     // Handle backend response wrapping (data.data or data)
     const response = (rawResponse as any).data || rawResponse;
+    
+    console.log('[StudySpot SDK] Extracted response:', {
+      type: typeof response,
+      keys: response ? Object.keys(response) : 'null/undefined',
+      fullResponse: JSON.stringify(response, null, 2).substring(0, 500), // First 500 chars
+    });
 
     console.log('[StudySpot SDK] Processed response:', {
       type: typeof response,
