@@ -767,7 +767,7 @@ export default function CompactLibraryDetailsPage({ setIsAuthenticated, darkMode
               )}
 
               {/* Book Seats Tab - Inline Booking Form */}
-              {tab === 2 && (
+              {tab === 2 && library && (
                 <Box>
                   <Typography variant="h6" sx={{ mb: 3, fontWeight: 700 }}>
                     Book Your Seat
@@ -811,36 +811,39 @@ export default function CompactLibraryDetailsPage({ setIsAuthenticated, darkMode
                         onChange={(e) => {
                           setBookingData({ ...bookingData, shift: e.target.value, seatNumber: '' });
                           // Generate available seats when shift is selected
-                          const seats: string[] = [];
-                          for (let i = 1; i <= Math.min(library.availableSeats, 20); i++) {
-                            seats.push(`A-${i.toString().padStart(2, '0')}`);
+                          if (library) {
+                            const seats: string[] = [];
+                            const maxSeats = Math.min(library.availableSeats || 20, 20);
+                            for (let i = 1; i <= maxSeats; i++) {
+                              seats.push(`A-${i.toString().padStart(2, '0')}`);
+                            }
+                            setAvailableSeats(seats);
                           }
-                          setAvailableSeats(seats);
                         }}
                         required
                       >
                         <MenuItem value="morning">
                           <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
                             <span>Morning (6 AM - 12 PM)</span>
-                            <Chip label={`₹${library.hourlyRate * 6}`} size="small" color="primary" variant="outlined" />
+                            <Chip label={`₹${(library?.hourlyRate || 50) * 6}`} size="small" color="primary" variant="outlined" />
                           </Box>
                         </MenuItem>
                         <MenuItem value="afternoon">
                           <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
                             <span>Afternoon (12 PM - 6 PM)</span>
-                            <Chip label={`₹${library.hourlyRate * 6}`} size="small" color="primary" variant="outlined" />
+                            <Chip label={`₹${(library?.hourlyRate || 50) * 6}`} size="small" color="primary" variant="outlined" />
                           </Box>
                         </MenuItem>
                         <MenuItem value="evening">
                           <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
                             <span>Evening (6 PM - 11 PM)</span>
-                            <Chip label={`₹${Math.round(library.hourlyRate * 5 * 0.9)}`} size="small" color="primary" variant="outlined" />
+                            <Chip label={`₹${Math.round((library?.hourlyRate || 50) * 5 * 0.9)}`} size="small" color="primary" variant="outlined" />
                           </Box>
                         </MenuItem>
                         <MenuItem value="full_day">
                           <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
                             <span>Full Day (6 AM - 11 PM)</span>
-                            <Chip label={`₹${library.dailyRate}`} size="small" color="primary" variant="outlined" />
+                            <Chip label={`₹${library?.dailyRate || 300}`} size="small" color="primary" variant="outlined" />
                           </Box>
                         </MenuItem>
                       </TextField>
@@ -912,9 +915,9 @@ export default function CompactLibraryDetailsPage({ setIsAuthenticated, darkMode
                         <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                           <Typography variant="h6" fontWeight="700">Total:</Typography>
                           <Typography variant="h6" fontWeight="700" color="primary.main">
-                            ₹{bookingData.shift === 'full_day' ? library.dailyRate :
-                               bookingData.shift === 'evening' ? Math.round(library.hourlyRate * 5 * 0.9) :
-                               library.hourlyRate * 6}
+                            ₹{bookingData.shift === 'full_day' ? (library?.dailyRate || 300) :
+                               bookingData.shift === 'evening' ? Math.round((library?.hourlyRate || 50) * 5 * 0.9) :
+                               (library?.hourlyRate || 50) * 6}
                           </Typography>
                         </Box>
                       </Paper>
@@ -940,9 +943,14 @@ export default function CompactLibraryDetailsPage({ setIsAuthenticated, darkMode
                             };
 
                             const selectedShift = shiftMap[bookingData.shift];
-                            const totalAmount = bookingData.shift === 'full_day' ? library.dailyRate :
-                                               bookingData.shift === 'evening' ? Math.round(library.hourlyRate * 5 * 0.9) :
-                                               library.hourlyRate * 6;
+                            if (!selectedShift) {
+                              toast.error('Invalid shift selected');
+                              return;
+                            }
+                            
+                            const totalAmount = bookingData.shift === 'full_day' ? (library?.dailyRate || 300) :
+                                               bookingData.shift === 'evening' ? Math.round((library?.hourlyRate || 50) * 5 * 0.9) :
+                                               (library?.hourlyRate || 50) * 6;
 
                             // Map frontend format to backend format
                             const bookingPayload = {
