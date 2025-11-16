@@ -29,6 +29,7 @@ import {
   Avatar,
   Divider,
   Skeleton,
+  CircularProgress,
   Stack,
   Accordion,
   AccordionSummary,
@@ -767,11 +768,20 @@ export default function CompactLibraryDetailsPage({ setIsAuthenticated, darkMode
               )}
 
               {/* Book Seats Tab - Inline Booking Form */}
-              {tab === 2 && library && (
+              {tab === 2 && (
                 <Box>
-                  <Typography variant="h6" sx={{ mb: 3, fontWeight: 700 }}>
-                    Book Your Seat
-                  </Typography>
+                  {!library ? (
+                    <Box sx={{ textAlign: 'center', py: 4 }}>
+                      <CircularProgress sx={{ mb: 2 }} />
+                      <Typography variant="body2" color="text.secondary">
+                        Loading library details...
+                      </Typography>
+                    </Box>
+                  ) : (
+                    <>
+                      <Typography variant="h6" sx={{ mb: 3, fontWeight: 700 }}>
+                        Book Your Seat
+                      </Typography>
 
                   {/* Step 1: Select Date */}
                   <Box sx={{ mb: 3 }}>
@@ -1036,6 +1046,8 @@ export default function CompactLibraryDetailsPage({ setIsAuthenticated, darkMode
                     <Alert severity="info" sx={{ mt: 2 }}>
                       Select date, shift, and seat to proceed with booking
                     </Alert>
+                  )}
+                    </>
                   )}
                 </Box>
               )}
