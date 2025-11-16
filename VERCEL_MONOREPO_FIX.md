@@ -5,7 +5,7 @@ Vercel is trying to install all workspace dependencies, causing conflicts betwee
 
 ## Solution
 
-### Step 1: Configure Root Directory in Vercel Dashboard
+### Step 1: Configure Build Settings in Vercel Dashboard
 
 1. **Go to Vercel Dashboard**
    - Visit: https://vercel.com/dashboard
@@ -13,15 +13,12 @@ Vercel is trying to install all workspace dependencies, causing conflicts betwee
 
 2. **Update Settings**
    - Go to **Settings** → **General**
-   - Scroll to **Root Directory**
-   - Set it to: `studyspot-student-pwa`
-   - Click **Save**
-
-3. **Update Build Settings**
+   - **Root Directory**: Leave empty (use repo root) - This is important for workspace dependencies!
    - **Framework Preset**: Vite
-   - **Build Command**: `npm run build`
-   - **Output Directory**: `dist`
+   - **Build Command**: `cd studyspot-student-pwa && npm run build`
+   - **Output Directory**: `studyspot-student-pwa/dist`
    - **Install Command**: `npm install --legacy-peer-deps`
+   - Click **Save**
 
 ### Step 2: Environment Variables
 
@@ -61,9 +58,11 @@ Update in: **Settings** → **General** → **Install Command**
 
 ## Why This Works
 
-- **Root Directory**: Tells Vercel to only work with the `studyspot-student-pwa` folder
-- **--legacy-peer-deps**: Ignores peer dependency conflicts
-- **Isolated Build**: Only installs dependencies for the student portal, not all workspaces
+- **Root Directory**: Keep as repo root to resolve workspace dependencies (`studyspot-tenant-sdk`)
+- **Build Command**: `cd studyspot-student-pwa && npm run build` - Builds from the student portal directory
+- **Output Directory**: `studyspot-student-pwa/dist` - Points to the correct build output
+- **--legacy-peer-deps**: Ignores peer dependency conflicts between workspaces
+- **Workspace Resolution**: Installing from root allows `file:../packages/studyspot-tenant-sdk` to resolve correctly
 
 ---
 
