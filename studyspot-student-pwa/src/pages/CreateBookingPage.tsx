@@ -204,18 +204,8 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
         status: 'confirmed',
       };
 
-      // Try both API endpoints
-      let response;
-      try {
-        response = await api.post('/api/v1/bookings', bookingPayload);
-      } catch (error: any) {
-        // Fallback to alternative endpoint
-        if (error.response?.status === 404) {
-          response = await api.post('/api/bookings', bookingPayload);
-        } else {
-          throw error;
-        }
-      }
+      // Use /api/bookings (API Gateway routes to /api/v1/bookings internally)
+      const response = await api.post('/api/bookings', bookingPayload);
 
       toast.success('Booking created successfully!');
       setTimeout(() => {
