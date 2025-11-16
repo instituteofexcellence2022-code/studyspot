@@ -3,6 +3,8 @@ import ReactDOM from 'react-dom/client'
 import App from './App'
 import './index.css'
 
+// Updated: 2025-01-17 - Trigger Vercel redeploy with latest fixes
+
 // PWA Service Worker registration (disabled for dev)
 // import { registerSW } from 'virtual:pwa-register'
 // const updateSW = registerSW({
