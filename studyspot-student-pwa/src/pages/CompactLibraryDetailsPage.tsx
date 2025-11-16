@@ -89,6 +89,7 @@ import { gradients } from '../theme/colors';
 import api from '../services/api';
 import { toast } from 'react-toastify';
 import { useAuth } from '../contexts/AuthContext';
+import { tokenStorage } from '../services/tenantSdk';
 
 interface Library {
   id: string;
@@ -970,12 +971,42 @@ export default function CompactLibraryDetailsPage({ setIsAuthenticated, darkMode
                               navigate('/bookings');
                             }, 1500);
                           } catch (error: any) {
-                            console.error('Booking creation failed:', error);
-                            const errorMessage = error.response?.data?.error?.message || 
-                                                error.response?.data?.message || 
-                                                error.message || 
-                                                'Failed to create booking. Please try again.';
-                            toast.error(errorMessage);
+                            console.error('[BOOKING] Creation failed:', error);
+                            console.error('[BOOKING] Error details:', {
+                              status: error.response?.status,
+                              statusText: error.response?.statusText,
+                              data: error.response?.data,
+                              message: error.message,
+                              code: error.code,
+                            });
+                            
+                            // Don't logout on service errors - show user-friendly message
+                            if (error.response?.status === 401) {
+                              const errorData = error.response?.data;
+                              const errorMsg = errorData?.error?.message || errorData?.message || '';
+                              
+                              // Check if it's a service error vs auth error
+                              if (errorMsg.includes('Service') || errorMsg.includes('not found') || errorMsg.includes('unavailable')) {
+                                toast.error('Booking service is not available. Please try again later.');
+                              } else {
+                                toast.error('Session expired. Please login again.');
+                                // Only logout on actual auth errors
+                                setTimeout(() => {
+                                  tokenStorage.clear();
+                                  window.location.href = '/login';
+                                }, 2000);
+                              }
+                            } else if (error.response?.status === 404) {
+                              toast.error('Booking service not found. Please contact support.');
+                            } else if (error.response?.status >= 500) {
+                              toast.error('Server error. Please try again later.');
+                            } else {
+                              const errorMessage = error.response?.data?.error?.message || 
+                                                  error.response?.data?.message || 
+                                                  error.message || 
+                                                  'Failed to create booking. Please try again.';
+                              toast.error(errorMessage);
+                            }
                           } finally {
                             setSubmittingBooking(false);
                           }

@@ -90,9 +90,21 @@ export function createApiClient(options: ApiClientOptions) {
         }
       }
 
-      // If still 401 after retry or no refresh token, logout
-      if (error.response?.status === 401 && typeof onUnauthorized === 'function') {
-        onUnauthorized();
+      // If still 401 after retry or no refresh token, check if it's an auth error or service error
+      if (error.response?.status === 401) {
+        // Only logout if it's an actual auth error, not a service unavailable error
+        const errorMessage = error.response?.data?.error?.message || error.response?.data?.message || '';
+        const isServiceError = errorMessage.includes('Service') || 
+                              errorMessage.includes('service') ||
+                              errorMessage.includes('not found') ||
+                              errorMessage.includes('unavailable') ||
+                              error.code === 'ECONNREFUSED' ||
+                              error.code === 'ETIMEDOUT';
+        
+        // Don't logout on service errors - just reject the promise
+        if (!isServiceError && typeof onUnauthorized === 'function') {
+          onUnauthorized();
+        }
       }
       
       return Promise.reject(error);

@@ -48,8 +48,13 @@ export const apiClient = createApiClient({
   getTenantId: () => tokenStorage.read()?.tenantId ?? null,
   requestTimeoutMs: 10000, // 10 seconds timeout to prevent hanging
   onUnauthorized: () => {
+    // Only logout if we're sure it's an auth issue, not a service error
+    console.warn('[StudySpot] Unauthorized access - clearing tokens');
     tokenStorage.clear();
-    window.location.href = '/login';
+    // Use a small delay to allow error messages to show
+    setTimeout(() => {
+      window.location.href = '/login';
+    }, 100);
   },
 });
 
