@@ -107,12 +107,14 @@ export class AuthClient {
 
     // Ensure response has the expected structure
     // Double-check tokens exist before creating response
-    if (!response.tokens || !response.tokens.accessToken) {
+    if (!response || !response.tokens || !response.tokens.accessToken) {
       console.error('[StudySpot SDK] CRITICAL: tokens missing in final response:', {
         response,
-        hasTokens: !!response.tokens,
-        tokensType: typeof response.tokens,
-        tokensValue: response.tokens,
+        hasResponse: !!response,
+        hasTokens: !!response?.tokens,
+        tokensType: typeof response?.tokens,
+        tokensValue: response?.tokens,
+        responseKeys: response ? Object.keys(response) : 'response is null/undefined',
       });
       throw new Error('Invalid login response: tokens missing in final response');
     }
@@ -121,13 +123,35 @@ export class AuthClient {
       console.error('[StudySpot SDK] CRITICAL: user missing in final response:', {
         response,
         hasUser: !!response.user,
+        responseKeys: response ? Object.keys(response) : 'response is null/undefined',
       });
       throw new Error('Invalid login response: user missing in final response');
     }
 
+    // Map backend user format to SDK format
+    // Backend returns: { id, email, firstName, lastName, role, tenantId, ... }
+    // SDK expects: { id, email, firstName?, lastName?, roles: UserRole[], tenantId: string }
+    const mappedUser = {
+      id: response.user.id,
+      email: response.user.email,
+      firstName: response.user.firstName || response.user.first_name,
+      lastName: response.user.lastName || response.user.last_name,
+      roles: Array.isArray(response.user.roles) 
+        ? response.user.roles 
+        : (response.user.role ? [response.user.role as any] : ['student']),
+      tenantId: response.user.tenantId || response.user.tenant_id || '',
+    };
+
+    // Ensure tokens structure is correct
+    const mappedTokens: TokenSet = {
+      accessToken: response.tokens.accessToken,
+      refreshToken: response.tokens.refreshToken,
+      expiresAt: response.tokens.expiresAt || Date.now() + (15 * 60 * 1000), // Default 15 min
+    };
+
     const loginResponse: LoginResponse = {
-      user: response.user,
-      tokens: response.tokens,
+      user: mappedUser,
+      tokens: mappedTokens,
     };
 
     console.log('[StudySpot SDK] Login successful, returning response:', {
