@@ -27,11 +27,20 @@ export class AuthClient {
   }
 
   async login(credentials: Credentials): Promise<LoginResponse> {
-    const { provider, storage } = this.options;
-    const rawResponse = await this.request<any>(
-      provider.loginPath ?? DEFAULT_ENDPOINTS.login,
-      credentials
-    );
+    try {
+      const { provider, storage } = this.options;
+      console.log('[StudySpot SDK] Starting login request...', {
+        baseUrl: provider.baseUrl,
+        loginPath: provider.loginPath ?? DEFAULT_ENDPOINTS.login,
+        email: credentials.email,
+      });
+
+      const rawResponse = await this.request<any>(
+        provider.loginPath ?? DEFAULT_ENDPOINTS.login,
+        credentials
+      );
+
+      console.log('[StudySpot SDK] Request completed, processing response...');
 
     console.log('[StudySpot SDK] Raw login response:', {
       type: typeof rawResponse,
@@ -154,14 +163,24 @@ export class AuthClient {
       tokens: mappedTokens,
     };
 
-    console.log('[StudySpot SDK] Login successful, returning response:', {
-      hasUser: !!loginResponse.user,
-      hasTokens: !!loginResponse.tokens,
-      hasAccessToken: !!loginResponse.tokens?.accessToken,
-      tokensKeys: loginResponse.tokens ? Object.keys(loginResponse.tokens) : 'no tokens',
-    });
+      console.log('[StudySpot SDK] Login successful, returning response:', {
+        hasUser: !!loginResponse.user,
+        hasTokens: !!loginResponse.tokens,
+        hasAccessToken: !!loginResponse.tokens?.accessToken,
+        tokensKeys: loginResponse.tokens ? Object.keys(loginResponse.tokens) : 'no tokens',
+      });
 
-    return loginResponse;
+      return loginResponse;
+    } catch (error: any) {
+      console.error('[StudySpot SDK] Login method error:', {
+        errorMessage: error?.message,
+        errorName: error?.name,
+        errorStack: error?.stack?.substring(0, 500),
+        errorType: typeof error,
+        errorKeys: error ? Object.keys(error) : 'error is null/undefined',
+      });
+      throw error;
+    }
   }
 
   async refresh(): Promise<TokenSet | null> {
