@@ -659,28 +659,19 @@ fastify.post('/api/auth/register', async (request, reply) => {
     // Determine user role (default to student if not specified)
     const userRole = role || 'student';
 
-    // Create user using a transaction to ensure atomicity
-    console.log('[REGISTER] Step 3: Starting database transaction...');
-    const client = await coreDb.connect();
+    // Create user (without transaction for pooler compatibility)
+    console.log('[REGISTER] Step 3: Inserting user into database...');
     let result;
     try {
-      await client.query('BEGIN');
-      console.log('[REGISTER] Step 3a: Transaction started');
-      
-      // Insert user
-      console.log('[REGISTER] Step 3b: Inserting user into database...');
-      result = await client.query(
+      // Use simple query instead of transaction (pooler doesn't support transactions)
+      result = await coreDb.query(
         `INSERT INTO admin_users (email, password_hash, first_name, last_name, role, is_active, created_at, updated_at)
          VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
          RETURNING id, email, first_name, last_name, role, is_active, created_at, updated_at`,
         [email.toLowerCase(), passwordHash, firstName, lastName, userRole, true]
       );
       console.log('[REGISTER] Step 4: User inserted successfully');
-      
-      await client.query('COMMIT');
-      console.log('[REGISTER] Step 4a: Transaction committed');
     } catch (insertError: any) {
-      await client.query('ROLLBACK').catch(() => {}); // Ignore rollback errors
       console.error('[REGISTER] User insert failed:', insertError);
       console.error('[REGISTER] Insert error details:', {
         code: insertError.code,
@@ -690,8 +681,6 @@ fastify.post('/api/auth/register', async (request, reply) => {
         position: insertError.position,
       });
       throw insertError;
-    } finally {
-      client.release();
     }
 
     const user = result.rows[0];
