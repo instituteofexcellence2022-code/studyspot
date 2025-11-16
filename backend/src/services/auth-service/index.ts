@@ -131,12 +131,17 @@ const generateRefreshToken = (user: any) => {
 
 const extractExpiryTimestamp = (token: string): number | null => {
   try {
+    if (!fastify.jwt) {
+      console.warn('[extractExpiryTimestamp] JWT plugin not available');
+      return null;
+    }
     const decoded = fastify.jwt.decode(token) as { exp?: number } | null;
     if (decoded?.exp) {
       return decoded.exp * 1000;
     }
     return null;
-  } catch {
+  } catch (error: any) {
+    console.error('[extractExpiryTimestamp] Error decoding token:', error.message);
     return null;
   }
 };
@@ -155,7 +160,14 @@ const formatUserResponse = (user: any) => ({
 });
 
 const buildAuthPayload = (user: any, tokens: { accessToken: string; refreshToken?: string }) => {
-  const expiresAt = extractExpiryTimestamp(tokens.accessToken);
+  let expiresAt = extractExpiryTimestamp(tokens.accessToken);
+  
+  // Fallback: if expiry extraction fails, calculate from current time + 15 minutes
+  if (!expiresAt) {
+    const expiryMinutes = parseInt(process.env.JWT_ACCESS_TOKEN_EXPIRY?.replace('m', '') || '15');
+    expiresAt = Date.now() + (expiryMinutes * 60 * 1000);
+    console.warn('[buildAuthPayload] Using fallback expiry calculation');
+  }
 
   return {
     user: formatUserResponse(user),
@@ -725,8 +737,16 @@ fastify.post('/api/auth/register', async (request, reply) => {
       message: 'Registration successful',
     };
   } catch (error: any) {
+    console.error('[REGISTER] Outer catch - Full error:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
     logger.error('Register error:', error);
-    logger.error('Error details:', { code: error.code, message: error.message, stack: error.stack });
+    logger.error('Error details:', { 
+      code: error.code, 
+      message: error.message, 
+      name: error.name,
+      stack: error.stack,
+      cause: error.cause,
+      innerError: error.innerError,
+    });
     
     if (error.code === '23505') { // Unique violation
       return reply.status(HTTP_STATUS.BAD_REQUEST).send({
@@ -738,14 +758,19 @@ fastify.post('/api/auth/register', async (request, reply) => {
       });
     }
     
+    // Check if error message contains "Tenant or user not found"
+    const errorMessage = error.message || '';
+    const errorDetails = error.details || errorMessage;
+    
     return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
       success: false,
       error: {
         code: ERROR_CODES.SERVER_ERROR,
         message: 'Registration failed',
-        details: error.message,
+        details: errorDetails,
         errorCode: error.code,
         errorName: error.name,
+        fullError: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
       },
     });
   }
