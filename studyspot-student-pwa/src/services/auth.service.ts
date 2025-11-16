@@ -56,7 +56,9 @@ class AuthService {
 
           if (!fallbackResponse.ok) {
             const fallbackError = await fallbackResponse.json().catch(() => ({}));
-            throw new Error(fallbackError?.error?.message || 'Registration failed (fallback)');
+            const errorMsg = fallbackError?.error?.message || 'Registration failed';
+            const errorDetails = fallbackError?.error?.details ? `: ${fallbackError.error.details}` : '';
+            throw new Error(`${errorMsg}${errorDetails}`);
           }
 
           const payload = await fallbackResponse.json();
@@ -187,14 +189,21 @@ class AuthService {
       return new Error('Network error. Please check your internet connection.');
     }
 
-    const message =
+    // Extract error message from nested error object or direct message
+    const errorObj = error.response?.data?.error;
+    const message = 
+      errorObj?.message ||
       error.response?.data?.message ||
       error.response?.data?.error ||
       error.response?.data?.errors?.[0]?.msg ||
       error.message ||
       'An unexpected error occurred';
+    
+    // Append details if available
+    const details = errorObj?.details;
+    const fullMessage = details ? `${message}: ${details}` : message;
 
-    return new Error(message);
+    return new Error(fullMessage);
   }
 }
 
