@@ -810,31 +810,28 @@ export default function CompactLibraryDetailsPage({ setIsAuthenticated, darkMode
 
               {/* Book Seats Tab - Inline Booking Form */}
               {tab === 2 && (
-                <Box sx={{ minHeight: 200 }}>
-                  {(() => {
-                    console.log('[BOOKING TAB] Rendering tab 2, library:', !!library, 'loading:', loading);
-                    if (loading) {
-                      return (
-                        <Box sx={{ textAlign: 'center', py: 4 }}>
-                          <CircularProgress sx={{ mb: 2 }} />
-                          <Typography variant="body2" color="text.secondary">
-                            Loading library details...
-                          </Typography>
-                        </Box>
-                      );
-                    }
-                    if (!library) {
-                      return (
-                        <Alert severity="error" sx={{ mb: 2 }}>
-                          Library information not available. Please refresh the page.
-                        </Alert>
-                      );
-                    }
-                    return (
-                      <>
-                        <Typography variant="h6" sx={{ mb: 3, fontWeight: 700 }}>
-                          Book Your Seat
-                        </Typography>
+                <Box sx={{ minHeight: 200, p: 2 }}>
+                  <Typography variant="h6" sx={{ mb: 3, fontWeight: 700 }}>
+                    Book Your Seat
+                  </Typography>
+                  
+                  {loading && (
+                    <Box sx={{ textAlign: 'center', py: 4 }}>
+                      <CircularProgress sx={{ mb: 2 }} />
+                      <Typography variant="body2" color="text.secondary">
+                        Loading library details...
+                      </Typography>
+                    </Box>
+                  )}
+
+                  {!loading && !library && (
+                    <Alert severity="error" sx={{ mb: 2 }}>
+                      Library information not available. Please refresh the page.
+                    </Alert>
+                  )}
+
+                  {!loading && library && (
+                    <>
 
                   {/* Step 1: Select Date */}
                   <Box sx={{ mb: 3 }}>
@@ -1100,9 +1097,8 @@ export default function CompactLibraryDetailsPage({ setIsAuthenticated, darkMode
                       Select date, shift, and seat to proceed with booking
                     </Alert>
                   )}
-                      </>
-                    );
-                  })()}
+                    </>
+                  )}
                 </Box>
               )}
 
