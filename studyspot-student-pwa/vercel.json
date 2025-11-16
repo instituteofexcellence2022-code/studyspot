@@ -2,10 +2,10 @@
   "version": 2,
   "name": "studyspot-student-portal",
   "framework": "vite",
-  "buildCommand": "cd studyspot-student-pwa && npm run build",
-  "outputDirectory": "studyspot-student-pwa/dist",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
   "installCommand": "npm install --legacy-peer-deps",
-  "devCommand": "cd studyspot-student-pwa && npm run dev",
+  "devCommand": "npm run dev",
   "rewrites": [
     {
       "source": "/(.*)",
