@@ -1,12 +1,11 @@
 /**
- * 📚 FRESH BOOKING PAGE
+ * 📚 SINGLE-VIEW BOOKING PAGE
  * 
- * Aligned with web owner portal's fee plan structure:
- * - Fetches fee plans from library
- * - Supports shift pricing (morning, afternoon, evening, night)
- * - Supports zone pricing (ac, nonAc, premium, quiet, general)
- * - Calculates price based on fee plan type and selections
- * - Submits booking with proper API format
+ * All booking information in one view for quick selection:
+ * - Date, Shift, Fee Plan, Zone, Seat selection
+ * - Real-time price calculation
+ * - Booking summary
+ * - Aligned with web owner portal's fee plan structure
  */
 
 import { useState, useEffect } from 'react';
@@ -20,9 +19,6 @@ import {
   Button,
   TextField,
   MenuItem,
-  Stepper,
-  Step,
-  StepLabel,
   Grid,
   Alert,
   Chip,
@@ -34,6 +30,7 @@ import {
   FormControlLabel,
   FormControl,
   FormLabel,
+  Stack,
 } from '@mui/material';
 import {
   ArrowBack,
@@ -44,6 +41,7 @@ import {
   CheckCircle,
   LocationOn,
   AccessTime,
+  AttachMoney,
 } from '@mui/icons-material';
 import MobileLayout from '../components/MobileLayout';
 import { gradients } from '../theme/colors';
@@ -93,18 +91,18 @@ interface Seat {
 }
 
 const SHIFTS = [
-  { value: 'morning', label: 'Morning', start: '06:00', end: '12:00', hours: 6 },
-  { value: 'afternoon', label: 'Afternoon', start: '12:00', end: '18:00', hours: 6 },
-  { value: 'evening', label: 'Evening', start: '18:00', end: '23:00', hours: 5 },
-  { value: 'full_day', label: 'Full Day', start: '06:00', end: '23:00', hours: 17 },
+  { value: 'morning', label: 'Morning', start: '06:00', end: '12:00', hours: 6, icon: '🌅' },
+  { value: 'afternoon', label: 'Afternoon', start: '12:00', end: '18:00', hours: 6, icon: '☀️' },
+  { value: 'evening', label: 'Evening', start: '18:00', end: '23:00', hours: 5, icon: '🌆' },
+  { value: 'full_day', label: 'Full Day', start: '06:00', end: '23:00', hours: 17, icon: '📅' },
 ];
 
 const ZONES = [
-  { value: 'general', label: 'General', icon: '🪑' },
-  { value: 'quiet', label: 'Quiet Zone', icon: '🔇' },
-  { value: 'ac', label: 'AC Zone', icon: '❄️' },
-  { value: 'nonAc', label: 'Non-AC Zone', icon: '🌬️' },
-  { value: 'premium', label: 'Premium', icon: '⭐' },
+  { value: 'general', label: 'General', icon: '🪑', description: 'Standard seating area' },
+  { value: 'quiet', label: 'Quiet Zone', icon: '🔇', description: 'Silent study area' },
+  { value: 'ac', label: 'AC Zone', icon: '❄️', description: 'Air-conditioned area' },
+  { value: 'nonAc', label: 'Non-AC Zone', icon: '🌬️', description: 'Natural ventilation' },
+  { value: 'premium', label: 'Premium', icon: '⭐', description: 'Premium seating with extra amenities' },
 ];
 
 export default function CreateBookingPage({ setIsAuthenticated }: any) {
@@ -118,7 +116,6 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
   const [feePlans, setFeePlans] = useState<FeePlan[]>([]);
   const [availableSeats, setAvailableSeats] = useState<Seat[]>([]);
   const [loadingSeats, setLoadingSeats] = useState(false);
-  const [activeStep, setActiveStep] = useState(0);
   
   const [bookingData, setBookingData] = useState({
     date: '',
@@ -141,6 +138,7 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
       fetchAvailableSeats();
     } else {
       setAvailableSeats([]);
+      setBookingData(prev => ({ ...prev, seatId: '' }));
     }
   }, [bookingData.date, bookingData.shift, bookingData.zone]);
 
@@ -166,7 +164,6 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
     } catch (error: any) {
       console.error('[BOOKING] Failed to fetch library:', error);
       toast.error('Failed to load library details');
-      // Use fallback data
       setLibrary({
         id: id || '1',
         name: 'Library',
@@ -185,17 +182,14 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
 
   const fetchFeePlans = async () => {
     try {
-      // Try to fetch fee plans from API
       const response = await api.get(`/api/fee-plans`);
       if (response.data.success && response.data.data?.plans) {
         setFeePlans(response.data.data.plans);
       } else {
-        // Use default fee plans aligned with owner portal structure
         setFeePlans(getDefaultFeePlans());
       }
     } catch (error) {
       console.warn('[BOOKING] Failed to fetch fee plans, using defaults:', error);
-      // Use default fee plans
       setFeePlans(getDefaultFeePlans());
     }
   };
@@ -253,7 +247,6 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
 
     setLoadingSeats(true);
     try {
-      // Try to fetch available seats from API
       const response = await api.get(`/api/libraries/${id}/seats/available`, {
         params: {
           date: bookingData.date,
@@ -266,7 +259,6 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
       if (response.data.success && response.data.data) {
         setAvailableSeats(response.data.data.seats || []);
       } else {
-        // Generate mock seats for demo
         generateMockSeats();
       }
     } catch (error) {
@@ -285,7 +277,7 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
         id: `seat-${i}`,
         seatNumber: `${zoneLabel.charAt(0)}-${i.toString().padStart(2, '0')}`,
         zone: bookingData.zone,
-        isAvailable: Math.random() > 0.3, // 70% available
+        isAvailable: Math.random() > 0.3,
       });
     }
     setAvailableSeats(seats);
@@ -332,42 +324,31 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
     return basePrice;
   };
 
-  const handleNext = () => {
-    if (activeStep === 0 && !bookingData.date) {
-      toast.error('Please select a date');
-      return;
-    }
-    if (activeStep === 1 && !bookingData.shift) {
-      toast.error('Please select a shift');
-      return;
-    }
-    if (activeStep === 2 && !bookingData.feePlanId) {
-      toast.error('Please select a fee plan');
-      return;
-    }
-    if (activeStep === 3 && !bookingData.zone) {
-      toast.error('Please select a zone');
-      return;
-    }
-    if (activeStep === 4 && !bookingData.seatId) {
-      toast.error('Please select a seat');
-      return;
-    }
-    setActiveStep(prev => prev + 1);
-  };
-
-  const handleBack = () => {
-    setActiveStep(prev => prev - 1);
-  };
-
   const handleSubmit = async () => {
     if (!library || !user) {
       toast.error('Missing required information');
       return;
     }
 
-    if (!bookingData.seatId || !bookingData.date || !bookingData.shift || !bookingData.feePlanId) {
-      toast.error('Please complete all booking details');
+    // Validate all required fields
+    if (!bookingData.date) {
+      toast.error('Please select a date');
+      return;
+    }
+    if (!bookingData.shift) {
+      toast.error('Please select a shift');
+      return;
+    }
+    if (!bookingData.feePlanId) {
+      toast.error('Please select a fee plan');
+      return;
+    }
+    if (!bookingData.zone) {
+      toast.error('Please select a zone');
+      return;
+    }
+    if (!bookingData.seatId) {
+      toast.error('Please select a seat');
       return;
     }
 
@@ -397,7 +378,6 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
       const startTime = `${selectedShift.start}:00`;
       const endTime = `${selectedShift.end}:00`;
 
-      // API expects: libraryId, seatId, date, startTime, endTime, bookingType, paymentMethod
       const bookingPayload = {
         libraryId: library.id,
         seatId: bookingData.seatId,
@@ -431,8 +411,6 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
       setSubmitting(false);
     }
   };
-
-  const steps = ['Select Date', 'Choose Shift', 'Select Fee Plan', 'Choose Zone', 'Select Seat', 'Review & Confirm'];
 
   if (loading) {
     return (
@@ -484,6 +462,9 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
   const selectedPlan = feePlans.find(p => p.id === bookingData.feePlanId);
   const selectedSeat = availableSeats.find(s => s.id === bookingData.seatId);
   const selectedShift = SHIFTS.find(s => s.value === bookingData.shift);
+  const selectedZone = ZONES.find(z => z.value === bookingData.zone);
+  const totalPrice = calculatePrice();
+  const isFormValid = bookingData.date && bookingData.shift && bookingData.feePlanId && bookingData.zone && bookingData.seatId;
 
   return (
     <MobileLayout setIsAuthenticated={setIsAuthenticated}>
@@ -519,7 +500,7 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
           </Box>
         </Paper>
 
-        <Container maxWidth="sm" sx={{ py: 3 }}>
+        <Container maxWidth="md" sx={{ py: 3 }}>
           {/* Library Info Card */}
           <Card sx={{ mb: 3, borderRadius: 2 }}>
             <CardContent>
@@ -529,7 +510,7 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
                   {library.address}
                 </Typography>
               </Box>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
                 <Chip
                   icon={<EventSeat />}
                   label={`${library.availableSeats || 0} seats available`}
@@ -543,331 +524,372 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
             </CardContent>
           </Card>
 
-          {/* Stepper */}
-          <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
-            {steps.map((label) => (
-              <Step key={label}>
-                <StepLabel>{label}</StepLabel>
-              </Step>
-            ))}
-          </Stepper>
+          <Grid container spacing={3}>
+            {/* Left Column - Booking Options */}
+            <Grid item xs={12} md={8}>
+              <Stack spacing={3}>
+                {/* 1. Date Selection */}
+                <Card sx={{ borderRadius: 2 }}>
+                  <CardContent>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                      <CalendarMonth color="primary" />
+                      <Typography variant="h6" fontWeight="600">
+                        Select Date
+                      </Typography>
+                    </Box>
+                    <TextField
+                      fullWidth
+                      type="date"
+                      label="Booking Date"
+                      value={bookingData.date}
+                      onChange={(e) => setBookingData({ ...bookingData, date: e.target.value, shift: '', zone: '', seatId: '' })}
+                      InputLabelProps={{ shrink: true }}
+                      inputProps={{
+                        min: new Date().toISOString().split('T')[0],
+                      }}
+                      required
+                    />
+                  </CardContent>
+                </Card>
 
-          {/* Step Content */}
-          <Card sx={{ borderRadius: 2, mb: 3 }}>
-            <CardContent sx={{ p: 3 }}>
-              {/* Step 0: Select Date */}
-              {activeStep === 0 && (
-                <Box>
-                  <Typography variant="h6" fontWeight="600" gutterBottom>
-                    <CalendarMonth sx={{ verticalAlign: 'middle', mr: 1 }} />
-                    Select Date
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                    Choose the date for your study session
-                  </Typography>
-                  <TextField
-                    fullWidth
-                    type="date"
-                    label="Booking Date"
-                    value={bookingData.date}
-                    onChange={(e) => setBookingData({ ...bookingData, date: e.target.value, shift: '', zone: '', seatId: '' })}
-                    InputLabelProps={{ shrink: true }}
-                    inputProps={{
-                      min: new Date().toISOString().split('T')[0],
-                    }}
-                    required
-                  />
-                </Box>
-              )}
-
-              {/* Step 1: Choose Shift */}
-              {activeStep === 1 && (
-                <Box>
-                  <Typography variant="h6" fontWeight="600" gutterBottom>
-                    <Schedule sx={{ verticalAlign: 'middle', mr: 1 }} />
-                    Choose Shift
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                    Select your preferred time slot
-                  </Typography>
-                  <TextField
-                    fullWidth
-                    select
-                    label="Time Shift"
-                    value={bookingData.shift}
-                    onChange={(e) => setBookingData({ ...bookingData, shift: e.target.value, zone: '', seatId: '' })}
-                    required
-                  >
-                    {SHIFTS.map((shift) => (
-                      <MenuItem key={shift.value} value={shift.value}>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
-                          <Box>
-                            <Typography variant="body1">{shift.label}</Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              {shift.start} - {shift.end} ({shift.hours} hours)
-                            </Typography>
-                          </Box>
-                        </Box>
-                      </MenuItem>
-                    ))}
-                  </TextField>
-                </Box>
-              )}
-
-              {/* Step 2: Select Fee Plan */}
-              {activeStep === 2 && (
-                <Box>
-                  <Typography variant="h6" fontWeight="600" gutterBottom>
-                    <Payment sx={{ verticalAlign: 'middle', mr: 1 }} />
-                    Select Fee Plan
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                    Choose a pricing plan that suits your needs
-                  </Typography>
-                  <Grid container spacing={2}>
-                    {feePlans.map((plan) => (
-                      <Grid item xs={12} key={plan.id}>
-                        <Card
-                          variant={bookingData.feePlanId === plan.id ? 'outlined' : 'outlined'}
-                          sx={{
-                            cursor: 'pointer',
-                            border: bookingData.feePlanId === plan.id ? 2 : 1,
-                            borderColor: bookingData.feePlanId === plan.id ? 'primary.main' : 'divider',
-                            bgcolor: bookingData.feePlanId === plan.id ? 'action.selected' : 'background.paper',
-                            '&:hover': { borderColor: 'primary.main' },
-                          }}
-                          onClick={() => setBookingData({ ...bookingData, feePlanId: plan.id })}
-                        >
-                          <CardContent>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', mb: 1 }}>
-                              <Box>
-                                <Typography variant="h6" fontWeight="600">
-                                  {plan.name}
+                {/* 2. Shift Selection */}
+                {bookingData.date && (
+                  <Card sx={{ borderRadius: 2 }}>
+                    <CardContent>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                        <Schedule color="primary" />
+                        <Typography variant="h6" fontWeight="600">
+                          Choose Shift
+                        </Typography>
+                      </Box>
+                      <Grid container spacing={2}>
+                        {SHIFTS.map((shift) => (
+                          <Grid item xs={6} sm={3} key={shift.value}>
+                            <Card
+                              variant="outlined"
+                              sx={{
+                                cursor: 'pointer',
+                                border: bookingData.shift === shift.value ? 2 : 1,
+                                borderColor: bookingData.shift === shift.value ? 'primary.main' : 'divider',
+                                bgcolor: bookingData.shift === shift.value ? 'action.selected' : 'background.paper',
+                                textAlign: 'center',
+                                '&:hover': { borderColor: 'primary.main' },
+                              }}
+                              onClick={() => setBookingData({ ...bookingData, shift: shift.value, zone: '', seatId: '' })}
+                            >
+                              <CardContent sx={{ py: 2 }}>
+                                <Typography variant="h5" sx={{ mb: 0.5 }}>
+                                  {shift.icon}
+                                </Typography>
+                                <Typography variant="body2" fontWeight="600">
+                                  {shift.label}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary" display="block">
+                                  {shift.start} - {shift.end}
                                 </Typography>
                                 <Typography variant="caption" color="text.secondary">
-                                  {plan.description}
+                                  {shift.hours} hours
                                 </Typography>
-                              </Box>
-                              <Chip
-                                label={`₹${plan.basePrice}`}
-                                color="primary"
-                                size="small"
-                              />
-                            </Box>
-                            <Box sx={{ mt: 1 }}>
-                              {plan.features.slice(0, 3).map((feature, idx) => (
-                                <Typography key={idx} variant="caption" display="block" color="text.secondary">
-                                  • {feature}
-                                </Typography>
-                              ))}
-                            </Box>
-                          </CardContent>
-                        </Card>
-                      </Grid>
-                    ))}
-                  </Grid>
-                </Box>
-              )}
-
-              {/* Step 3: Choose Zone */}
-              {activeStep === 3 && (
-                <Box>
-                  <Typography variant="h6" fontWeight="600" gutterBottom>
-                    <EventSeat sx={{ verticalAlign: 'middle', mr: 1 }} />
-                    Choose Zone
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                    Select your preferred study zone
-                  </Typography>
-                  <Grid container spacing={2}>
-                    {ZONES.map((zone) => (
-                      <Grid item xs={6} sm={4} key={zone.value}>
-                        <Card
-                          variant="outlined"
-                          sx={{
-                            cursor: 'pointer',
-                            border: bookingData.zone === zone.value ? 2 : 1,
-                            borderColor: bookingData.zone === zone.value ? 'primary.main' : 'divider',
-                            bgcolor: bookingData.zone === zone.value ? 'action.selected' : 'background.paper',
-                            textAlign: 'center',
-                            '&:hover': { borderColor: 'primary.main' },
-                          }}
-                          onClick={() => setBookingData({ ...bookingData, zone: zone.value, seatId: '' })}
-                        >
-                          <CardContent sx={{ py: 2 }}>
-                            <Typography variant="h4" sx={{ mb: 0.5 }}>
-                              {zone.icon}
-                            </Typography>
-                            <Typography variant="body2" fontWeight="600">
-                              {zone.label}
-                            </Typography>
-                          </CardContent>
-                        </Card>
-                      </Grid>
-                    ))}
-                  </Grid>
-                </Box>
-              )}
-
-              {/* Step 4: Select Seat */}
-              {activeStep === 4 && (
-                <Box>
-                  <Typography variant="h6" fontWeight="600" gutterBottom>
-                    <EventSeat sx={{ verticalAlign: 'middle', mr: 1 }} />
-                    Select Seat
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                    Choose an available seat from {ZONES.find(z => z.value === bookingData.zone)?.label}
-                  </Typography>
-                  {loadingSeats ? (
-                    <Box sx={{ textAlign: 'center', py: 4 }}>
-                      <CircularProgress />
-                    </Box>
-                  ) : (
-                    <Grid container spacing={1.5}>
-                      {availableSeats
-                        .filter(seat => seat.zone === bookingData.zone)
-                        .map((seat) => (
-                          <Grid item xs={6} sm={4} key={seat.id}>
-                            <Button
-                              fullWidth
-                              variant={bookingData.seatId === seat.id ? 'contained' : 'outlined'}
-                              disabled={!seat.isAvailable}
-                              onClick={() => setBookingData({ ...bookingData, seatId: seat.id })}
-                              sx={{
-                                py: 1.5,
-                                borderRadius: 2,
-                                ...(bookingData.seatId === seat.id && {
-                                  background: gradients.primary,
-                                }),
-                                ...(!seat.isAvailable && {
-                                  opacity: 0.5,
-                                  cursor: 'not-allowed',
-                                }),
-                              }}
-                            >
-                              {seat.seatNumber}
-                              {!seat.isAvailable && (
-                                <Chip label="Booked" size="small" color="error" sx={{ ml: 1 }} />
-                              )}
-                            </Button>
+                              </CardContent>
+                            </Card>
                           </Grid>
                         ))}
-                    </Grid>
-                  )}
-                  {availableSeats.filter(seat => seat.zone === bookingData.zone && seat.isAvailable).length === 0 && !loadingSeats && (
-                    <Alert severity="warning" sx={{ mt: 2 }}>
-                      No seats available in this zone for the selected date and shift. Please try a different zone or time.
-                    </Alert>
-                  )}
-                </Box>
-              )}
+                      </Grid>
+                    </CardContent>
+                  </Card>
+                )}
 
-              {/* Step 5: Review & Confirm */}
-              {activeStep === 5 && (
-                <Box>
-                  <Typography variant="h6" fontWeight="600" gutterBottom>
-                    <CheckCircle sx={{ verticalAlign: 'middle', mr: 1 }} />
-                    Review & Confirm
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                    Please review your booking details before confirming
-                  </Typography>
+                {/* 3. Fee Plan Selection */}
+                {bookingData.shift && (
+                  <Card sx={{ borderRadius: 2 }}>
+                    <CardContent>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                        <AttachMoney color="primary" />
+                        <Typography variant="h6" fontWeight="600">
+                          Select Fee Plan
+                        </Typography>
+                      </Box>
+                      <Grid container spacing={2}>
+                        {feePlans.map((plan) => (
+                          <Grid item xs={12} sm={6} key={plan.id}>
+                            <Card
+                              variant="outlined"
+                              sx={{
+                                cursor: 'pointer',
+                                border: bookingData.feePlanId === plan.id ? 2 : 1,
+                                borderColor: bookingData.feePlanId === plan.id ? 'primary.main' : 'divider',
+                                bgcolor: bookingData.feePlanId === plan.id ? 'action.selected' : 'background.paper',
+                                '&:hover': { borderColor: 'primary.main' },
+                              }}
+                              onClick={() => setBookingData({ ...bookingData, feePlanId: plan.id })}
+                            >
+                              <CardContent>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', mb: 1 }}>
+                                  <Box>
+                                    <Typography variant="h6" fontWeight="600">
+                                      {plan.name}
+                                    </Typography>
+                                    <Typography variant="caption" color="text.secondary">
+                                      {plan.description}
+                                    </Typography>
+                                  </Box>
+                                  <Chip
+                                    label={`₹${plan.basePrice}`}
+                                    color="primary"
+                                    size="small"
+                                  />
+                                </Box>
+                                <Box sx={{ mt: 1 }}>
+                                  {plan.features.slice(0, 2).map((feature, idx) => (
+                                    <Typography key={idx} variant="caption" display="block" color="text.secondary">
+                                      • {feature}
+                                    </Typography>
+                                  ))}
+                                </Box>
+                              </CardContent>
+                            </Card>
+                          </Grid>
+                        ))}
+                      </Grid>
+                    </CardContent>
+                  </Card>
+                )}
 
-                  <Paper variant="outlined" sx={{ p: 2, mb: 2, bgcolor: 'action.hover' }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                      <Typography variant="body2" color="text.secondary">Library:</Typography>
-                      <Typography variant="body2" fontWeight="600">{library.name}</Typography>
-                    </Box>
-                    <Divider sx={{ my: 1 }} />
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                      <Typography variant="body2" color="text.secondary">Date:</Typography>
-                      <Typography variant="body2" fontWeight="600">
-                        {new Date(bookingData.date).toLocaleDateString()}
-                      </Typography>
-                    </Box>
-                    <Divider sx={{ my: 1 }} />
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                      <Typography variant="body2" color="text.secondary">Shift:</Typography>
-                      <Typography variant="body2" fontWeight="600">
-                        {selectedShift?.label} ({selectedShift?.start} - {selectedShift?.end})
-                      </Typography>
-                    </Box>
-                    <Divider sx={{ my: 1 }} />
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                      <Typography variant="body2" color="text.secondary">Fee Plan:</Typography>
-                      <Typography variant="body2" fontWeight="600">{selectedPlan?.name}</Typography>
-                    </Box>
-                    <Divider sx={{ my: 1 }} />
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                      <Typography variant="body2" color="text.secondary">Zone:</Typography>
-                      <Typography variant="body2" fontWeight="600">
-                        {ZONES.find(z => z.value === bookingData.zone)?.label}
-                      </Typography>
-                    </Box>
-                    <Divider sx={{ my: 1 }} />
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                      <Typography variant="body2" color="text.secondary">Seat:</Typography>
-                      <Typography variant="body2" fontWeight="600">{selectedSeat?.seatNumber}</Typography>
-                    </Box>
+                {/* 4. Zone Selection */}
+                {bookingData.feePlanId && (
+                  <Card sx={{ borderRadius: 2 }}>
+                    <CardContent>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                        <EventSeat color="primary" />
+                        <Typography variant="h6" fontWeight="600">
+                          Choose Zone
+                        </Typography>
+                      </Box>
+                      <Grid container spacing={2}>
+                        {ZONES.map((zone) => (
+                          <Grid item xs={6} sm={4} key={zone.value}>
+                            <Card
+                              variant="outlined"
+                              sx={{
+                                cursor: 'pointer',
+                                border: bookingData.zone === zone.value ? 2 : 1,
+                                borderColor: bookingData.zone === zone.value ? 'primary.main' : 'divider',
+                                bgcolor: bookingData.zone === zone.value ? 'action.selected' : 'background.paper',
+                                textAlign: 'center',
+                                '&:hover': { borderColor: 'primary.main' },
+                              }}
+                              onClick={() => setBookingData({ ...bookingData, zone: zone.value, seatId: '' })}
+                            >
+                              <CardContent sx={{ py: 2 }}>
+                                <Typography variant="h4" sx={{ mb: 0.5 }}>
+                                  {zone.icon}
+                                </Typography>
+                                <Typography variant="body2" fontWeight="600">
+                                  {zone.label}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary" display="block">
+                                  {zone.description}
+                                </Typography>
+                              </CardContent>
+                            </Card>
+                          </Grid>
+                        ))}
+                      </Grid>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* 5. Seat Selection */}
+                {bookingData.zone && (
+                  <Card sx={{ borderRadius: 2 }}>
+                    <CardContent>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                        <EventSeat color="primary" />
+                        <Typography variant="h6" fontWeight="600">
+                          Select Seat
+                        </Typography>
+                        {selectedZone && (
+                          <Chip
+                            label={selectedZone.label}
+                            size="small"
+                            sx={{ ml: 1 }}
+                          />
+                        )}
+                      </Box>
+                      {loadingSeats ? (
+                        <Box sx={{ textAlign: 'center', py: 4 }}>
+                          <CircularProgress />
+                        </Box>
+                      ) : (
+                        <>
+                          <Grid container spacing={1.5}>
+                            {availableSeats
+                              .filter(seat => seat.zone === bookingData.zone)
+                              .map((seat) => (
+                                <Grid item xs={6} sm={4} md={3} key={seat.id}>
+                                  <Button
+                                    fullWidth
+                                    variant={bookingData.seatId === seat.id ? 'contained' : 'outlined'}
+                                    disabled={!seat.isAvailable}
+                                    onClick={() => setBookingData({ ...bookingData, seatId: seat.id })}
+                                    sx={{
+                                      py: 1.5,
+                                      borderRadius: 2,
+                                      ...(bookingData.seatId === seat.id && {
+                                        background: gradients.primary,
+                                      }),
+                                      ...(!seat.isAvailable && {
+                                        opacity: 0.5,
+                                        cursor: 'not-allowed',
+                                      }),
+                                    }}
+                                  >
+                                    {seat.seatNumber}
+                                  </Button>
+                                </Grid>
+                              ))}
+                          </Grid>
+                          {availableSeats.filter(seat => seat.zone === bookingData.zone && seat.isAvailable).length === 0 && !loadingSeats && (
+                            <Alert severity="warning" sx={{ mt: 2 }}>
+                              No seats available in this zone for the selected date and shift. Please try a different zone or time.
+                            </Alert>
+                          )}
+                        </>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* 6. Payment Method */}
+                {bookingData.seatId && (
+                  <Card sx={{ borderRadius: 2 }}>
+                    <CardContent>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                        <Payment color="primary" />
+                        <Typography variant="h6" fontWeight="600">
+                          Payment Method
+                        </Typography>
+                      </Box>
+                      <FormControl component="fieldset">
+                        <RadioGroup
+                          value={bookingData.paymentMethod}
+                          onChange={(e) => setBookingData({ ...bookingData, paymentMethod: e.target.value as 'online' | 'offline' })}
+                          row
+                        >
+                          <FormControlLabel value="online" control={<Radio />} label="Online Payment" />
+                          <FormControlLabel value="offline" control={<Radio />} label="Pay at Library" />
+                        </RadioGroup>
+                      </FormControl>
+                    </CardContent>
+                  </Card>
+                )}
+              </Stack>
+            </Grid>
+
+            {/* Right Column - Booking Summary (Sticky) */}
+            <Grid item xs={12} md={4}>
+              <Box sx={{ position: { md: 'sticky' }, top: { md: 80 } }}>
+                <Card sx={{ borderRadius: 2, border: 2, borderColor: 'primary.main' }}>
+                  <CardContent>
+                    <Typography variant="h6" fontWeight="700" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <CheckCircle color="primary" />
+                      Booking Summary
+                    </Typography>
                     <Divider sx={{ my: 2 }} />
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <Typography variant="h6" fontWeight="700">Total Amount:</Typography>
-                      <Typography variant="h6" fontWeight="700" color="primary.main">
-                        ₹{calculatePrice()}
-                      </Typography>
-                    </Box>
-                  </Paper>
 
-                  <FormControl component="fieldset" sx={{ mb: 2 }}>
-                    <FormLabel component="legend">Payment Method</FormLabel>
-                    <RadioGroup
-                      value={bookingData.paymentMethod}
-                      onChange={(e) => setBookingData({ ...bookingData, paymentMethod: e.target.value as 'online' | 'offline' })}
-                    >
-                      <FormControlLabel value="online" control={<Radio />} label="Online Payment" />
-                      <FormControlLabel value="offline" control={<Radio />} label="Pay at Library" />
-                    </RadioGroup>
-                  </FormControl>
-                </Box>
-              )}
-            </CardContent>
-          </Card>
+                    <Stack spacing={1.5}>
+                      <Box>
+                        <Typography variant="caption" color="text.secondary">Library</Typography>
+                        <Typography variant="body2" fontWeight="600">{library.name}</Typography>
+                      </Box>
 
-          {/* Navigation Buttons */}
-          <Box sx={{ display: 'flex', gap: 2 }}>
-            {activeStep > 0 && (
-              <Button
-                fullWidth
-                variant="outlined"
-                onClick={handleBack}
-                disabled={submitting}
-              >
-                Back
-              </Button>
-            )}
-            {activeStep < steps.length - 1 ? (
-              <Button
-                fullWidth
-                variant="contained"
-                onClick={handleNext}
-                sx={{ background: gradients.primary }}
-              >
-                Next
-              </Button>
-            ) : (
-              <Button
-                fullWidth
-                variant="contained"
-                onClick={handleSubmit}
-                disabled={submitting}
-                startIcon={submitting ? <CircularProgress size={20} /> : <Payment />}
-                sx={{ background: gradients.primary }}
-              >
-                {submitting ? 'Processing...' : 'Confirm Booking'}
-              </Button>
-            )}
-          </Box>
+                      {bookingData.date && (
+                        <Box>
+                          <Typography variant="caption" color="text.secondary">Date</Typography>
+                          <Typography variant="body2" fontWeight="600">
+                            {new Date(bookingData.date).toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
+                          </Typography>
+                        </Box>
+                      )}
+
+                      {selectedShift && (
+                        <Box>
+                          <Typography variant="caption" color="text.secondary">Shift</Typography>
+                          <Typography variant="body2" fontWeight="600">
+                            {selectedShift.icon} {selectedShift.label} ({selectedShift.start} - {selectedShift.end})
+                          </Typography>
+                        </Box>
+                      )}
+
+                      {selectedPlan && (
+                        <Box>
+                          <Typography variant="caption" color="text.secondary">Fee Plan</Typography>
+                          <Typography variant="body2" fontWeight="600">{selectedPlan.name}</Typography>
+                        </Box>
+                      )}
+
+                      {selectedZone && (
+                        <Box>
+                          <Typography variant="caption" color="text.secondary">Zone</Typography>
+                          <Typography variant="body2" fontWeight="600">
+                            {selectedZone.icon} {selectedZone.label}
+                          </Typography>
+                        </Box>
+                      )}
+
+                      {selectedSeat && (
+                        <Box>
+                          <Typography variant="caption" color="text.secondary">Seat</Typography>
+                          <Typography variant="body2" fontWeight="600">{selectedSeat.seatNumber}</Typography>
+                        </Box>
+                      )}
+
+                      {bookingData.paymentMethod && (
+                        <Box>
+                          <Typography variant="caption" color="text.secondary">Payment</Typography>
+                          <Typography variant="body2" fontWeight="600">
+                            {bookingData.paymentMethod === 'online' ? 'Online Payment' : 'Pay at Library'}
+                          </Typography>
+                        </Box>
+                      )}
+
+                      <Divider sx={{ my: 1 }} />
+
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="h6" fontWeight="700">Total Amount</Typography>
+                        <Typography variant="h5" fontWeight="700" color="primary.main">
+                          ₹{totalPrice || 0}
+                        </Typography>
+                      </Box>
+
+                      <Button
+                        fullWidth
+                        variant="contained"
+                        size="large"
+                        onClick={handleSubmit}
+                        disabled={!isFormValid || submitting}
+                        startIcon={submitting ? <CircularProgress size={20} color="inherit" /> : <Payment />}
+                        sx={{
+                          mt: 2,
+                          background: gradients.primary,
+                          py: 1.5,
+                          fontWeight: 'bold',
+                        }}
+                      >
+                        {submitting ? 'Processing...' : 'Confirm Booking'}
+                      </Button>
+
+                      {!isFormValid && (
+                        <Alert severity="info" sx={{ mt: 1 }}>
+                          Please complete all booking details to proceed
+                        </Alert>
+                      )}
+                    </Stack>
+                  </CardContent>
+                </Card>
+              </Box>
+            </Grid>
+          </Grid>
         </Container>
       </Box>
     </MobileLayout>
