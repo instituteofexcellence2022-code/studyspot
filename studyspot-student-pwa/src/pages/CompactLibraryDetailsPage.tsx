@@ -943,19 +943,22 @@ export default function CompactLibraryDetailsPage({ setIsAuthenticated, darkMode
                                                bookingData.shift === 'evening' ? Math.round(library.hourlyRate * 5 * 0.9) :
                                                library.hourlyRate * 6;
 
+                            // Map frontend format to backend format
                             const bookingPayload = {
-                              libraryId: library.id,
-                              studentId: user.id,
-                              seatNumber: bookingData.seatNumber,
-                              date: bookingData.date,
-                              startTime: selectedShift.start,
-                              endTime: selectedShift.end,
-                              shift: bookingData.shift,
-                              totalAmount,
+                              user_id: user.id,
+                              library_id: library.id,
+                              seat_id: bookingData.seatNumber, // Backend expects seat_id, but we're sending seatNumber
+                              start_time: `${bookingData.date}T${selectedShift.start}`,
+                              end_time: `${bookingData.date}T${selectedShift.end}`,
+                              total_amount: totalAmount,
                               status: 'confirmed',
+                              payment_status: 'pending', // Default payment status
                             };
 
-                            await api.post('/api/bookings', bookingPayload);
+                            console.log('[BOOKING] Sending payload:', bookingPayload);
+                            
+                            const response = await api.post('/api/bookings', bookingPayload);
+                            console.log('[BOOKING] Response:', response.data);
                             toast.success('Booking created successfully!');
                             
                             // Reset form
