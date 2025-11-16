@@ -379,7 +379,8 @@ export default function CompactLibraryDetailsPage({ setIsAuthenticated, darkMode
     }
   };
 
-  if (loading || !library) {
+  // Don't block rendering if library is loading - show skeleton but allow tab switching
+  if (loading) {
     return (
       <MobileLayout setIsAuthenticated={setIsAuthenticated}>
         <Box sx={{ bgcolor: 'background.default', minHeight: '100vh' }}>
@@ -388,6 +389,28 @@ export default function CompactLibraryDetailsPage({ setIsAuthenticated, darkMode
             <Skeleton variant="text" height={40} />
             <Skeleton variant="text" height={20} width="60%" />
             <Skeleton variant="rectangular" height={200} sx={{ mt: 2 }} />
+          </Container>
+        </Box>
+      </MobileLayout>
+    );
+  }
+
+  // If library failed to load, show error but allow navigation
+  if (!library) {
+    return (
+      <MobileLayout setIsAuthenticated={setIsAuthenticated}>
+        <Box sx={{ bgcolor: 'background.default', minHeight: '100vh', pb: 4 }}>
+          <Container maxWidth="lg" sx={{ py: 3 }}>
+            <Alert severity="error" sx={{ mb: 2 }}>
+              Failed to load library details. Please try again.
+            </Alert>
+            <Button
+              variant="contained"
+              startIcon={<ArrowBack />}
+              onClick={() => navigate('/libraries')}
+            >
+              Back to Libraries
+            </Button>
           </Container>
         </Box>
       </MobileLayout>
@@ -815,23 +838,19 @@ export default function CompactLibraryDetailsPage({ setIsAuthenticated, darkMode
                     Book Your Seat
                   </Typography>
                   
-                  {loading && (
+                  {loading ? (
                     <Box sx={{ textAlign: 'center', py: 4 }}>
                       <CircularProgress sx={{ mb: 2 }} />
                       <Typography variant="body2" color="text.secondary">
                         Loading library details...
                       </Typography>
                     </Box>
-                  )}
-
-                  {!loading && !library && (
+                  ) : !library ? (
                     <Alert severity="error" sx={{ mb: 2 }}>
                       Library information not available. Please refresh the page.
                     </Alert>
-                  )}
-
-                  {!loading && library && (
-                    <>
+                  ) : (
+                    <Box>
 
                   {/* Step 1: Select Date */}
                   <Box sx={{ mb: 3 }}>
@@ -1097,7 +1116,7 @@ export default function CompactLibraryDetailsPage({ setIsAuthenticated, darkMode
                       Select date, shift, and seat to proceed with booking
                     </Alert>
                   )}
-                    </>
+                    </Box>
                   )}
                 </Box>
               )}
