@@ -160,19 +160,47 @@ export default function CompactLibraryDetailsPage({ setIsAuthenticated, darkMode
   const [submittingBooking, setSubmittingBooking] = useState(false);
 
   useEffect(() => {
-    fetchLibraryDetails();
-    fetchReviews();
+    if (id) {
+      console.log('[LIBRARY] Fetching library details for ID:', id);
+      fetchLibraryDetails();
+      fetchReviews();
+    } else {
+      console.error('[LIBRARY] No library ID provided');
+    }
   }, [id]);
 
+  // Debug: Log tab changes
+  useEffect(() => {
+    console.log('[TAB] Current tab:', tab, 'Library loaded:', !!library);
+  }, [tab, library]);
+
   const fetchLibraryDetails = async () => {
+    if (!id) {
+      console.error('[LIBRARY] Cannot fetch: no ID');
+      setLoading(false);
+      return;
+    }
+
+    console.log('[LIBRARY] Starting fetch for ID:', id);
     setLoading(true);
     try {
       const response = await api.get(`/api/libraries/${id}`);
-      setLibrary(response.data.data || mockLibrary);
-    } catch (error) {
+      console.log('[LIBRARY] API response:', response.data);
+      const libData = response.data.data || response.data || mockLibrary;
+      console.log('[LIBRARY] Setting library data:', libData);
+      setLibrary(libData);
+    } catch (error: any) {
+      console.error('[LIBRARY] Fetch failed:', error);
+      console.error('[LIBRARY] Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
+      console.log('[LIBRARY] Using mock library as fallback');
       setLibrary(mockLibrary);
     } finally {
       setLoading(false);
+      console.log('[LIBRARY] Fetch completed, loading:', false);
     }
   };
 
@@ -609,7 +637,17 @@ export default function CompactLibraryDetailsPage({ setIsAuthenticated, darkMode
                 <Button 
                   variant="contained" 
                   size="large"
-                  onClick={() => setTab(2)}
+                  onClick={() => {
+                    console.log('[BOOK NOW] Button clicked, switching to tab 2');
+                    setTab(2);
+                    // Scroll to tabs section after a brief delay
+                    setTimeout(() => {
+                      const tabsElement = document.querySelector('[role="tablist"]');
+                      if (tabsElement) {
+                        tabsElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                      }
+                    }, 100);
+                  }}
                   sx={{ 
                     fontWeight: 'bold',
                     px: 3,
@@ -696,7 +734,10 @@ export default function CompactLibraryDetailsPage({ setIsAuthenticated, darkMode
           <Card sx={{ borderRadius: 2 }}>
             <Tabs 
               value={tab} 
-              onChange={(e, v) => setTab(v)} 
+              onChange={(e, v) => {
+                console.log('[TAB] Switching to tab:', v);
+                setTab(v);
+              }} 
               variant="scrollable" 
               scrollButtons="auto"
               sx={{ 
@@ -769,19 +810,31 @@ export default function CompactLibraryDetailsPage({ setIsAuthenticated, darkMode
 
               {/* Book Seats Tab - Inline Booking Form */}
               {tab === 2 && (
-                <Box>
-                  {!library ? (
-                    <Box sx={{ textAlign: 'center', py: 4 }}>
-                      <CircularProgress sx={{ mb: 2 }} />
-                      <Typography variant="body2" color="text.secondary">
-                        Loading library details...
-                      </Typography>
-                    </Box>
-                  ) : (
-                    <>
-                      <Typography variant="h6" sx={{ mb: 3, fontWeight: 700 }}>
-                        Book Your Seat
-                      </Typography>
+                <Box sx={{ minHeight: 200 }}>
+                  {(() => {
+                    console.log('[BOOKING TAB] Rendering tab 2, library:', !!library, 'loading:', loading);
+                    if (loading) {
+                      return (
+                        <Box sx={{ textAlign: 'center', py: 4 }}>
+                          <CircularProgress sx={{ mb: 2 }} />
+                          <Typography variant="body2" color="text.secondary">
+                            Loading library details...
+                          </Typography>
+                        </Box>
+                      );
+                    }
+                    if (!library) {
+                      return (
+                        <Alert severity="error" sx={{ mb: 2 }}>
+                          Library information not available. Please refresh the page.
+                        </Alert>
+                      );
+                    }
+                    return (
+                      <>
+                        <Typography variant="h6" sx={{ mb: 3, fontWeight: 700 }}>
+                          Book Your Seat
+                        </Typography>
 
                   {/* Step 1: Select Date */}
                   <Box sx={{ mb: 3 }}>
@@ -1047,8 +1100,9 @@ export default function CompactLibraryDetailsPage({ setIsAuthenticated, darkMode
                       Select date, shift, and seat to proceed with booking
                     </Alert>
                   )}
-                    </>
-                  )}
+                      </>
+                    );
+                  })()}
                 </Box>
               )}
 
@@ -1133,7 +1187,17 @@ export default function CompactLibraryDetailsPage({ setIsAuthenticated, darkMode
           <Fab
             variant="extended"
             color="primary"
-            onClick={() => setTab(2)}
+            onClick={() => {
+              console.log('[FAB] Book Seats Now clicked, switching to tab 2');
+              setTab(2);
+              // Scroll to tabs section
+              setTimeout(() => {
+                const tabsElement = document.querySelector('[role="tablist"]');
+                if (tabsElement) {
+                  tabsElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+              }, 100);
+            }}
             sx={{
               position: 'fixed',
               bottom: 16,
