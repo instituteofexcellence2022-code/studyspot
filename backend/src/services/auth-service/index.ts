@@ -660,9 +660,10 @@ fastify.post('/api/auth/register', async (request, reply) => {
     console.log('[REGISTER] Step 3: Inserting user into database...');
     let result;
     try {
+      // Try INSERT without explicitly setting tenant_id (let it default to NULL)
       result = await coreDb.query(
-        `INSERT INTO admin_users (email, password_hash, first_name, last_name, role, tenant_id, is_active, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, $5, NULL, $6, NOW(), NOW())
+        `INSERT INTO admin_users (email, password_hash, first_name, last_name, role, is_active, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
          RETURNING id, email, first_name, last_name, role, is_active, created_at, updated_at`,
         [email.toLowerCase(), passwordHash, firstName, lastName, userRole, true]
       );
@@ -673,9 +674,31 @@ fastify.post('/api/auth/register', async (request, reply) => {
         code: insertError.code,
         message: insertError.message,
         name: insertError.name,
+        severity: insertError.severity,
       });
-      // Re-throw to be caught by outer catch
-      throw insertError;
+      
+      // If error is "Tenant or user not found", it might be a connection pool issue
+      // Try to get a fresh connection and retry
+      if (insertError.message?.includes('Tenant or user not found')) {
+        console.log('[REGISTER] Retrying with fresh connection...');
+        try {
+          // Wait a bit and retry
+          await new Promise(resolve => setTimeout(resolve, 100));
+          result = await coreDb.query(
+            `INSERT INTO admin_users (email, password_hash, first_name, last_name, role, is_active, created_at, updated_at)
+             VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
+             RETURNING id, email, first_name, last_name, role, is_active, created_at, updated_at`,
+            [email.toLowerCase(), passwordHash, firstName, lastName, userRole, true]
+          );
+          console.log('[REGISTER] Step 4 (retry): User inserted successfully');
+        } catch (retryError: any) {
+          console.error('[REGISTER] Retry also failed:', retryError.message);
+          throw retryError;
+        }
+      } else {
+        // Re-throw original error
+        throw insertError;
+      }
     }
 
     const user = result.rows[0];
