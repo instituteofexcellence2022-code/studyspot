@@ -601,14 +601,14 @@ fastify.post('/api/auth/register', async (request, reply) => {
       });
     }
 
-    // Validate password strength
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+    // Validate password strength (allows common special characters: @$!%*?&#^~_-+=)
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#^~_\-+=])[A-Za-z\d@$!%*?&#^~_\-+=]{8,}$/;
     if (!passwordRegex.test(password)) {
       return reply.status(HTTP_STATUS.BAD_REQUEST).send({
         success: false,
         error: {
           code: ERROR_CODES.VALIDATION_ERROR,
-          message: 'Password must be at least 8 characters and contain uppercase, lowercase, number, and special character (@$!%*?&)',
+          message: 'Password must be at least 8 characters and contain uppercase, lowercase, number, and special character (@$!%*?&#^~_-+=)',
         },
       });
     }
