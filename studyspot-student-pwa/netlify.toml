@@ -1,12 +1,13 @@
 # Netlify Configuration for StudySpot Student Portal
 
 [build]
-  base = "studyspot-student-pwa"
-  command = "npm run build"
-  publish = "dist"
+  base = "."
+  command = "cd studyspot-student-pwa && npm install --legacy-peer-deps && npm run build"
+  publish = "studyspot-student-pwa/dist"
 
 [build.environment]
   VITE_API_URL = "https://studyspot-api.onrender.com"
+  VITE_AUTH_URL = "https://studyspot-auth.onrender.com"
   VITE_USE_MOCK = "false"
   VITE_APP_NAME = "StudySpot Student Portal"
   VITE_APP_VERSION = "4.0.0"
