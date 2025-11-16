@@ -43,12 +43,24 @@ export class AuthClient {
     });
 
     // Handle backend response wrapping (data.data or data)
-    const response = (rawResponse as any).data || rawResponse;
+    // Backend returns: { success: true, data: { user, token, tokens } }
+    let response = (rawResponse as any)?.data;
+    
+    // If no data field, use rawResponse directly
+    if (!response) {
+      console.warn('[StudySpot SDK] No data field in response, using rawResponse');
+      response = rawResponse;
+    }
     
     console.log('[StudySpot SDK] Extracted response:', {
       type: typeof response,
       keys: response ? Object.keys(response) : 'null/undefined',
-      fullResponse: JSON.stringify(response, null, 2).substring(0, 500), // First 500 chars
+      hasUser: !!response?.user,
+      hasToken: !!response?.token,
+      hasTokens: !!response?.tokens,
+      tokensType: typeof response?.tokens,
+      tokensKeys: response?.tokens ? Object.keys(response.tokens) : 'no tokens',
+      fullResponse: JSON.stringify(response, null, 2).substring(0, 1000), // First 1000 chars
     });
 
     console.log('[StudySpot SDK] Processed response:', {
@@ -94,6 +106,25 @@ export class AuthClient {
     }
 
     // Ensure response has the expected structure
+    // Double-check tokens exist before creating response
+    if (!response.tokens || !response.tokens.accessToken) {
+      console.error('[StudySpot SDK] CRITICAL: tokens missing in final response:', {
+        response,
+        hasTokens: !!response.tokens,
+        tokensType: typeof response.tokens,
+        tokensValue: response.tokens,
+      });
+      throw new Error('Invalid login response: tokens missing in final response');
+    }
+
+    if (!response.user) {
+      console.error('[StudySpot SDK] CRITICAL: user missing in final response:', {
+        response,
+        hasUser: !!response.user,
+      });
+      throw new Error('Invalid login response: user missing in final response');
+    }
+
     const loginResponse: LoginResponse = {
       user: response.user,
       tokens: response.tokens,
@@ -103,6 +134,7 @@ export class AuthClient {
       hasUser: !!loginResponse.user,
       hasTokens: !!loginResponse.tokens,
       hasAccessToken: !!loginResponse.tokens?.accessToken,
+      tokensKeys: loginResponse.tokens ? Object.keys(loginResponse.tokens) : 'no tokens',
     });
 
     return loginResponse;
