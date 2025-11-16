@@ -592,13 +592,23 @@ fastify.post('/api/auth/login', async (request, reply) => {
   }
 });
 
+// Test endpoint to verify routing works
+fastify.get('/api/auth/test', async (request, reply) => {
+  return { success: true, message: 'Auth service is working', timestamp: new Date().toISOString() };
+});
+
 // Universal register endpoint (works for both admin and students)
 fastify.post('/api/auth/register', async (request, reply) => {
   console.log('[REGISTER] ===== REGISTRATION REQUEST RECEIVED =====');
-  console.log('[REGISTER] Request body:', JSON.stringify(request.body));
+  console.log('[REGISTER] Request method:', request.method);
+  console.log('[REGISTER] Request URL:', request.url);
+  console.log('[REGISTER] Request headers:', JSON.stringify(request.headers));
+  console.log('[REGISTER] Request body type:', typeof request.body);
+  
   try {
+    console.log('[REGISTER] Step 0a: About to parse request body...');
     const { firstName, lastName, email, phone, password, role } = request.body as any;
-    console.log('[REGISTER] Step 0: Parsed request body');
+    console.log('[REGISTER] Step 0b: Parsed request body successfully');
 
     // Validate input
     if (!firstName || !lastName || !email || !password) {
