@@ -594,8 +594,11 @@ fastify.post('/api/auth/login', async (request, reply) => {
 
 // Universal register endpoint (works for both admin and students)
 fastify.post('/api/auth/register', async (request, reply) => {
+  console.log('[REGISTER] ===== REGISTRATION REQUEST RECEIVED =====');
+  console.log('[REGISTER] Request body:', JSON.stringify(request.body));
   try {
     const { firstName, lastName, email, phone, password, role } = request.body as any;
+    console.log('[REGISTER] Step 0: Parsed request body');
 
     // Validate input
     if (!firstName || !lastName || !email || !password) {
