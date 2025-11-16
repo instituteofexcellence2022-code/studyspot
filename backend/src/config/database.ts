@@ -9,20 +9,38 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // Core database configuration (Platform-level data)
-const coreDbConfig: PoolConfig = {
-  host: process.env.CORE_DB_HOST || 'localhost',
-  port: parseInt(process.env.CORE_DB_PORT || '5432'),
-  database: process.env.CORE_DB_NAME || 'studyspot_core',
-  user: process.env.CORE_DB_USER || 'postgres',
-  password: process.env.CORE_DB_PASSWORD || '',
-  ssl: process.env.CORE_DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
-  min: parseInt(process.env.CORE_DB_POOL_MIN || '1'), // Reduced for free tier
-  max: parseInt(process.env.CORE_DB_POOL_MAX || '5'), // Reduced for free tier
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 20000, // Increased from 2000ms to 20000ms (20s)
-  query_timeout: 15000, // 15 second query timeout
-  statement_timeout: 15000, // 15 second statement timeout
-};
+// Support both DATABASE_URL (connection string) and individual parameters
+let coreDbConfig: PoolConfig;
+
+if (process.env.DATABASE_URL) {
+  // Use connection string if provided (Supabase prefers this)
+  coreDbConfig = {
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false },
+    min: parseInt(process.env.CORE_DB_POOL_MIN || '1'),
+    max: parseInt(process.env.CORE_DB_POOL_MAX || '5'),
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 20000,
+    query_timeout: 15000,
+    statement_timeout: 15000,
+  };
+} else {
+  // Fall back to individual parameters
+  coreDbConfig = {
+    host: process.env.CORE_DB_HOST || 'localhost',
+    port: parseInt(process.env.CORE_DB_PORT || '5432'),
+    database: process.env.CORE_DB_NAME || 'studyspot_core',
+    user: process.env.CORE_DB_USER || 'postgres',
+    password: process.env.CORE_DB_PASSWORD || '',
+    ssl: process.env.CORE_DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
+    min: parseInt(process.env.CORE_DB_POOL_MIN || '1'),
+    max: parseInt(process.env.CORE_DB_POOL_MAX || '5'),
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 20000,
+    query_timeout: 15000,
+    statement_timeout: 15000,
+  };
+}
 
 // Core database pool
 export const coreDb = new Pool(coreDbConfig);
