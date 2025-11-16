@@ -24,6 +24,7 @@ import RewardsMobile from './pages/RewardsMobile';
 
 // Other Pages (will use mobile layout)
 import LibraryDetailsPageEnhanced from './pages/CompactLibraryDetailsPage';
+import CreateBookingPage from './pages/CreateBookingPage';
 import QRAttendanceScanner from './pages/QRAttendanceScanner';
 import StudyTimerPage from './pages/StudyTimerPage';
 import PaymentsPage from './pages/PaymentsPage';
@@ -82,6 +83,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <LibraryDetailsPageEnhanced />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/libraries/:id/book"
+              element={
+                <ProtectedRoute>
+                  <CreateBookingPage setIsAuthenticated={setIsAuthenticated} />
                 </ProtectedRoute>
               }
             />
