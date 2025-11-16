@@ -658,13 +658,25 @@ fastify.post('/api/auth/register', async (request, reply) => {
 
     // Create user
     console.log('[REGISTER] Step 3: Inserting user into database...');
-    const result = await coreDb.query(
-      `INSERT INTO admin_users (email, password_hash, first_name, last_name, role, is_active, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
-       RETURNING id, email, first_name, last_name, role, is_active, created_at, updated_at`,
-      [email.toLowerCase(), passwordHash, firstName, lastName, userRole, true]
-    );
-    console.log('[REGISTER] Step 4: User inserted successfully');
+    let result;
+    try {
+      result = await coreDb.query(
+        `INSERT INTO admin_users (email, password_hash, first_name, last_name, role, tenant_id, is_active, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, NULL, $6, NOW(), NOW())
+         RETURNING id, email, first_name, last_name, role, is_active, created_at, updated_at`,
+        [email.toLowerCase(), passwordHash, firstName, lastName, userRole, true]
+      );
+      console.log('[REGISTER] Step 4: User inserted successfully');
+    } catch (insertError: any) {
+      console.error('[REGISTER] User insert failed:', insertError);
+      console.error('[REGISTER] Insert error details:', {
+        code: insertError.code,
+        message: insertError.message,
+        name: insertError.name,
+      });
+      // Re-throw to be caught by outer catch
+      throw insertError;
+    }
 
     const user = result.rows[0];
     console.log('[REGISTER] Step 5: User object:', { id: user.id, email: user.email });
