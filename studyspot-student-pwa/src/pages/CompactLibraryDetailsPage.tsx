@@ -760,10 +760,10 @@ export default function CompactLibraryDetailsPage({ setIsAuthenticated, darkMode
 
             <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
               {/* About Tab */}
-              {tab === 0 && (
+              {tab === 0 && library && (
                 <Box>
                   <Typography variant="body2" paragraph sx={{ lineHeight: 1.7 }}>
-                    {library.fullDescription}
+                    {library.fullDescription || library.description || 'No description available.'}
                   </Typography>
                   
                   <Typography variant="subtitle2" gutterBottom sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -782,9 +782,9 @@ export default function CompactLibraryDetailsPage({ setIsAuthenticated, darkMode
               )}
 
               {/* Amenities Tab */}
-              {tab === 1 && (
+              {tab === 1 && library && (
                 <Grid container spacing={1.5}>
-                  {library.amenities.map((amenity) => (
+                  {(library.amenities || []).map((amenity) => (
                     <Grid item xs={6} sm={4} md={3} key={amenity}>
                       <Paper 
                         sx={{ 
@@ -1103,9 +1103,9 @@ export default function CompactLibraryDetailsPage({ setIsAuthenticated, darkMode
               )}
 
               {/* Rules Tab */}
-              {tab === 3 && (
+              {tab === 3 && library && (
                 <List dense sx={{ py: 0 }}>
-                  {library.rules.map((rule, index) => (
+                  {(library.rules || []).map((rule, index) => (
                     <ListItem key={index} sx={{ px: 0, py: 0.5 }}>
                       <ListItemText 
                         primary={
@@ -1123,16 +1123,16 @@ export default function CompactLibraryDetailsPage({ setIsAuthenticated, darkMode
               )}
 
               {/* Reviews Tab */}
-              {tab === 4 && (
+              {tab === 4 && library && (
                 <Box>
                   {/* Overall Rating */}
                   <Paper sx={{ p: 2, mb: 2, bgcolor: 'action.hover', borderRadius: 2, textAlign: 'center' }}>
                     <Typography variant="h3" fontWeight="bold" color="primary.main">
-                      {library.rating}
+                      {library.rating || 0}
                     </Typography>
-                    <Rating value={library.rating} readOnly precision={0.1} />
+                    <Rating value={library.rating || 0} readOnly precision={0.1} />
                     <Typography variant="caption" color="text.secondary" display="block">
-                      Based on {library.reviewCount} reviews
+                      Based on {library.reviewCount || 0} reviews
                     </Typography>
                   </Paper>
 
