@@ -33,23 +33,50 @@ export class AuthClient {
       credentials
     );
 
+    console.log('[StudySpot SDK] Raw login response:', {
+      type: typeof rawResponse,
+      keys: rawResponse ? Object.keys(rawResponse) : 'null/undefined',
+      hasData: !!(rawResponse as any)?.data,
+      dataKeys: (rawResponse as any)?.data ? Object.keys((rawResponse as any).data) : 'no data',
+      dataTokens: !!(rawResponse as any)?.data?.tokens,
+    });
+
     // Handle backend response wrapping (data.data or data)
     const response = (rawResponse as any).data || rawResponse;
 
+    console.log('[StudySpot SDK] Processed response:', {
+      type: typeof response,
+      keys: response ? Object.keys(response) : 'null/undefined',
+      hasTokens: !!response?.tokens,
+      tokensType: typeof response?.tokens,
+      tokensKeys: response?.tokens ? Object.keys(response.tokens) : 'no tokens',
+    });
+
     // Validate response structure
-    if (!response.tokens) {
+    if (!response || !response.tokens) {
       console.error('[StudySpot SDK] Login response missing tokens:', {
         rawResponse,
         response,
         hasData: !!(rawResponse as any).data,
+        responseType: typeof response,
+        responseKeys: response ? Object.keys(response) : 'response is null/undefined',
       });
       throw new Error('Invalid login response: tokens not found');
     }
 
     if (!response.tokens.accessToken) {
-      console.error('[StudySpot SDK] Login response missing accessToken:', response.tokens);
+      console.error('[StudySpot SDK] Login response missing accessToken:', {
+        tokens: response.tokens,
+        tokensType: typeof response.tokens,
+        tokensKeys: response.tokens ? Object.keys(response.tokens) : 'tokens is null/undefined',
+      });
       throw new Error('Invalid login response: accessToken not found');
     }
+
+    console.log('[StudySpot SDK] About to persist tokens:', {
+      hasAccessToken: !!response.tokens.accessToken,
+      hasRefreshToken: !!response.tokens.refreshToken,
+    });
 
     this.persistTokens(response.tokens, storage);
     return response;
@@ -118,6 +145,14 @@ export class AuthClient {
   }
 
   private persistTokens(tokens: TokenSet, storage: TokenStorage): void {
+    if (!tokens) {
+      console.error('[StudySpot SDK] persistTokens called with undefined tokens');
+      throw new Error('Tokens are required');
+    }
+    if (!tokens.accessToken) {
+      console.error('[StudySpot SDK] persistTokens called with missing accessToken:', tokens);
+      throw new Error('Access token is required');
+    }
     storage.write({
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
