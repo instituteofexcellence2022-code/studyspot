@@ -529,8 +529,22 @@ fastify.post('/api/auth/login', async (request, reply) => {
     }
 
     // Generate tokens
+    console.log('[LOGIN] Generating tokens...');
     const accessToken = generateAccessToken(user);
     const refreshToken = generateRefreshToken(user);
+    console.log('[LOGIN] Tokens generated:', {
+      hasAccessToken: !!accessToken,
+      hasRefreshToken: !!refreshToken,
+      accessTokenLength: accessToken?.length,
+      refreshTokenLength: refreshToken?.length,
+    });
+
+    if (!accessToken) {
+      throw new Error('Failed to generate access token');
+    }
+    if (!refreshToken) {
+      throw new Error('Failed to generate refresh token');
+    }
 
     // Store refresh token (temporarily skipped to avoid database trigger errors)
     try {
@@ -573,10 +587,24 @@ fastify.post('/api/auth/login', async (request, reply) => {
       });
     }
 
+    // Build auth payload
+    console.log('[LOGIN] Building auth payload...');
+    const authPayload = buildAuthPayload(user, { accessToken, refreshToken });
+    console.log('[LOGIN] Auth payload built:', {
+      hasUser: !!authPayload.user,
+      hasToken: !!authPayload.token,
+      hasTokens: !!authPayload.tokens,
+      tokensStructure: authPayload.tokens ? {
+        hasAccessToken: !!authPayload.tokens.accessToken,
+        hasRefreshToken: !!authPayload.tokens.refreshToken,
+        hasExpiresAt: !!authPayload.tokens.expiresAt,
+      } : 'tokens is undefined',
+    });
+
     // Remove sensitive data
     return {
       success: true,
-      data: buildAuthPayload(user, { accessToken, refreshToken }),
+      data: authPayload,
       message: 'Login successful',
     };
   } catch (error: any) {
