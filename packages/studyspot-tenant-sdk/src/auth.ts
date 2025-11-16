@@ -42,126 +42,126 @@ export class AuthClient {
 
       console.log('[StudySpot SDK] Request completed, processing response...');
 
-    console.log('[StudySpot SDK] Raw login response:', {
-      type: typeof rawResponse,
-      keys: rawResponse ? Object.keys(rawResponse) : 'null/undefined',
-      hasData: !!(rawResponse as any)?.data,
-      dataKeys: (rawResponse as any)?.data ? Object.keys((rawResponse as any).data) : 'no data',
-      dataTokens: !!(rawResponse as any)?.data?.tokens,
-      fullResponse: JSON.stringify(rawResponse, null, 2).substring(0, 500), // First 500 chars
-    });
-
-    // Handle backend response wrapping (data.data or data)
-    // Backend returns: { success: true, data: { user, token, tokens } }
-    let response = (rawResponse as any)?.data;
-    
-    // If no data field, use rawResponse directly
-    if (!response) {
-      console.warn('[StudySpot SDK] No data field in response, using rawResponse');
-      response = rawResponse;
-    }
-    
-    console.log('[StudySpot SDK] Extracted response:', {
-      type: typeof response,
-      keys: response ? Object.keys(response) : 'null/undefined',
-      hasUser: !!response?.user,
-      hasToken: !!response?.token,
-      hasTokens: !!response?.tokens,
-      tokensType: typeof response?.tokens,
-      tokensKeys: response?.tokens ? Object.keys(response.tokens) : 'no tokens',
-      fullResponse: JSON.stringify(response, null, 2).substring(0, 1000), // First 1000 chars
-    });
-
-    console.log('[StudySpot SDK] Processed response:', {
-      type: typeof response,
-      keys: response ? Object.keys(response) : 'null/undefined',
-      hasTokens: !!response?.tokens,
-      tokensType: typeof response?.tokens,
-      tokensKeys: response?.tokens ? Object.keys(response.tokens) : 'no tokens',
-    });
-
-    // Validate response structure
-    if (!response || !response.tokens) {
-      console.error('[StudySpot SDK] Login response missing tokens:', {
-        rawResponse,
-        response,
-        hasData: !!(rawResponse as any).data,
-        responseType: typeof response,
-        responseKeys: response ? Object.keys(response) : 'response is null/undefined',
+      console.log('[StudySpot SDK] Raw login response:', {
+        type: typeof rawResponse,
+        keys: rawResponse ? Object.keys(rawResponse) : 'null/undefined',
+        hasData: !!(rawResponse as any)?.data,
+        dataKeys: (rawResponse as any)?.data ? Object.keys((rawResponse as any).data) : 'no data',
+        dataTokens: !!(rawResponse as any)?.data?.tokens,
+        fullResponse: JSON.stringify(rawResponse, null, 2).substring(0, 500), // First 500 chars
       });
-      throw new Error('Invalid login response: tokens not found');
-    }
 
-    if (!response.tokens.accessToken) {
-      console.error('[StudySpot SDK] Login response missing accessToken:', {
-        tokens: response.tokens,
-        tokensType: typeof response.tokens,
-        tokensKeys: response.tokens ? Object.keys(response.tokens) : 'tokens is null/undefined',
-      });
-      throw new Error('Invalid login response: accessToken not found');
-    }
-
-    console.log('[StudySpot SDK] About to persist tokens:', {
-      hasAccessToken: !!response.tokens.accessToken,
-      hasRefreshToken: !!response.tokens.refreshToken,
-    });
-
-    try {
-      this.persistTokens(response.tokens, storage);
-    } catch (persistError: any) {
-      console.error('[StudySpot SDK] Failed to persist tokens:', persistError);
-      console.error('[StudySpot SDK] Tokens object:', response.tokens);
-      throw new Error(`Failed to persist tokens: ${persistError.message}`);
-    }
-
-    // Ensure response has the expected structure
-    // Double-check tokens exist before creating response
-    if (!response || !response.tokens || !response.tokens.accessToken) {
-      console.error('[StudySpot SDK] CRITICAL: tokens missing in final response:', {
-        response,
-        hasResponse: !!response,
+      // Handle backend response wrapping (data.data or data)
+      // Backend returns: { success: true, data: { user, token, tokens } }
+      let response = (rawResponse as any)?.data;
+      
+      // If no data field, use rawResponse directly
+      if (!response) {
+        console.warn('[StudySpot SDK] No data field in response, using rawResponse');
+        response = rawResponse;
+      }
+      
+      console.log('[StudySpot SDK] Extracted response:', {
+        type: typeof response,
+        keys: response ? Object.keys(response) : 'null/undefined',
+        hasUser: !!response?.user,
+        hasToken: !!response?.token,
         hasTokens: !!response?.tokens,
         tokensType: typeof response?.tokens,
-        tokensValue: response?.tokens,
-        responseKeys: response ? Object.keys(response) : 'response is null/undefined',
+        tokensKeys: response?.tokens ? Object.keys(response.tokens) : 'no tokens',
+        fullResponse: JSON.stringify(response, null, 2).substring(0, 1000), // First 1000 chars
       });
-      throw new Error('Invalid login response: tokens missing in final response');
-    }
 
-    if (!response.user) {
-      console.error('[StudySpot SDK] CRITICAL: user missing in final response:', {
-        response,
-        hasUser: !!response.user,
-        responseKeys: response ? Object.keys(response) : 'response is null/undefined',
+      console.log('[StudySpot SDK] Processed response:', {
+        type: typeof response,
+        keys: response ? Object.keys(response) : 'null/undefined',
+        hasTokens: !!response?.tokens,
+        tokensType: typeof response?.tokens,
+        tokensKeys: response?.tokens ? Object.keys(response.tokens) : 'no tokens',
       });
-      throw new Error('Invalid login response: user missing in final response');
-    }
 
-    // Map backend user format to SDK format
-    // Backend returns: { id, email, firstName, lastName, role, tenantId, ... }
-    // SDK expects: { id, email, firstName?, lastName?, roles: UserRole[], tenantId: string }
-    const mappedUser = {
-      id: response.user.id,
-      email: response.user.email,
-      firstName: response.user.firstName || response.user.first_name,
-      lastName: response.user.lastName || response.user.last_name,
-      roles: Array.isArray(response.user.roles) 
-        ? response.user.roles 
-        : (response.user.role ? [response.user.role as any] : ['student']),
-      tenantId: response.user.tenantId || response.user.tenant_id || '',
-    };
+      // Validate response structure
+      if (!response || !response.tokens) {
+        console.error('[StudySpot SDK] Login response missing tokens:', {
+          rawResponse,
+          response,
+          hasData: !!(rawResponse as any).data,
+          responseType: typeof response,
+          responseKeys: response ? Object.keys(response) : 'response is null/undefined',
+        });
+        throw new Error('Invalid login response: tokens not found');
+      }
 
-    // Ensure tokens structure is correct
-    const mappedTokens: TokenSet = {
-      accessToken: response.tokens.accessToken,
-      refreshToken: response.tokens.refreshToken,
-      expiresAt: response.tokens.expiresAt || Date.now() + (15 * 60 * 1000), // Default 15 min
-    };
+      if (!response.tokens.accessToken) {
+        console.error('[StudySpot SDK] Login response missing accessToken:', {
+          tokens: response.tokens,
+          tokensType: typeof response.tokens,
+          tokensKeys: response.tokens ? Object.keys(response.tokens) : 'tokens is null/undefined',
+        });
+        throw new Error('Invalid login response: accessToken not found');
+      }
 
-    const loginResponse: LoginResponse = {
-      user: mappedUser,
-      tokens: mappedTokens,
-    };
+      console.log('[StudySpot SDK] About to persist tokens:', {
+        hasAccessToken: !!response.tokens.accessToken,
+        hasRefreshToken: !!response.tokens.refreshToken,
+      });
+
+      try {
+        this.persistTokens(response.tokens, storage);
+      } catch (persistError: any) {
+        console.error('[StudySpot SDK] Failed to persist tokens:', persistError);
+        console.error('[StudySpot SDK] Tokens object:', response.tokens);
+        throw new Error(`Failed to persist tokens: ${persistError.message}`);
+      }
+
+      // Ensure response has the expected structure
+      // Double-check tokens exist before creating response
+      if (!response || !response.tokens || !response.tokens.accessToken) {
+        console.error('[StudySpot SDK] CRITICAL: tokens missing in final response:', {
+          response,
+          hasResponse: !!response,
+          hasTokens: !!response?.tokens,
+          tokensType: typeof response?.tokens,
+          tokensValue: response?.tokens,
+          responseKeys: response ? Object.keys(response) : 'response is null/undefined',
+        });
+        throw new Error('Invalid login response: tokens missing in final response');
+      }
+
+      if (!response.user) {
+        console.error('[StudySpot SDK] CRITICAL: user missing in final response:', {
+          response,
+          hasUser: !!response.user,
+          responseKeys: response ? Object.keys(response) : 'response is null/undefined',
+        });
+        throw new Error('Invalid login response: user missing in final response');
+      }
+
+      // Map backend user format to SDK format
+      // Backend returns: { id, email, firstName, lastName, role, tenantId, ... }
+      // SDK expects: { id, email, firstName?, lastName?, roles: UserRole[], tenantId: string }
+      const mappedUser = {
+        id: response.user.id,
+        email: response.user.email,
+        firstName: response.user.firstName || response.user.first_name,
+        lastName: response.user.lastName || response.user.last_name,
+        roles: Array.isArray(response.user.roles) 
+          ? response.user.roles 
+          : (response.user.role ? [response.user.role as any] : ['student']),
+        tenantId: response.user.tenantId || response.user.tenant_id || '',
+      };
+
+      // Ensure tokens structure is correct
+      const mappedTokens: TokenSet = {
+        accessToken: response.tokens.accessToken,
+        refreshToken: response.tokens.refreshToken,
+        expiresAt: response.tokens.expiresAt || Date.now() + (15 * 60 * 1000), // Default 15 min
+      };
+
+      const loginResponse: LoginResponse = {
+        user: mappedUser,
+        tokens: mappedTokens,
+      };
 
       console.log('[StudySpot SDK] Login successful, returning response:', {
         hasUser: !!loginResponse.user,
