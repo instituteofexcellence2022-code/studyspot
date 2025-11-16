@@ -35,7 +35,7 @@ class AuthService {
       const payload = response.data?.data || response.data;
       
       // Backend returns tokens + user on successful registration
-      if (payload.tokens && payload.user) {
+      if (payload.tokens && payload.user && payload.tokens.accessToken) {
         // Store tokens using SDK
         tokenStorage.write({
           accessToken: payload.tokens.accessToken,
@@ -76,7 +76,7 @@ class AuthService {
           const payload = await fallbackResponse.json();
           const result = payload.data || payload;
 
-          if (result.tokens && result.user) {
+          if (result.tokens && result.user && result.tokens.accessToken) {
             tokenStorage.write({
               accessToken: result.tokens.accessToken,
               refreshToken: result.tokens.refreshToken,

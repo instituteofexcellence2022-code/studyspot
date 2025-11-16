@@ -105,19 +105,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
 
-      const { user, tokens } = await activeAuthService.login(credentials);
+      const response = await activeAuthService.login(credentials);
+      
+      // Validate response structure
+      if (!response) {
+        throw new Error('Login failed: No response received');
+      }
+      
+      if (!response.user) {
+        console.error('[AuthContext] Login response missing user:', response);
+        throw new Error('Login failed: User data not found');
+      }
+      
+      if (!response.tokens || !response.tokens.accessToken) {
+        console.error('[AuthContext] Login response missing tokens:', response);
+        throw new Error('Login failed: Access token not found');
+      }
 
       setState({
-        user,
+        user: response.user,
         isAuthenticated: true,
         isLoading: false,
         error: null,
       });
     } catch (error: any) {
+      console.error('[AuthContext] Login error:', error);
       setState(prev => ({
         ...prev,
         isLoading: false,
-        error: error.message,
+        error: error.message || 'Login failed. Please try again.',
       }));
       throw error;
     }
