@@ -36,6 +36,21 @@ export class AuthClient {
     // Handle backend response wrapping (data.data or data)
     const response = (rawResponse as any).data || rawResponse;
 
+    // Validate response structure
+    if (!response.tokens) {
+      console.error('[StudySpot SDK] Login response missing tokens:', {
+        rawResponse,
+        response,
+        hasData: !!(rawResponse as any).data,
+      });
+      throw new Error('Invalid login response: tokens not found');
+    }
+
+    if (!response.tokens.accessToken) {
+      console.error('[StudySpot SDK] Login response missing accessToken:', response.tokens);
+      throw new Error('Invalid login response: accessToken not found');
+    }
+
     this.persistTokens(response.tokens, storage);
     return response;
   }
