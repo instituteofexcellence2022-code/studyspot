@@ -75,10 +75,21 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
   }, [id]);
 
   const fetchLibraryDetails = async () => {
+    if (!id) {
+      console.error('[BOOKING] No library ID provided');
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
       const response = await api.get(`/api/libraries/${id}`);
       const lib = response.data.data || response.data;
+      
+      if (!lib) {
+        throw new Error('Library data not found in response');
+      }
+
       setLibrary({
         id: lib.id || id,
         name: lib.name || 'Library',
@@ -96,19 +107,29 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
       }
       setAvailableSeats(seats);
     } catch (error: any) {
-      console.error('Failed to fetch library:', error);
-      toast.error('Failed to load library details');
+      console.error('[BOOKING] Failed to fetch library:', error);
+      console.error('[BOOKING] Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
+      
       // Use mock data as fallback
       setLibrary({
         id: id || '1',
         name: 'Library',
-        address: '',
+        address: 'Address not available',
         hourlyRate: 50,
         dailyRate: 300,
         availableSeats: 20,
         totalSeats: 100,
       });
       setAvailableSeats(['A-01', 'A-02', 'A-03', 'A-04', 'A-05']);
+      
+      // Don't show error toast if we're using fallback data
+      if (error.response?.status !== 404) {
+        toast.error('Failed to load library details. Using default values.');
+      }
     } finally {
       setLoading(false);
     }
@@ -175,8 +196,16 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
   };
 
   const handleSubmit = async () => {
-    if (!library || !user) {
-      toast.error('Missing required information');
+    if (!library) {
+      toast.error('Library information is missing');
+      console.error('[BOOKING] Library is null:', library);
+      return;
+    }
+    
+    if (!user) {
+      toast.error('User information is missing. Please login again.');
+      console.error('[BOOKING] User is null:', user);
+      navigate('/login');
       return;
     }
 
@@ -238,7 +267,36 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
   if (!library) {
     return (
       <MobileLayout setIsAuthenticated={setIsAuthenticated}>
-        <Alert severity="error">Library not found</Alert>
+        <Container maxWidth="sm" sx={{ py: 3 }}>
+          <Alert severity="error" sx={{ mb: 2 }}>
+            Library not found. Please go back and try again.
+          </Alert>
+          <Button
+            variant="contained"
+            startIcon={<ArrowBack />}
+            onClick={() => navigate('/libraries')}
+          >
+            Back to Libraries
+          </Button>
+        </Container>
+      </MobileLayout>
+    );
+  }
+
+  if (!user) {
+    return (
+      <MobileLayout setIsAuthenticated={setIsAuthenticated}>
+        <Container maxWidth="sm" sx={{ py: 3 }}>
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            Please login to book a seat.
+          </Alert>
+          <Button
+            variant="contained"
+            onClick={() => navigate('/login')}
+          >
+            Go to Login
+          </Button>
+        </Container>
       </MobileLayout>
     );
   }
