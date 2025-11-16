@@ -2,7 +2,7 @@
 
 [build]
   base = "."
-  command = "cd studyspot-student-pwa && npm install --legacy-peer-deps && npm run build"
+  command = "npm install --legacy-peer-deps && npm run build --workspace=packages/studyspot-tenant-sdk && npm run build --workspace=studyspot-student-pwa"
   publish = "studyspot-student-pwa/dist"
 
 [build.environment]
