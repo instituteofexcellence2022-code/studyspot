@@ -122,7 +122,7 @@ router.post('/', [
   body('startTime').matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:00)?$/).withMessage('Valid start time is required (HH:MM or HH:MM:SS)'),
   body('endTime').matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:00)?$/).withMessage('Valid end time is required (HH:MM or HH:MM:SS)'),
   body('bookingType').optional().isIn(['hourly', 'daily', 'monthly']).withMessage('Invalid booking type'),
-  body('paymentMethod').optional().isIn(['online', 'offline']).withMessage('Invalid payment method'),
+  body('paymentMethod').optional().isIn(['online', 'offline', 'upi']).withMessage('Invalid payment method'),
   body('feePlanId').optional().isString().withMessage('Fee plan ID should be a string'),
   body('totalAmount').optional().isFloat({ min: 0 }).withMessage('Total amount must be a positive number')
 ], asyncHandler(async (req, res) => {

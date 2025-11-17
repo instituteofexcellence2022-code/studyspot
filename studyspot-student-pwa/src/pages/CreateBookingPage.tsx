@@ -60,12 +60,16 @@ import {
   TrendingUp,
   School,
   Calculate,
+  CreditCard,
+  QrCode2,
+  AccountBalance,
 } from '@mui/icons-material';
 import MobileLayout from '../components/MobileLayout';
 import { gradients } from '../theme/colors';
 import api from '../services/api';
 import { toast } from 'react-toastify';
 import { useAuth } from '../contexts/AuthContext';
+import { authService } from '../services/auth.service';
 
 interface Library {
   id: string;
@@ -157,7 +161,7 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
     feePlanId: '',
     zone: '',
     seatId: '',
-    paymentMethod: 'online' as 'online' | 'offline',
+    paymentMethod: 'online' as 'online' | 'offline' | 'upi',
   });
 
   useEffect(() => {
@@ -553,13 +557,39 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
       console.log('[BOOKING] API Base URL:', import.meta.env.VITE_API_URL || 'https://studyspot-api.onrender.com');
       console.log('[BOOKING] Full URL will be:', `${import.meta.env.VITE_API_URL || 'https://studyspot-api.onrender.com'}/api/bookings`);
 
+      // Handle UPI payment separately
+      if (bookingData.paymentMethod === 'upi') {
+        await handleUPIPayment(bookingPayload, calculatedPrice);
+        return;
+      }
+
+      // For offline payment, create booking directly
+      if (bookingData.paymentMethod === 'offline') {
+        const response = await api.post('/api/bookings', bookingPayload);
+        if (response.data.success) {
+          toast.success('Booking created! Please pay at the library.');
+          setTimeout(() => {
+            navigate('/bookings');
+          }, 1500);
+        } else {
+          throw new Error(response.data.message || 'Booking failed');
+        }
+        return;
+      }
+
+      // For online payment (card/net banking), create booking first, then handle payment
       const response = await api.post('/api/bookings', bookingPayload);
 
       if (response.data.success) {
-        toast.success('Booking created successfully!');
-        setTimeout(() => {
-          navigate('/bookings');
-        }, 1500);
+        // If booking created, now handle online payment
+        if (bookingData.paymentMethod === 'online') {
+          await handleOnlinePayment(response.data.data, calculatedPrice);
+        } else {
+          toast.success('Booking created successfully!');
+          setTimeout(() => {
+            navigate('/bookings');
+          }, 1500);
+        }
       } else {
         throw new Error(response.data.message || 'Booking failed');
       }
@@ -604,6 +634,191 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
         toast.error(errorMessage);
       }
     } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Handle UPI Payment
+  const handleUPIPayment = async (bookingPayload: any, amount: number) => {
+    try {
+      setSubmitting(true);
+      
+      // First create the booking
+      const bookingResponse = await api.post('/api/bookings', {
+        ...bookingPayload,
+        paymentMethod: 'upi', // Override to upi
+      });
+
+      if (!bookingResponse.data.success) {
+        throw new Error(bookingResponse.data.message || 'Booking creation failed');
+      }
+
+      const booking = bookingResponse.data.data;
+
+      // Create Razorpay order for UPI
+      const orderResponse = await api.post('/api/payments/create-order', {
+        amount: amount,
+        bookingId: booking.id,
+        paymentMethod: 'upi',
+      });
+
+      const order = orderResponse.data.data;
+
+      // Load Razorpay script
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.async = true;
+      document.body.appendChild(script);
+
+      script.onload = () => {
+        const currentUser = authService.getUser() ?? {};
+        const options = {
+          key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_dummy',
+          amount: order.amount,
+          currency: 'INR',
+          name: 'StudySpot',
+          description: `Booking Payment - ${library?.name || 'Library'}`,
+          order_id: order.id,
+          method: {
+            upi: true, // Enable UPI
+          },
+          handler: async (response: any) => {
+            try {
+              // Verify payment on backend
+              await api.post('/api/payments/verify', {
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                bookingId: booking.id,
+              });
+
+              toast.success('Payment successful! Booking confirmed.');
+              setTimeout(() => {
+                navigate('/bookings');
+              }, 1500);
+            } catch (err: any) {
+              console.error('[BOOKING] Payment verification failed:', err);
+              toast.error('Payment verification failed. Please contact support.');
+            } finally {
+              setSubmitting(false);
+            }
+          },
+          prefill: {
+            name: currentUser.firstName || currentUser.name || '',
+            email: currentUser.email || '',
+            contact: currentUser.phone || '',
+          },
+          theme: {
+            color: '#2563eb',
+          },
+          modal: {
+            ondismiss: () => {
+              setSubmitting(false);
+              toast.info('Payment cancelled');
+            },
+          },
+        };
+
+        // @ts-ignore
+        const rzp = new window.Razorpay(options);
+        rzp.open();
+      };
+
+      script.onerror = () => {
+        setSubmitting(false);
+        toast.error('Failed to load payment gateway. Please try again.');
+      };
+    } catch (error: any) {
+      console.error('[BOOKING] UPI payment failed:', error);
+      const errorMessage = error.response?.data?.error?.message || 
+                          error.response?.data?.message || 
+                          error.message || 
+                          'Failed to process UPI payment. Please try again.';
+      toast.error(errorMessage);
+      setSubmitting(false);
+    }
+  };
+
+  // Handle Online Payment (Card/Net Banking)
+  const handleOnlinePayment = async (booking: any, amount: number) => {
+    try {
+      // Create Razorpay order
+      const orderResponse = await api.post('/api/payments/create-order', {
+        amount: amount,
+        bookingId: booking.id,
+        paymentMethod: 'online',
+      });
+
+      const order = orderResponse.data.data;
+
+      // Load Razorpay script
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.async = true;
+      document.body.appendChild(script);
+
+      script.onload = () => {
+        const currentUser = authService.getUser() ?? {};
+        const options = {
+          key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_dummy',
+          amount: order.amount,
+          currency: 'INR',
+          name: 'StudySpot',
+          description: `Booking Payment - ${library?.name || 'Library'}`,
+          order_id: order.id,
+          handler: async (response: any) => {
+            try {
+              // Verify payment on backend
+              await api.post('/api/payments/verify', {
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                bookingId: booking.id,
+              });
+
+              toast.success('Payment successful! Booking confirmed.');
+              setTimeout(() => {
+                navigate('/bookings');
+              }, 1500);
+            } catch (err: any) {
+              console.error('[BOOKING] Payment verification failed:', err);
+              toast.error('Payment verification failed. Please contact support.');
+            } finally {
+              setSubmitting(false);
+            }
+          },
+          prefill: {
+            name: currentUser.firstName || currentUser.name || '',
+            email: currentUser.email || '',
+            contact: currentUser.phone || '',
+          },
+          theme: {
+            color: '#2563eb',
+          },
+          modal: {
+            ondismiss: () => {
+              setSubmitting(false);
+              toast.info('Payment cancelled');
+            },
+          },
+        };
+
+        // @ts-ignore
+        const rzp = new window.Razorpay(options);
+        rzp.open();
+      };
+
+      script.onerror = () => {
+        setSubmitting(false);
+        toast.error('Failed to load payment gateway. Please try again.');
+      };
+    } catch (error: any) {
+      console.error('[BOOKING] Online payment failed:', error);
+      const errorMessage = error.response?.data?.error?.message || 
+                          error.response?.data?.message || 
+                          error.message || 
+                          'Failed to process payment. Please try again.';
+      toast.error(errorMessage);
       setSubmitting(false);
     }
   };
@@ -1105,22 +1320,48 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
                       <FormControl component="fieldset">
                         <RadioGroup
                           value={bookingData.paymentMethod}
-                          onChange={(e) => setBookingData({ ...bookingData, paymentMethod: e.target.value as 'online' | 'offline' })}
+                          onChange={(e) => setBookingData({ ...bookingData, paymentMethod: e.target.value as 'online' | 'offline' | 'upi' })}
                           row
                         >
                           <FormControlLabel 
                             value="online" 
                             control={<Radio />} 
-                            label="Online Payment" 
-                            sx={{ mr: 4 }}
+                            label={
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <CreditCard fontSize="small" />
+                                <span>Card/Net Banking</span>
+                              </Box>
+                            }
+                            sx={{ mr: 3 }}
+                          />
+                          <FormControlLabel 
+                            value="upi" 
+                            control={<Radio />} 
+                            label={
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <QrCode2 fontSize="small" />
+                                <span>UPI</span>
+                              </Box>
+                            }
+                            sx={{ mr: 3 }}
                           />
                           <FormControlLabel 
                             value="offline" 
                             control={<Radio />} 
-                            label="Pay at Library" 
+                            label={
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <AccountBalance fontSize="small" />
+                                <span>Pay at Library</span>
+                              </Box>
+                            }
                           />
                         </RadioGroup>
                       </FormControl>
+                      {bookingData.paymentMethod === 'upi' && (
+                        <Alert severity="info" sx={{ mt: 2 }}>
+                          Pay using UPI apps like Google Pay, PhonePe, Paytm, BHIM, etc.
+                        </Alert>
+                      )}
                     </CardContent>
                   </Card>
                 )}
@@ -1194,7 +1435,11 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
                         <Box>
                           <Typography variant="caption" color="text.secondary" display="block">Payment</Typography>
                           <Typography variant="body2" fontWeight="600">
-                            {bookingData.paymentMethod === 'online' ? 'Online Payment' : 'Pay at Library'}
+                            {bookingData.paymentMethod === 'online' 
+                              ? 'Card/Net Banking' 
+                              : bookingData.paymentMethod === 'upi' 
+                              ? 'UPI Payment' 
+                              : 'Pay at Library'}
                           </Typography>
                         </Box>
                       )}
