@@ -585,6 +585,8 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
       console.log('[BOOKING] Submitting booking:', bookingPayload);
       console.log('[BOOKING] API Base URL:', import.meta.env.VITE_API_URL || 'https://studyspot-api.onrender.com');
       console.log('[BOOKING] Full URL will be:', `${import.meta.env.VITE_API_URL || 'https://studyspot-api.onrender.com'}/api/bookings`);
+      console.log('[BOOKING] User token available:', !!authService.getToken());
+      console.log('[BOOKING] User tenant ID:', user?.tenantId);
 
       // Handle UPI payment separately
       if (bookingData.paymentMethod === 'upi') {
@@ -639,7 +641,30 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
       // Check if it's a network error
       if (!error.response) {
         console.error('[BOOKING] Network error - no response from server');
-        toast.error('Network error: Unable to reach server. Please check your connection and try again.');
+        console.error('[BOOKING] Error details:', {
+          message: error.message,
+          code: error.code,
+          config: {
+            url: error.config?.url,
+            method: error.config?.method,
+            baseURL: error.config?.baseURL,
+            timeout: error.config?.timeout,
+          },
+        });
+        
+        // Provide more specific error messages
+        let errorMsg = 'Network error: Unable to reach server. ';
+        if (error.code === 'ECONNREFUSED') {
+          errorMsg += 'The server is not responding. Please try again in a moment.';
+        } else if (error.code === 'ETIMEDOUT' || error.message?.includes('timeout')) {
+          errorMsg += 'Request timed out. The server may be slow. Please try again.';
+        } else if (error.message?.includes('Network Error')) {
+          errorMsg += 'Please check your internet connection and try again.';
+        } else {
+          errorMsg += 'Please check your connection and try again.';
+        }
+        
+        toast.error(errorMsg);
         return;
       }
       
