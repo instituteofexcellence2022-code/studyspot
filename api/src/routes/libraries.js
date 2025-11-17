@@ -518,6 +518,93 @@ router.delete('/:libraryId', [
   });
 }));
 
+// Get available seats for a library
+router.get('/:id/seats/available', verifyToken, setTenantContext, asyncHandler(async (req, res) => {
+  const { id: libraryId } = req.params;
+  const { date, startTime, endTime, zone } = req.query;
+
+  if (!date || !startTime || !endTime) {
+    throw new AppError('Date, startTime, and endTime are required', 400, 'VALIDATION_ERROR');
+  }
+
+  // Check if library exists
+  const libraryResult = await query(`
+    SELECT id, name, status FROM libraries 
+    WHERE id = $1 AND status = 'active' AND tenant_id = $2
+  `, [libraryId, req.user.tenantId]);
+
+  if (libraryResult.rows.length === 0) {
+    throw new AppError('Library not found', 404, 'LIBRARY_NOT_FOUND');
+  }
+
+  // Build query to get available seats
+  let whereClause = `
+    WHERE s.library_id = $1 
+    AND s.is_active = true 
+    AND s.is_available = true
+  `;
+  const queryParams = [libraryId];
+  let paramCount = 1;
+
+  if (zone) {
+    paramCount++;
+    whereClause += ` AND s.zone = $${paramCount}`;
+    queryParams.push(zone);
+  }
+
+  // Exclude seats with conflicting bookings
+  paramCount++;
+  whereClause += `
+    AND NOT EXISTS (
+      SELECT 1 FROM bookings b
+      WHERE b.seat_id = s.id
+      AND b.booking_date = $${paramCount}
+      AND b.status IN ('confirmed', 'pending')
+      AND (
+        (b.start_time <= $${paramCount + 1} AND b.end_time > $${paramCount + 1}) OR
+        (b.start_time < $${paramCount + 2} AND b.end_time >= $${paramCount + 2}) OR
+        (b.start_time >= $${paramCount + 1} AND b.end_time <= $${paramCount + 2})
+      )
+    )
+  `;
+  queryParams.push(date, startTime, endTime);
+
+  const seatsResult = await query(`
+    SELECT 
+      s.id,
+      s.seat_number,
+      s.zone,
+      s.seat_type,
+      s.features
+    FROM seats s
+    ${whereClause}
+    ORDER BY s.zone, s.seat_number
+  `, queryParams);
+
+  res.json({
+    success: true,
+    data: {
+      seats: seatsResult.rows.map(seat => ({
+        id: seat.id,
+        seatNumber: seat.seat_number,
+        zone: seat.zone,
+        seatType: seat.seat_type,
+        features: seat.features,
+        isAvailable: true
+      })),
+      totalAvailable: seatsResult.rows.length
+    },
+    meta: {
+      libraryId,
+      date,
+      startTime,
+      endTime,
+      zone: zone || 'all',
+      timestamp: new Date().toISOString()
+    }
+  });
+}));
+
 module.exports = router;
 
 

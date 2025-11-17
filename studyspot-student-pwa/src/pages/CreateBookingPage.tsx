@@ -528,6 +528,9 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
         endTime = '06:00:00';
       }
 
+      // Get calculated price from price breakdown
+      const calculatedPrice = priceBreakdown.total;
+
       const bookingPayload = {
         libraryId: library.id,
         seatId: bookingData.seatId,
@@ -536,6 +539,15 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
         endTime,
         bookingType,
         paymentMethod: bookingData.paymentMethod,
+        feePlanId: bookingData.feePlanId,
+        totalAmount: calculatedPrice,
+        // Additional metadata for better tracking
+        metadata: {
+          shift: bookingData.shift,
+          zone: bookingData.zone,
+          feePlanName: selectedPlan.name,
+          feePlanType: selectedPlan.type,
+        },
       };
 
       console.log('[BOOKING] Submitting booking:', bookingPayload);
