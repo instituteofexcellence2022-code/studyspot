@@ -201,55 +201,73 @@ export default function QRAttendanceScanner({ setIsAuthenticated }: QRAttendance
         throw permError;
       }
 
+      // Wait a bit for DOM to be ready
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Check if element exists
+      const qrReaderElement = document.getElementById('qr-reader');
+      if (!qrReaderElement) {
+        throw new Error('QR reader element not found');
+      }
+
+      // Clear any existing content
+      qrReaderElement.innerHTML = '';
+
       // Mobile-optimized configuration
       const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-      const qrBoxSize = isMobile ? Math.min(window.innerWidth * 0.8, 350) : 300;
+      const qrBoxSize = isMobile ? Math.min(window.innerWidth * 0.75, 300) : 250;
+      
+      // Simplified config - qrbox should be a number, not an object
+      const config: any = {
+        fps: 10, // Smooth scanning rate
+        qrbox: qrBoxSize, // Number for square scanning area
+        aspectRatio: 1.0,
+        rememberLastUsedCamera: true,
+        supportedScanTypes: [0], // QR_CODE only for faster scanning
+        showTorchButtonIfSupported: true, // Show flashlight on mobile
+        showZoomSliderIfSupported: true, // Show zoom on mobile
+      };
+
+      // Add video constraints only on mobile (may not be supported in all browsers)
+      if (isMobile) {
+        config.videoConstraints = {
+          facingMode: { ideal: "environment" } // Prefer rear camera on mobile
+        };
+      }
+      
+      console.log('[QR Scanner] Starting with config:', config);
       
       const qrScanner = new Html5QrcodeScanner(
         'qr-reader',
-        {
-          fps: 10, // Smooth scanning rate
-          qrbox: { width: qrBoxSize, height: qrBoxSize }, // Square scanning area
-          aspectRatio: 1.0,
-          rememberLastUsedCamera: true,
-          // Mobile-specific settings
-          videoConstraints: isMobile ? {
-            facingMode: { ideal: "environment" }, // Prefer rear camera on mobile
-            width: { ideal: 1920 },
-            height: { ideal: 1080 }
-          } : {
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
-          },
-          // Better mobile support
-          supportedScanTypes: [0], // QR_CODE only for faster scanning
-          showTorchButtonIfSupported: true, // Show flashlight on mobile
-          showZoomSliderIfSupported: true, // Show zoom on mobile
-          // Improved scanning performance
-          disableFlip: false, // Allow flipping for better detection
-          experimentalFeatures: {
-            useBarCodeDetectorIfSupported: true, // Use native barcode detector if available
-          },
-        },
+        config,
         false // verbose mode off for better performance
       );
 
+      console.log('[QR Scanner] Scanner created, rendering...');
+
       qrScanner.render(
-        onScanSuccess, 
-        (errorMessage) => {
+        (decodedText: string, decodedResult: any) => {
+          console.log('[QR Scanner] Scan success:', decodedText);
+          onScanSuccess(decodedText, decodedResult);
+        }, 
+        (errorMessage: string) => {
           // Only show errors for actual failures, not scan attempts
-          if (errorMessage.includes('NotAllowedError') || 
-              errorMessage.includes('PermissionDeniedError') ||
-              errorMessage.includes('NotFoundError') ||
-              errorMessage.includes('DevicesNotFoundError')) {
+          if (errorMessage && 
+              (errorMessage.includes('NotAllowedError') || 
+               errorMessage.includes('PermissionDeniedError') ||
+               errorMessage.includes('NotFoundError') ||
+               errorMessage.includes('DevicesNotFoundError') ||
+               errorMessage.includes('NotReadableError'))) {
+            console.error('[QR Scanner] Camera error:', errorMessage);
             setCameraError(true);
             toast.error('📷 Camera access issue. Please use manual entry or upload option.');
             stopScanning();
           }
-          // Other errors are just scan attempts failing, ignore them
+          // Other errors are just scan attempts failing, ignore them silently
         }
       );
       
+      console.log('[QR Scanner] Scanner rendered successfully');
       setScanner(qrScanner);
     } catch (error: any) {
       console.error('Error starting scanner:', error);
