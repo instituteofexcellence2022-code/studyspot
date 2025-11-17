@@ -20,6 +20,7 @@ import {
   CardContent,
   Button,
   TextField,
+  MenuItem,
   Grid,
   Alert,
   Chip,
@@ -149,6 +150,7 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
   
   const [bookingData, setBookingData] = useState({
     date: '',
+    planType: '' as '' | 'hourly' | 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'annual' | 'combo',
     shift: '',
     feePlanId: '',
     zone: '',
@@ -658,27 +660,64 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
             {/* Left Column - Booking Options */}
             <Grid item xs={12} lg={8}>
               <Stack spacing={3}>
-                {/* 1. Date Selection */}
+                {/* 1. Date & Plan Type Selection */}
                 <Card sx={{ borderRadius: 2, border: 1, borderColor: 'divider' }}>
                   <CardContent>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
                       <CalendarMonth color="primary" />
                       <Typography variant="h6" fontWeight="600">
-                        Select Date
+                        Select Date & Plan Type
                       </Typography>
                     </Box>
-                    <TextField
-                      fullWidth
-                      type="date"
-                      label="Booking Date"
-                      value={bookingData.date}
-                      onChange={(e) => setBookingData({ ...bookingData, date: e.target.value, shift: '', zone: '', seatId: '' })}
-                      InputLabelProps={{ shrink: true }}
-                      inputProps={{
-                        min: new Date().toISOString().split('T')[0],
-                      }}
-                      required
-                    />
+                    <Grid container spacing={2}>
+                      <Grid item xs={12} sm={6}>
+                        <TextField
+                          fullWidth
+                          type="date"
+                          label="Booking Date"
+                          value={bookingData.date}
+                          onChange={(e) => setBookingData({ 
+                            ...bookingData, 
+                            date: e.target.value, 
+                            planType: '',
+                            shift: '', 
+                            zone: '', 
+                            feePlanId: '',
+                            seatId: '' 
+                          })}
+                          InputLabelProps={{ shrink: true }}
+                          inputProps={{
+                            min: new Date().toISOString().split('T')[0],
+                          }}
+                          required
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <TextField
+                          fullWidth
+                          select
+                          label="Plan Type"
+                          value={bookingData.planType}
+                          onChange={(e) => setBookingData({ 
+                            ...bookingData, 
+                            planType: e.target.value as any,
+                            feePlanId: '',
+                            zone: '',
+                            seatId: '' 
+                          })}
+                          helperText="Filter plans by type"
+                        >
+                          <MenuItem value="">All Plans</MenuItem>
+                          <MenuItem value="hourly">Hourly</MenuItem>
+                          <MenuItem value="daily">Daily</MenuItem>
+                          <MenuItem value="weekly">Weekly</MenuItem>
+                          <MenuItem value="monthly">Monthly</MenuItem>
+                          <MenuItem value="quarterly">Quarterly</MenuItem>
+                          <MenuItem value="annual">Annual</MenuItem>
+                          <MenuItem value="combo">Combo</MenuItem>
+                        </TextField>
+                      </Grid>
+                    </Grid>
                   </CardContent>
                 </Card>
 
@@ -726,6 +765,11 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
                           </Grid>
                         ))}
                       </Grid>
+                      {bookingData.planType && feePlans.filter(plan => plan.type === bookingData.planType).length === 0 && (
+                        <Alert severity="info" sx={{ mt: 2 }}>
+                          No {bookingData.planType} plans available. Please select a different plan type or choose "All Plans".
+                        </Alert>
+                      )}
                     </CardContent>
                   </Card>
                 )}
@@ -795,7 +839,9 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
                         </Alert>
                       )}
                       <Grid container spacing={2}>
-                        {feePlans.map((plan) => {
+                        {feePlans
+                          .filter(plan => !bookingData.planType || plan.type === bookingData.planType)
+                          .map((plan) => {
                           const isSelected = bookingData.feePlanId === plan.id;
                           const hasDiscount = plan.discount && 
                             (!plan.discount.validFrom || new Date() >= new Date(plan.discount.validFrom)) &&
