@@ -628,12 +628,16 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
       console.error('[BOOKING] Booking creation failed:', error);
       console.error('[BOOKING] Error details:', {
         message: error.message,
+        code: error.code,
         response: error.response?.data,
         status: error.response?.status,
         statusText: error.response?.statusText,
         config: {
           url: error.config?.url,
           method: error.config?.method,
+          baseURL: error.config?.baseURL,
+          timeout: error.config?.timeout,
+          headers: error.config?.headers,
           data: error.config?.data,
         },
       });
