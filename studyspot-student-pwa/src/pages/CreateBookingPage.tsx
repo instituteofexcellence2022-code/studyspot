@@ -1,14 +1,16 @@
 /**
- * 📚 SINGLE-VIEW BOOKING PAGE
+ * 📚 ENHANCED SINGLE-VIEW BOOKING PAGE
  * 
- * All booking information in one view for quick selection:
- * - Date, Shift, Fee Plan, Zone, Seat selection
- * - Real-time price calculation
- * - Booking summary
- * - Aligned with web owner portal's fee plan structure
+ * Fully synced with web owner portal's fee plan structure:
+ * - Complete fee plan data (status, isPopular, discount, maxSeats, maxHours, etc.)
+ * - Shift and zone pricing visualization
+ * - Discount calculation and display
+ * - Price breakdown with detailed calculation
+ * - Enhanced UI with better visual hierarchy
+ * - Real-time price updates
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -18,7 +20,6 @@ import {
   CardContent,
   Button,
   TextField,
-  MenuItem,
   Grid,
   Alert,
   Chip,
@@ -29,8 +30,16 @@ import {
   RadioGroup,
   FormControlLabel,
   FormControl,
-  FormLabel,
   Stack,
+  Badge,
+  Tooltip,
+  IconButton,
+  Collapse,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
+  LinearProgress,
 } from '@mui/material';
 import {
   ArrowBack,
@@ -42,6 +51,14 @@ import {
   LocationOn,
   AccessTime,
   AttachMoney,
+  ExpandMore,
+  ExpandLess,
+  Star,
+  LocalOffer,
+  Info,
+  TrendingUp,
+  School,
+  Calculate,
 } from '@mui/icons-material';
 import MobileLayout from '../components/MobileLayout';
 import { gradients } from '../theme/colors';
@@ -67,6 +84,9 @@ interface FeePlan {
   description: string;
   type: 'hourly' | 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'annual' | 'combo';
   basePrice: number;
+  status: 'active' | 'inactive';
+  isPopular?: boolean;
+  features: string[];
   shiftPricing?: {
     morning?: number;
     afternoon?: number;
@@ -80,7 +100,16 @@ interface FeePlan {
     quiet?: number;
     general?: number;
   };
-  features: string[];
+  discount?: {
+    type: 'percentage' | 'fixed';
+    value: number;
+    validFrom?: string;
+    validTo?: string;
+  };
+  maxSeats?: number;
+  maxHours?: number;
+  scholarshipEligible?: boolean;
+  waiverAllowed?: boolean;
 }
 
 interface Seat {
@@ -91,18 +120,18 @@ interface Seat {
 }
 
 const SHIFTS = [
-  { value: 'morning', label: 'Morning', start: '06:00', end: '12:00', hours: 6, icon: '🌅' },
-  { value: 'afternoon', label: 'Afternoon', start: '12:00', end: '18:00', hours: 6, icon: '☀️' },
-  { value: 'evening', label: 'Evening', start: '18:00', end: '23:00', hours: 5, icon: '🌆' },
-  { value: 'full_day', label: 'Full Day', start: '06:00', end: '23:00', hours: 17, icon: '📅' },
+  { value: 'morning', label: 'Morning', start: '06:00', end: '12:00', hours: 6, icon: '🌅', color: '#FFA726' },
+  { value: 'afternoon', label: 'Afternoon', start: '12:00', end: '18:00', hours: 6, icon: '☀️', color: '#FFB74D' },
+  { value: 'evening', label: 'Evening', start: '18:00', end: '23:00', hours: 5, icon: '🌆', color: '#7986CB' },
+  { value: 'full_day', label: 'Full Day', start: '06:00', end: '23:00', hours: 17, icon: '📅', color: '#4CAF50' },
 ];
 
 const ZONES = [
-  { value: 'general', label: 'General', icon: '🪑', description: 'Standard seating area' },
-  { value: 'quiet', label: 'Quiet Zone', icon: '🔇', description: 'Silent study area' },
-  { value: 'ac', label: 'AC Zone', icon: '❄️', description: 'Air-conditioned area' },
-  { value: 'nonAc', label: 'Non-AC Zone', icon: '🌬️', description: 'Natural ventilation' },
-  { value: 'premium', label: 'Premium', icon: '⭐', description: 'Premium seating with extra amenities' },
+  { value: 'general', label: 'General', icon: '🪑', description: 'Standard seating area', color: '#9E9E9E' },
+  { value: 'quiet', label: 'Quiet Zone', icon: '🔇', description: 'Silent study area', color: '#5C6BC0' },
+  { value: 'ac', label: 'AC Zone', icon: '❄️', description: 'Air-conditioned area', color: '#26A69A' },
+  { value: 'nonAc', label: 'Non-AC Zone', icon: '🌬️', description: 'Natural ventilation', color: '#66BB6A' },
+  { value: 'premium', label: 'Premium', icon: '⭐', description: 'Premium seating with extra amenities', color: '#FFA726' },
 ];
 
 export default function CreateBookingPage({ setIsAuthenticated }: any) {
@@ -116,6 +145,7 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
   const [feePlans, setFeePlans] = useState<FeePlan[]>([]);
   const [availableSeats, setAvailableSeats] = useState<Seat[]>([]);
   const [loadingSeats, setLoadingSeats] = useState(false);
+  const [showPriceBreakdown, setShowPriceBreakdown] = useState(false);
   
   const [bookingData, setBookingData] = useState({
     date: '',
@@ -184,7 +214,25 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
     try {
       const response = await api.get(`/api/fee-plans`);
       if (response.data.success && response.data.data?.plans) {
-        setFeePlans(response.data.data.plans);
+        // Transform API response to match FeePlan interface (aligned with web owner)
+        const transformedPlans: FeePlan[] = response.data.data.plans.map((plan: any) => ({
+          id: plan.id,
+          name: plan.name,
+          description: plan.description || '',
+          type: plan.type,
+          basePrice: plan.basePrice || plan.base_price || 0,
+          status: plan.status || 'active',
+          isPopular: plan.isPopular || plan.is_popular || false,
+          features: plan.features || [],
+          shiftPricing: plan.shiftPricing || plan.shift_pricing,
+          zonePricing: plan.zonePricing || plan.zone_pricing,
+          discount: plan.discount,
+          maxSeats: plan.maxSeats || plan.max_seats,
+          maxHours: plan.maxHours || plan.max_hours,
+          scholarshipEligible: plan.scholarshipEligible || plan.scholarship_eligible || false,
+          waiverAllowed: plan.waiverAllowed || plan.waiver_allowed || false,
+        }));
+        setFeePlans(transformedPlans.filter(p => p.status === 'active'));
       } else {
         setFeePlans(getDefaultFeePlans());
       }
@@ -204,6 +252,14 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
         description: 'Pay per hour for flexible usage',
         type: 'hourly',
         basePrice: library.hourlyRate || 50,
+        status: 'active',
+        isPopular: false,
+        features: [
+          'Flexible hourly booking',
+          'Basic amenities access',
+          'WiFi included',
+          'Power outlets available'
+        ],
         shiftPricing: {
           morning: (library.hourlyRate || 50) * 0.8,
           afternoon: library.hourlyRate || 50,
@@ -217,7 +273,10 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
           quiet: (library.hourlyRate || 50) * 1.1,
           general: library.hourlyRate || 50,
         },
-        features: ['Flexible hourly booking', 'Basic amenities access', 'WiFi included'],
+        maxSeats: 1,
+        maxHours: 8,
+        scholarshipEligible: true,
+        waiverAllowed: true,
       },
       {
         id: 'daily-pass',
@@ -225,6 +284,15 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
         description: 'Full day access with all amenities',
         type: 'daily',
         basePrice: library.dailyRate || 300,
+        status: 'active',
+        isPopular: true,
+        features: [
+          'Full day access (8 AM - 10 PM)',
+          'All amenities included',
+          'Lunch break allowed',
+          'Priority seating',
+          'Study materials access'
+        ],
         shiftPricing: {
           morning: (library.dailyRate || 300) * 0.8,
           afternoon: library.dailyRate || 300,
@@ -237,7 +305,10 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
           quiet: (library.dailyRate || 300) * 1.1,
           general: library.dailyRate || 300,
         },
-        features: ['Full day access (8 AM - 10 PM)', 'All amenities included', 'Priority seating'],
+        maxSeats: 1,
+        maxHours: 14,
+        scholarshipEligible: true,
+        waiverAllowed: true,
       },
     ];
   };
@@ -283,45 +354,79 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
     setAvailableSeats(seats);
   };
 
-  const calculatePrice = (): number => {
-    if (!library || !bookingData.shift || !bookingData.feePlanId) return 0;
+  // Enhanced price calculation with breakdown
+  const priceBreakdown = useMemo(() => {
+    if (!library || !bookingData.shift || !bookingData.feePlanId) {
+      return { basePrice: 0, shiftAdjustment: 0, zoneAdjustment: 0, discount: 0, total: 0 };
+    }
 
     const selectedPlan = feePlans.find(p => p.id === bookingData.feePlanId);
-    if (!selectedPlan) return 0;
+    if (!selectedPlan) return { basePrice: 0, shiftAdjustment: 0, zoneAdjustment: 0, discount: 0, total: 0 };
 
     const selectedShift = SHIFTS.find(s => s.value === bookingData.shift);
-    if (!selectedShift) return 0;
+    if (!selectedShift) return { basePrice: 0, shiftAdjustment: 0, zoneAdjustment: 0, discount: 0, total: 0 };
 
     let basePrice = selectedPlan.basePrice;
+    let shiftPrice = basePrice;
+    let zonePrice = basePrice;
 
-    // Apply shift pricing if available
+    // Apply shift pricing
     if (selectedPlan.shiftPricing && bookingData.shift !== 'full_day') {
-      const shiftPrice = selectedPlan.shiftPricing[bookingData.shift as keyof typeof selectedPlan.shiftPricing];
-      if (shiftPrice) {
-        basePrice = shiftPrice;
+      const shiftPricing = selectedPlan.shiftPricing[bookingData.shift as keyof typeof selectedPlan.shiftPricing];
+      if (shiftPricing) {
+        shiftPrice = shiftPricing;
       }
     }
 
-    // Apply zone pricing if available
+    // Apply zone pricing
     if (selectedPlan.zonePricing && bookingData.zone) {
-      const zonePrice = selectedPlan.zonePricing[bookingData.zone as keyof typeof selectedPlan.zonePricing];
-      if (zonePrice) {
-        basePrice = zonePrice;
+      const zonePricing = selectedPlan.zonePricing[bookingData.zone as keyof typeof selectedPlan.zonePricing];
+      if (zonePricing) {
+        zonePrice = zonePricing;
       }
     }
 
-    // Calculate total based on plan type
+    // Calculate based on plan type
+    let finalPrice = zonePrice;
     if (selectedPlan.type === 'hourly') {
-      return basePrice * selectedShift.hours;
+      finalPrice = zonePrice * selectedShift.hours;
     } else if (selectedPlan.type === 'daily') {
-      return basePrice;
+      finalPrice = zonePrice;
     } else if (selectedPlan.type === 'weekly') {
-      return basePrice;
+      finalPrice = zonePrice;
     } else if (selectedPlan.type === 'monthly') {
-      return basePrice;
+      finalPrice = zonePrice;
     }
 
-    return basePrice;
+    // Calculate discount
+    let discountAmount = 0;
+    if (selectedPlan.discount) {
+      const now = new Date();
+      const validFrom = selectedPlan.discount.validFrom ? new Date(selectedPlan.discount.validFrom) : null;
+      const validTo = selectedPlan.discount.validTo ? new Date(selectedPlan.discount.validTo) : null;
+      
+      if ((!validFrom || now >= validFrom) && (!validTo || now <= validTo)) {
+        if (selectedPlan.discount.type === 'percentage') {
+          discountAmount = (finalPrice * selectedPlan.discount.value) / 100;
+        } else {
+          discountAmount = selectedPlan.discount.value;
+        }
+      }
+    }
+
+    const total = Math.max(0, finalPrice - discountAmount);
+
+    return {
+      basePrice: selectedPlan.basePrice,
+      shiftAdjustment: shiftPrice - basePrice,
+      zoneAdjustment: zonePrice - basePrice,
+      discount: discountAmount,
+      total,
+    };
+  }, [library, bookingData, feePlans]);
+
+  const calculatePrice = (): number => {
+    return priceBreakdown.total;
   };
 
   const handleSubmit = async () => {
@@ -465,6 +570,7 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
   const selectedZone = ZONES.find(z => z.value === bookingData.zone);
   const totalPrice = calculatePrice();
   const isFormValid = bookingData.date && bookingData.shift && bookingData.feePlanId && bookingData.zone && bookingData.seatId;
+  const availableSeatsCount = availableSeats.filter(seat => seat.zone === bookingData.zone && seat.isAvailable).length;
 
   return (
     <MobileLayout setIsAuthenticated={setIsAuthenticated}>
@@ -500,9 +606,9 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
           </Box>
         </Paper>
 
-        <Container maxWidth="md" sx={{ py: 3 }}>
+        <Container maxWidth="lg" sx={{ py: 3 }}>
           {/* Library Info Card */}
-          <Card sx={{ mb: 3, borderRadius: 2 }}>
+          <Card sx={{ mb: 3, borderRadius: 2, border: 1, borderColor: 'divider' }}>
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                 <LocationOn fontSize="small" color="action" />
@@ -526,10 +632,10 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
 
           <Grid container spacing={3}>
             {/* Left Column - Booking Options */}
-            <Grid item xs={12} md={8}>
+            <Grid item xs={12} lg={8}>
               <Stack spacing={3}>
                 {/* 1. Date Selection */}
-                <Card sx={{ borderRadius: 2 }}>
+                <Card sx={{ borderRadius: 2, border: 1, borderColor: 'divider' }}>
                   <CardContent>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
                       <CalendarMonth color="primary" />
@@ -554,7 +660,7 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
 
                 {/* 2. Shift Selection */}
                 {bookingData.date && (
-                  <Card sx={{ borderRadius: 2 }}>
+                  <Card sx={{ borderRadius: 2, border: 1, borderColor: 'divider' }}>
                     <CardContent>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
                         <Schedule color="primary" />
@@ -573,12 +679,13 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
                                 borderColor: bookingData.shift === shift.value ? 'primary.main' : 'divider',
                                 bgcolor: bookingData.shift === shift.value ? 'action.selected' : 'background.paper',
                                 textAlign: 'center',
-                                '&:hover': { borderColor: 'primary.main' },
+                                transition: 'all 0.2s',
+                                '&:hover': { borderColor: 'primary.main', transform: 'translateY(-2px)' },
                               }}
                               onClick={() => setBookingData({ ...bookingData, shift: shift.value, zone: '', seatId: '' })}
                             >
                               <CardContent sx={{ py: 2 }}>
-                                <Typography variant="h5" sx={{ mb: 0.5 }}>
+                                <Typography variant="h4" sx={{ mb: 0.5 }}>
                                   {shift.icon}
                                 </Typography>
                                 <Typography variant="body2" fontWeight="600">
@@ -601,7 +708,7 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
 
                 {/* 3. Fee Plan Selection */}
                 {bookingData.shift && (
-                  <Card sx={{ borderRadius: 2 }}>
+                  <Card sx={{ borderRadius: 2, border: 1, borderColor: 'divider' }}>
                     <CardContent>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
                         <AttachMoney color="primary" />
@@ -610,46 +717,95 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
                         </Typography>
                       </Box>
                       <Grid container spacing={2}>
-                        {feePlans.map((plan) => (
-                          <Grid item xs={12} sm={6} key={plan.id}>
-                            <Card
-                              variant="outlined"
-                              sx={{
-                                cursor: 'pointer',
-                                border: bookingData.feePlanId === plan.id ? 2 : 1,
-                                borderColor: bookingData.feePlanId === plan.id ? 'primary.main' : 'divider',
-                                bgcolor: bookingData.feePlanId === plan.id ? 'action.selected' : 'background.paper',
-                                '&:hover': { borderColor: 'primary.main' },
-                              }}
-                              onClick={() => setBookingData({ ...bookingData, feePlanId: plan.id })}
-                            >
-                              <CardContent>
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', mb: 1 }}>
-                                  <Box>
-                                    <Typography variant="h6" fontWeight="600">
-                                      {plan.name}
-                                    </Typography>
-                                    <Typography variant="caption" color="text.secondary">
-                                      {plan.description}
-                                    </Typography>
-                                  </Box>
-                                  <Chip
-                                    label={`₹${plan.basePrice}`}
-                                    color="primary"
-                                    size="small"
-                                  />
-                                </Box>
-                                <Box sx={{ mt: 1 }}>
-                                  {plan.features.slice(0, 2).map((feature, idx) => (
-                                    <Typography key={idx} variant="caption" display="block" color="text.secondary">
-                                      • {feature}
-                                    </Typography>
-                                  ))}
-                                </Box>
-                              </CardContent>
-                            </Card>
-                          </Grid>
-                        ))}
+                        {feePlans.map((plan) => {
+                          const isSelected = bookingData.feePlanId === plan.id;
+                          const hasDiscount = plan.discount && 
+                            (!plan.discount.validFrom || new Date() >= new Date(plan.discount.validFrom)) &&
+                            (!plan.discount.validTo || new Date() <= new Date(plan.discount.validTo));
+                          
+                          return (
+                            <Grid item xs={12} sm={6} key={plan.id}>
+                              <Badge
+                                badgeContent={plan.isPopular ? <Star sx={{ fontSize: 12 }} /> : null}
+                                color="warning"
+                                sx={{ width: '100%' }}
+                              >
+                                <Card
+                                  variant="outlined"
+                                  sx={{
+                                    cursor: 'pointer',
+                                    border: isSelected ? 2 : 1,
+                                    borderColor: isSelected ? 'primary.main' : 'divider',
+                                    bgcolor: isSelected ? 'action.selected' : 'background.paper',
+                                    transition: 'all 0.2s',
+                                    '&:hover': { borderColor: 'primary.main', transform: 'translateY(-2px)' },
+                                    position: 'relative',
+                                  }}
+                                  onClick={() => setBookingData({ ...bookingData, feePlanId: plan.id })}
+                                >
+                                  {plan.isPopular && (
+                                    <Chip
+                                      label="Popular"
+                                      size="small"
+                                      color="warning"
+                                      sx={{ position: 'absolute', top: 8, right: 8, zIndex: 1 }}
+                                    />
+                                  )}
+                                  <CardContent>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', mb: 1 }}>
+                                      <Box sx={{ flex: 1 }}>
+                                        <Typography variant="h6" fontWeight="600">
+                                          {plan.name}
+                                        </Typography>
+                                        <Typography variant="caption" color="text.secondary">
+                                          {plan.description}
+                                        </Typography>
+                                      </Box>
+                                      <Box sx={{ textAlign: 'right' }}>
+                                        <Typography variant="h6" fontWeight="700" color="primary.main">
+                                          ₹{plan.basePrice}
+                                        </Typography>
+                                        {hasDiscount && plan.discount && (
+                                          <Chip
+                                            icon={<LocalOffer />}
+                                            label={plan.discount.type === 'percentage' 
+                                              ? `${plan.discount.value}% OFF` 
+                                              : `₹${plan.discount.value} OFF`}
+                                            size="small"
+                                            color="success"
+                                            sx={{ mt: 0.5 }}
+                                          />
+                                        )}
+                                      </Box>
+                                    </Box>
+                                    <List dense sx={{ py: 0 }}>
+                                      {plan.features.slice(0, 3).map((feature, idx) => (
+                                        <ListItem key={idx} sx={{ px: 0, py: 0.25 }}>
+                                          <ListItemIcon sx={{ minWidth: 24 }}>
+                                            <CheckCircle fontSize="small" color="success" />
+                                          </ListItemIcon>
+                                          <ListItemText 
+                                            primary={feature}
+                                            primaryTypographyProps={{ variant: 'caption' }}
+                                          />
+                                        </ListItem>
+                                      ))}
+                                    </List>
+                                    {plan.scholarshipEligible && (
+                                      <Chip
+                                        icon={<School />}
+                                        label="Scholarship Eligible"
+                                        size="small"
+                                        variant="outlined"
+                                        sx={{ mt: 1 }}
+                                      />
+                                    )}
+                                  </CardContent>
+                                </Card>
+                              </Badge>
+                            </Grid>
+                          );
+                        })}
                       </Grid>
                     </CardContent>
                   </Card>
@@ -657,7 +813,7 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
 
                 {/* 4. Zone Selection */}
                 {bookingData.feePlanId && (
-                  <Card sx={{ borderRadius: 2 }}>
+                  <Card sx={{ borderRadius: 2, border: 1, borderColor: 'divider' }}>
                     <CardContent>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
                         <EventSeat color="primary" />
@@ -666,34 +822,49 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
                         </Typography>
                       </Box>
                       <Grid container spacing={2}>
-                        {ZONES.map((zone) => (
-                          <Grid item xs={6} sm={4} key={zone.value}>
-                            <Card
-                              variant="outlined"
-                              sx={{
-                                cursor: 'pointer',
-                                border: bookingData.zone === zone.value ? 2 : 1,
-                                borderColor: bookingData.zone === zone.value ? 'primary.main' : 'divider',
-                                bgcolor: bookingData.zone === zone.value ? 'action.selected' : 'background.paper',
-                                textAlign: 'center',
-                                '&:hover': { borderColor: 'primary.main' },
-                              }}
-                              onClick={() => setBookingData({ ...bookingData, zone: zone.value, seatId: '' })}
-                            >
-                              <CardContent sx={{ py: 2 }}>
-                                <Typography variant="h4" sx={{ mb: 0.5 }}>
-                                  {zone.icon}
-                                </Typography>
-                                <Typography variant="body2" fontWeight="600">
-                                  {zone.label}
-                                </Typography>
-                                <Typography variant="caption" color="text.secondary" display="block">
-                                  {zone.description}
-                                </Typography>
-                              </CardContent>
-                            </Card>
-                          </Grid>
-                        ))}
+                        {ZONES.map((zone) => {
+                          const isSelected = bookingData.zone === zone.value;
+                          const zonePrice = selectedPlan?.zonePricing?.[zone.value as keyof typeof selectedPlan.zonePricing];
+                          
+                          return (
+                            <Grid item xs={6} sm={4} key={zone.value}>
+                              <Card
+                                variant="outlined"
+                                sx={{
+                                  cursor: 'pointer',
+                                  border: isSelected ? 2 : 1,
+                                  borderColor: isSelected ? 'primary.main' : 'divider',
+                                  bgcolor: isSelected ? 'action.selected' : 'background.paper',
+                                  textAlign: 'center',
+                                  transition: 'all 0.2s',
+                                  '&:hover': { borderColor: 'primary.main', transform: 'translateY(-2px)' },
+                                }}
+                                onClick={() => setBookingData({ ...bookingData, zone: zone.value, seatId: '' })}
+                              >
+                                <CardContent sx={{ py: 2 }}>
+                                  <Typography variant="h4" sx={{ mb: 0.5 }}>
+                                    {zone.icon}
+                                  </Typography>
+                                  <Typography variant="body2" fontWeight="600">
+                                    {zone.label}
+                                  </Typography>
+                                  <Typography variant="caption" color="text.secondary" display="block">
+                                    {zone.description}
+                                  </Typography>
+                                  {zonePrice && selectedPlan && (
+                                    <Chip
+                                      label={`₹${zonePrice}/${selectedPlan.type === 'hourly' ? 'hr' : 'day'}`}
+                                      size="small"
+                                      color="primary"
+                                      variant="outlined"
+                                      sx={{ mt: 0.5 }}
+                                    />
+                                  )}
+                                </CardContent>
+                              </Card>
+                            </Grid>
+                          );
+                        })}
                       </Grid>
                     </CardContent>
                   </Card>
@@ -701,19 +872,26 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
 
                 {/* 5. Seat Selection */}
                 {bookingData.zone && (
-                  <Card sx={{ borderRadius: 2 }}>
+                  <Card sx={{ borderRadius: 2, border: 1, borderColor: 'divider' }}>
                     <CardContent>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                        <EventSeat color="primary" />
-                        <Typography variant="h6" fontWeight="600">
-                          Select Seat
-                        </Typography>
-                        {selectedZone && (
-                          <Chip
-                            label={selectedZone.label}
-                            size="small"
-                            sx={{ ml: 1 }}
-                          />
+                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <EventSeat color="primary" />
+                          <Typography variant="h6" fontWeight="600">
+                            Select Seat
+                          </Typography>
+                          {selectedZone && (
+                            <Chip
+                              label={selectedZone.label}
+                              size="small"
+                              sx={{ ml: 1 }}
+                            />
+                          )}
+                        </Box>
+                        {availableSeatsCount > 0 && (
+                          <Typography variant="caption" color="text.secondary">
+                            {availableSeatsCount} available
+                          </Typography>
                         )}
                       </Box>
                       {loadingSeats ? (
@@ -741,6 +919,7 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
                                       ...(!seat.isAvailable && {
                                         opacity: 0.5,
                                         cursor: 'not-allowed',
+                                        textDecoration: 'line-through',
                                       }),
                                     }}
                                   >
@@ -749,7 +928,7 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
                                 </Grid>
                               ))}
                           </Grid>
-                          {availableSeats.filter(seat => seat.zone === bookingData.zone && seat.isAvailable).length === 0 && !loadingSeats && (
+                          {availableSeatsCount === 0 && !loadingSeats && (
                             <Alert severity="warning" sx={{ mt: 2 }}>
                               No seats available in this zone for the selected date and shift. Please try a different zone or time.
                             </Alert>
@@ -762,7 +941,7 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
 
                 {/* 6. Payment Method */}
                 {bookingData.seatId && (
-                  <Card sx={{ borderRadius: 2 }}>
+                  <Card sx={{ borderRadius: 2, border: 1, borderColor: 'divider' }}>
                     <CardContent>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
                         <Payment color="primary" />
@@ -776,8 +955,17 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
                           onChange={(e) => setBookingData({ ...bookingData, paymentMethod: e.target.value as 'online' | 'offline' })}
                           row
                         >
-                          <FormControlLabel value="online" control={<Radio />} label="Online Payment" />
-                          <FormControlLabel value="offline" control={<Radio />} label="Pay at Library" />
+                          <FormControlLabel 
+                            value="online" 
+                            control={<Radio />} 
+                            label="Online Payment" 
+                            sx={{ mr: 4 }}
+                          />
+                          <FormControlLabel 
+                            value="offline" 
+                            control={<Radio />} 
+                            label="Pay at Library" 
+                          />
                         </RadioGroup>
                       </FormControl>
                     </CardContent>
@@ -786,26 +974,28 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
               </Stack>
             </Grid>
 
-            {/* Right Column - Booking Summary (Sticky) */}
-            <Grid item xs={12} md={4}>
-              <Box sx={{ position: { md: 'sticky' }, top: { md: 80 } }}>
-                <Card sx={{ borderRadius: 2, border: 2, borderColor: 'primary.main' }}>
+            {/* Right Column - Enhanced Booking Summary (Sticky) */}
+            <Grid item xs={12} lg={4}>
+              <Box sx={{ position: { lg: 'sticky' }, top: { lg: 80 } }}>
+                <Card sx={{ borderRadius: 2, border: 2, borderColor: 'primary.main', boxShadow: 3 }}>
                   <CardContent>
-                    <Typography variant="h6" fontWeight="700" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
                       <CheckCircle color="primary" />
-                      Booking Summary
-                    </Typography>
+                      <Typography variant="h6" fontWeight="700">
+                        Booking Summary
+                      </Typography>
+                    </Box>
                     <Divider sx={{ my: 2 }} />
 
-                    <Stack spacing={1.5}>
+                    <Stack spacing={2}>
                       <Box>
-                        <Typography variant="caption" color="text.secondary">Library</Typography>
+                        <Typography variant="caption" color="text.secondary" display="block">Library</Typography>
                         <Typography variant="body2" fontWeight="600">{library.name}</Typography>
                       </Box>
 
                       {bookingData.date && (
                         <Box>
-                          <Typography variant="caption" color="text.secondary">Date</Typography>
+                          <Typography variant="caption" color="text.secondary" display="block">Date</Typography>
                           <Typography variant="body2" fontWeight="600">
                             {new Date(bookingData.date).toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
                           </Typography>
@@ -814,7 +1004,7 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
 
                       {selectedShift && (
                         <Box>
-                          <Typography variant="caption" color="text.secondary">Shift</Typography>
+                          <Typography variant="caption" color="text.secondary" display="block">Shift</Typography>
                           <Typography variant="body2" fontWeight="600">
                             {selectedShift.icon} {selectedShift.label} ({selectedShift.start} - {selectedShift.end})
                           </Typography>
@@ -823,14 +1013,17 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
 
                       {selectedPlan && (
                         <Box>
-                          <Typography variant="caption" color="text.secondary">Fee Plan</Typography>
-                          <Typography variant="body2" fontWeight="600">{selectedPlan.name}</Typography>
+                          <Typography variant="caption" color="text.secondary" display="block">Fee Plan</Typography>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Typography variant="body2" fontWeight="600">{selectedPlan.name}</Typography>
+                            {selectedPlan.isPopular && <Star fontSize="small" color="warning" />}
+                          </Box>
                         </Box>
                       )}
 
                       {selectedZone && (
                         <Box>
-                          <Typography variant="caption" color="text.secondary">Zone</Typography>
+                          <Typography variant="caption" color="text.secondary" display="block">Zone</Typography>
                           <Typography variant="body2" fontWeight="600">
                             {selectedZone.icon} {selectedZone.label}
                           </Typography>
@@ -839,17 +1032,74 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
 
                       {selectedSeat && (
                         <Box>
-                          <Typography variant="caption" color="text.secondary">Seat</Typography>
+                          <Typography variant="caption" color="text.secondary" display="block">Seat</Typography>
                           <Typography variant="body2" fontWeight="600">{selectedSeat.seatNumber}</Typography>
                         </Box>
                       )}
 
                       {bookingData.paymentMethod && (
                         <Box>
-                          <Typography variant="caption" color="text.secondary">Payment</Typography>
+                          <Typography variant="caption" color="text.secondary" display="block">Payment</Typography>
                           <Typography variant="body2" fontWeight="600">
                             {bookingData.paymentMethod === 'online' ? 'Online Payment' : 'Pay at Library'}
                           </Typography>
+                        </Box>
+                      )}
+
+                      <Divider sx={{ my: 1 }} />
+
+                      {/* Price Breakdown */}
+                      {isFormValid && (
+                        <Box>
+                          <Box 
+                            sx={{ 
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              justifyContent: 'space-between',
+                              cursor: 'pointer',
+                              py: 1,
+                            }}
+                            onClick={() => setShowPriceBreakdown(!showPriceBreakdown)}
+                          >
+                            <Typography variant="subtitle2" fontWeight="600" color="text.secondary">
+                              Price Breakdown
+                            </Typography>
+                            <IconButton size="small">
+                              {showPriceBreakdown ? <ExpandLess /> : <ExpandMore />}
+                            </IconButton>
+                          </Box>
+                          <Collapse in={showPriceBreakdown}>
+                            <Box sx={{ pl: 2, pt: 1 }}>
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                                <Typography variant="caption" color="text.secondary">Base Price:</Typography>
+                                <Typography variant="caption" fontWeight="600">₹{priceBreakdown.basePrice}</Typography>
+                              </Box>
+                              {priceBreakdown.shiftAdjustment !== 0 && (
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                                  <Typography variant="caption" color="text.secondary">Shift Adjustment:</Typography>
+                                  <Typography variant="caption" fontWeight="600" color={priceBreakdown.shiftAdjustment > 0 ? 'error.main' : 'success.main'}>
+                                    {priceBreakdown.shiftAdjustment > 0 ? '+' : ''}₹{priceBreakdown.shiftAdjustment.toFixed(0)}
+                                  </Typography>
+                                </Box>
+                              )}
+                              {priceBreakdown.zoneAdjustment !== 0 && (
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                                  <Typography variant="caption" color="text.secondary">Zone Adjustment:</Typography>
+                                  <Typography variant="caption" fontWeight="600" color={priceBreakdown.zoneAdjustment > 0 ? 'error.main' : 'success.main'}>
+                                    {priceBreakdown.zoneAdjustment > 0 ? '+' : ''}₹{priceBreakdown.zoneAdjustment.toFixed(0)}
+                                  </Typography>
+                                </Box>
+                              )}
+                              {priceBreakdown.discount > 0 && (
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                                  <Typography variant="caption" color="success.main">Discount:</Typography>
+                                  <Typography variant="caption" fontWeight="600" color="success.main">
+                                    -₹{priceBreakdown.discount.toFixed(0)}
+                                  </Typography>
+                                </Box>
+                              )}
+                            </Box>
+                          </Collapse>
                         </Box>
                       )}
 
@@ -882,6 +1132,12 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
                       {!isFormValid && (
                         <Alert severity="info" sx={{ mt: 1 }}>
                           Please complete all booking details to proceed
+                        </Alert>
+                      )}
+
+                      {selectedPlan?.scholarshipEligible && (
+                        <Alert severity="info" icon={<School />} sx={{ mt: 1 }}>
+                          This plan is eligible for scholarship discounts
                         </Alert>
                       )}
                     </Stack>
