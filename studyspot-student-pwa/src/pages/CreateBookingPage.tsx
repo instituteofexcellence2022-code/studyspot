@@ -671,6 +671,7 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
   const handleUPIPayment = async (bookingPayload: any, amount: number) => {
     try {
       setSubmitting(true);
+      console.log('[UPI] Starting UPI payment flow...', { amount, bookingPayload });
       
       // Check if UPI is supported
       if (!isUPISupported()) {
@@ -678,24 +679,38 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
       }
       
       // First create the booking with pending payment status
+      console.log('[UPI] Creating booking...');
       const bookingResponse = await api.post('/api/bookings', {
         ...bookingPayload,
         paymentMethod: 'upi',
       });
 
+      console.log('[UPI] Booking response:', bookingResponse.data);
+
       if (!bookingResponse.data.success) {
         throw new Error(bookingResponse.data.message || 'Booking creation failed');
       }
 
-      const booking = bookingResponse.data.data;
-      setCurrentBookingId(booking.id);
+      // Backend returns: { success: true, data: { bookingId: ..., status: ..., ... } }
+      const bookingData = bookingResponse.data.data;
+      const bookingId = bookingData?.bookingId || bookingData?.booking?.id || bookingData?.id;
+      
+      if (!bookingId) {
+        console.error('[UPI] Invalid booking response:', bookingResponse.data);
+        throw new Error('Invalid booking response - booking ID not found');
+      }
+
+      console.log('[UPI] Booking created successfully:', bookingId);
+      setCurrentBookingId(bookingId);
 
       // Generate unique transaction ID
-      const transactionId = `STUDYSPOT-${booking.id}-${Date.now()}`;
+      const transactionId = `STUDYSPOT-${bookingId}-${Date.now()}`;
 
       // Get merchant UPI ID from environment or use default
       const merchantUPIId = import.meta.env.VITE_MERCHANT_UPI_ID || 'studyspot@paytm';
       const merchantName = import.meta.env.VITE_MERCHANT_NAME || 'StudySpot';
+
+      console.log('[UPI] Preparing UPI params...', { merchantUPIId, merchantName, amount, transactionId });
 
       // Prepare UPI payment parameters
       const upiParams: UPIPaymentParams = {
@@ -703,18 +718,22 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
         merchantName: merchantName,
         amount: amount,
         transactionId: transactionId,
-        description: `Booking Payment - ${library?.name || 'Library'} - ${booking.id}`,
+        description: `Booking Payment - ${library?.name || 'Library'} - ${bookingId}`,
       };
 
       // Store transaction ID for verification
-      localStorage.setItem(`upi_txn_${booking.id}`, transactionId);
+      localStorage.setItem(`upi_txn_${bookingId}`, transactionId);
 
       // Store UPI params for QR code generation
       setUpiPaymentParams(upiParams);
       
+      console.log('[UPI] Opening payment dialog...');
+      
       // Show UPI payment dialog with options (Deep Link / QR Code)
       setSubmitting(false);
       setUpiPaymentDialog(true);
+      
+      console.log('[UPI] Payment dialog opened');
       
       // Start payment timer (15 minutes)
       setPaymentTimer(15 * 60);
@@ -733,13 +752,22 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
       // Store interval ID for cleanup
       (window as any).__upiPaymentTimer = timerInterval;
     } catch (error: any) {
-      console.error('[BOOKING] UPI payment failed:', error);
+      console.error('[UPI] UPI payment failed:', error);
+      console.error('[UPI] Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        stack: error.stack,
+      });
       const errorMessage = error.response?.data?.error?.message || 
                           error.response?.data?.message || 
                           error.message || 
                           'Failed to process UPI payment. Please try again.';
       toast.error(errorMessage);
       setSubmitting(false);
+      // Reset states on error
+      setUpiPaymentDialog(false);
+      setUpiPaymentParams(null);
+      setCurrentBookingId(null);
     }
   };
 
