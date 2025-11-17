@@ -45,6 +45,10 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Tabs,
+  Tab,
+  CardMedia,
+  IconButton,
 } from '@mui/material';
 import {
   ArrowBack,
@@ -67,6 +71,10 @@ import {
   CreditCard,
   QrCode2,
   AccountBalance,
+  ContentCopy,
+  CheckCircleOutline,
+  OpenInNew,
+  Refresh,
 } from '@mui/icons-material';
 import MobileLayout from '../components/MobileLayout';
 import { gradients } from '../theme/colors';
@@ -75,6 +83,7 @@ import { toast } from 'react-toastify';
 import { useAuth } from '../contexts/AuthContext';
 import { authService } from '../services/auth.service';
 import { openUPIPayment, generateUPIQRString, isUPISupported, type UPIPaymentParams } from '../utils/upiPayment';
+import { QRCodeSVG } from 'qrcode.react';
 
 interface Library {
   id: string;
@@ -159,8 +168,13 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
   const [loadingSeats, setLoadingSeats] = useState(false);
   const [showPriceBreakdown, setShowPriceBreakdown] = useState(false);
   const [upiVerificationDialog, setUpiVerificationDialog] = useState(false);
+  const [upiPaymentDialog, setUpiPaymentDialog] = useState(false);
   const [upiTransactionId, setUpiTransactionId] = useState('');
   const [currentBookingId, setCurrentBookingId] = useState<string | null>(null);
+  const [upiPaymentTab, setUpiPaymentTab] = useState(0); // 0: Deep Link, 1: QR Code
+  const [upiPaymentParams, setUpiPaymentParams] = useState<UPIPaymentParams | null>(null);
+  const [upiIdCopied, setUpiIdCopied] = useState(false);
+  const [paymentTimer, setPaymentTimer] = useState(0); // Timer in seconds
   
   const [bookingData, setBookingData] = useState({
     date: '',
@@ -688,20 +702,29 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
       // Store transaction ID for verification
       localStorage.setItem(`upi_txn_${booking.id}`, transactionId);
 
-      // Open UPI payment
-      const opened = openUPIPayment(upiParams);
-
-      if (opened) {
-        setSubmitting(false);
-        // Show verification dialog after a short delay
-        setTimeout(() => {
-          setUpiVerificationDialog(true);
-        }, 1000);
-        
-        toast.info('Please complete the payment in your UPI app. After payment, enter the transaction ID to verify.');
-      } else {
-        throw new Error('Failed to open UPI app. Please ensure you have a UPI app installed.');
-      }
+      // Store UPI params for QR code generation
+      setUpiPaymentParams(upiParams);
+      
+      // Show UPI payment dialog with options (Deep Link / QR Code)
+      setSubmitting(false);
+      setUpiPaymentDialog(true);
+      
+      // Start payment timer (15 minutes)
+      setPaymentTimer(15 * 60);
+      
+      // Auto-close verification dialog after timer expires
+      const timerInterval = setInterval(() => {
+        setPaymentTimer((prev) => {
+          if (prev <= 1) {
+            clearInterval(timerInterval);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      
+      // Cleanup on unmount
+      return () => clearInterval(timerInterval);
     } catch (error: any) {
       console.error('[BOOKING] UPI payment failed:', error);
       const errorMessage = error.response?.data?.error?.message || 
@@ -1378,8 +1401,18 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
                         </RadioGroup>
                       </FormControl>
                       {bookingData.paymentMethod === 'upi' && (
-                        <Alert severity="info" sx={{ mt: 2 }}>
-                          Pay using UPI apps like Google Pay, PhonePe, Paytm, BHIM, etc.
+                        <Alert 
+                          severity="info" 
+                          sx={{ mt: 2 }}
+                          icon={<QrCode2 />}
+                        >
+                          <Typography variant="body2" fontWeight="600" gutterBottom>
+                            Direct UPI Payment (No Gateway Fees)
+                          </Typography>
+                          <Typography variant="body2">
+                            Pay directly using UPI apps like Google Pay, PhonePe, Paytm, BHIM, etc. 
+                            You can scan a QR code or open the UPI app directly.
+                          </Typography>
                         </Alert>
                       )}
                     </CardContent>
@@ -1566,6 +1599,247 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
           </Grid>
         </Container>
 
+        {/* Enhanced UPI Payment Dialog */}
+        <Dialog 
+          open={upiPaymentDialog} 
+          onClose={() => {
+            if (!submitting) {
+              setUpiPaymentDialog(false);
+            }
+          }}
+          maxWidth="sm"
+          fullWidth
+          PaperProps={{
+            sx: { borderRadius: 3 }
+          }}
+        >
+          <DialogTitle>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <QrCode2 color="primary" />
+                <Typography variant="h6">Pay via UPI</Typography>
+              </Box>
+              {paymentTimer > 0 && (
+                <Chip 
+                  label={`${Math.floor(paymentTimer / 60)}:${String(paymentTimer % 60).padStart(2, '0')}`}
+                  color="warning"
+                  size="small"
+                />
+              )}
+            </Box>
+          </DialogTitle>
+          <DialogContent>
+            {upiPaymentParams && (
+              <>
+                {/* Payment Amount Display */}
+                <Card sx={{ bgcolor: 'primary.main', color: 'white', mb: 3, borderRadius: 2 }}>
+                  <CardContent sx={{ textAlign: 'center', py: 2 }}>
+                    <Typography variant="caption" sx={{ opacity: 0.9 }}>
+                      Pay Amount
+                    </Typography>
+                    <Typography variant="h4" fontWeight="bold">
+                      ₹{upiPaymentParams.amount.toFixed(2)}
+                    </Typography>
+                    <Typography variant="caption" sx={{ opacity: 0.8, mt: 0.5 }}>
+                      {library?.name || 'Library Booking'}
+                    </Typography>
+                  </CardContent>
+                </Card>
+
+                {/* UPI ID Display with Copy */}
+                <Box sx={{ mb: 3 }}>
+                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                    Merchant UPI ID
+                  </Typography>
+                  <Box sx={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: 1,
+                    p: 1.5,
+                    bgcolor: 'action.hover',
+                    borderRadius: 2,
+                    border: 1,
+                    borderColor: 'divider'
+                  }}>
+                    <Typography variant="body1" fontWeight="600" sx={{ flex: 1 }}>
+                      {upiPaymentParams.upiId}
+                    </Typography>
+                    <IconButton
+                      size="small"
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(upiPaymentParams.upiId);
+                          setUpiIdCopied(true);
+                          toast.success('UPI ID copied to clipboard!');
+                          setTimeout(() => setUpiIdCopied(false), 2000);
+                        } catch (err) {
+                          toast.error('Failed to copy UPI ID');
+                        }
+                      }}
+                      color={upiIdCopied ? 'success' : 'primary'}
+                    >
+                      {upiIdCopied ? <CheckCircleOutline /> : <ContentCopy />}
+                    </IconButton>
+                  </Box>
+                </Box>
+
+                {/* Payment Method Tabs */}
+                <Tabs 
+                  value={upiPaymentTab} 
+                  onChange={(e, v) => setUpiPaymentTab(v)}
+                  variant="fullWidth"
+                  sx={{ mb: 2 }}
+                >
+                  <Tab 
+                    label={
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <OpenInNew fontSize="small" />
+                        <span>Open UPI App</span>
+                      </Box>
+                    } 
+                  />
+                  <Tab 
+                    label={
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <QrCode2 fontSize="small" />
+                        <span>Scan QR Code</span>
+                      </Box>
+                    } 
+                  />
+                </Tabs>
+
+                {/* Deep Link Tab */}
+                {upiPaymentTab === 0 && (
+                  <Box>
+                    <Alert severity="info" sx={{ mb: 2 }}>
+                      <Typography variant="body2">
+                        Click the button below to open your UPI app directly. Make sure you have a UPI app installed (Google Pay, PhonePe, Paytm, BHIM, etc.)
+                      </Typography>
+                    </Alert>
+                    <Button
+                      fullWidth
+                      variant="contained"
+                      size="large"
+                      onClick={() => {
+                        const opened = openUPIPayment(upiPaymentParams);
+                        if (opened) {
+                          toast.info('Opening UPI app... Complete the payment and return here to verify.');
+                          setTimeout(() => {
+                            setUpiPaymentDialog(false);
+                            setUpiVerificationDialog(true);
+                          }, 500);
+                        } else {
+                          toast.error('Failed to open UPI app. Please try the QR code method.');
+                        }
+                      }}
+                      sx={{ 
+                        py: 1.5,
+                        background: gradients.primary,
+                        fontWeight: 'bold',
+                        mb: 2
+                      }}
+                      startIcon={<OpenInNew />}
+                    >
+                      Open UPI App
+                    </Button>
+                    <Button
+                      fullWidth
+                      variant="outlined"
+                      onClick={() => {
+                        setUpiPaymentTab(1);
+                      }}
+                      startIcon={<QrCode2 />}
+                    >
+                      Or Scan QR Code Instead
+                    </Button>
+                  </Box>
+                )}
+
+                {/* QR Code Tab */}
+                {upiPaymentTab === 1 && (
+                  <Box>
+                    <Alert severity="info" sx={{ mb: 2 }}>
+                      <Typography variant="body2">
+                        Scan this QR code with any UPI app to make the payment. The payment details are pre-filled.
+                      </Typography>
+                    </Alert>
+                    <Box sx={{ 
+                      display: 'flex', 
+                      justifyContent: 'center', 
+                      p: 3,
+                      bgcolor: 'background.paper',
+                      borderRadius: 2,
+                      border: 2,
+                      borderColor: 'primary.main',
+                      mb: 2
+                    }}>
+                      <QRCodeSVG 
+                        value={generateUPIQRString(upiPaymentParams)}
+                        size={250}
+                        level="H"
+                        includeMargin={true}
+                      />
+                    </Box>
+                    <Typography variant="caption" color="text.secondary" align="center" display="block" sx={{ mb: 2 }}>
+                      Scan with Google Pay, PhonePe, Paytm, BHIM, or any UPI app
+                    </Typography>
+                    <Button
+                      fullWidth
+                      variant="outlined"
+                      onClick={() => {
+                        setUpiPaymentTab(0);
+                      }}
+                      startIcon={<OpenInNew />}
+                    >
+                      Or Open UPI App Directly
+                    </Button>
+                  </Box>
+                )}
+
+                {/* Payment Instructions */}
+                <Divider sx={{ my: 2 }} />
+                <Alert severity="success" icon={<CheckCircleOutline />}>
+                  <Typography variant="body2" fontWeight="600" gutterBottom>
+                    After Payment:
+                  </Typography>
+                  <Typography variant="body2" component="div">
+                    1. Complete the payment in your UPI app
+                  </Typography>
+                  <Typography variant="body2" component="div">
+                    2. Copy the <strong>Transaction ID</strong> from your UPI app
+                  </Typography>
+                  <Typography variant="body2" component="div">
+                    3. Click "Verify Payment" below and paste the Transaction ID
+                  </Typography>
+                </Alert>
+              </>
+            )}
+          </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 2 }}>
+            <Button 
+              onClick={() => {
+                setUpiPaymentDialog(false);
+                setUpiPaymentParams(null);
+                setPaymentTimer(0);
+              }}
+              disabled={submitting}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={() => {
+                setUpiPaymentDialog(false);
+                setUpiVerificationDialog(true);
+              }}
+              variant="contained"
+              disabled={submitting}
+              startIcon={<CheckCircle />}
+            >
+              I've Paid - Verify Now
+            </Button>
+          </DialogActions>
+        </Dialog>
+
         {/* UPI Payment Verification Dialog */}
         <Dialog 
           open={upiVerificationDialog} 
@@ -1576,6 +1850,9 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
           }}
           maxWidth="sm"
           fullWidth
+          PaperProps={{
+            sx: { borderRadius: 3 }
+          }}
         >
           <DialogTitle>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -1584,50 +1861,112 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
             </Box>
           </DialogTitle>
           <DialogContent>
+            {upiPaymentParams && (
+              <Card sx={{ bgcolor: 'success.light', color: 'success.dark', mb: 2, borderRadius: 2 }}>
+                <CardContent sx={{ py: 1.5 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Box>
+                      <Typography variant="caption" sx={{ opacity: 0.8 }}>
+                        Payment Amount
+                      </Typography>
+                      <Typography variant="h6" fontWeight="bold">
+                        ₹{upiPaymentParams.amount.toFixed(2)}
+                      </Typography>
+                    </Box>
+                    <CheckCircleOutline sx={{ fontSize: 32, opacity: 0.7 }} />
+                  </Box>
+                </CardContent>
+              </Card>
+            )}
+            
             <Alert severity="info" sx={{ mb: 2 }}>
-              <Typography variant="body2" gutterBottom>
-                <strong>Steps to verify payment:</strong>
+              <Typography variant="body2" fontWeight="600" gutterBottom>
+                Verify Your Payment:
               </Typography>
               <Typography variant="body2" component="div">
-                1. Complete the payment in your UPI app (Google Pay, PhonePe, Paytm, BHIM, etc.)
+                1. Open your UPI app (Google Pay, PhonePe, Paytm, BHIM, etc.)
               </Typography>
               <Typography variant="body2" component="div">
-                2. Copy the <strong>Transaction ID</strong> or <strong>UPI Reference Number</strong> from your UPI app
+                2. Go to <strong>Transaction History</strong> or <strong>Passbook</strong>
               </Typography>
               <Typography variant="body2" component="div">
-                3. Paste it below and click "Verify Payment"
+                3. Find the payment you just made
+              </Typography>
+              <Typography variant="body2" component="div">
+                4. Copy the <strong>Transaction ID</strong> or <strong>UPI Reference Number</strong>
+              </Typography>
+              <Typography variant="body2" component="div" sx={{ mt: 1 }}>
+                5. Paste it below and click "Verify Payment"
               </Typography>
             </Alert>
+            
             <TextField
               fullWidth
               label="UPI Transaction ID / Reference Number"
-              placeholder="Enter transaction ID from your UPI app"
+              placeholder="e.g., 123456789012 or UPI/123456/789012"
               value={upiTransactionId}
               onChange={(e) => setUpiTransactionId(e.target.value)}
               sx={{ mt: 2 }}
-              helperText="You can find this in your UPI app's transaction history"
+              helperText="You can find this in your UPI app's transaction history or payment receipt"
+              InputProps={{
+                endAdornment: upiTransactionId && (
+                  <IconButton
+                    size="small"
+                    onClick={() => setUpiTransactionId('')}
+                  >
+                    <Refresh fontSize="small" />
+                  </IconButton>
+                )
+              }}
             />
-            <Alert severity="warning" sx={{ mt: 2 }}>
-              <Typography variant="caption">
-                If you haven't made the payment yet, please complete it in your UPI app first.
+            
+            <Box sx={{ mt: 2, p: 2, bgcolor: 'action.hover', borderRadius: 2 }}>
+              <Typography variant="caption" fontWeight="600" display="block" gutterBottom>
+                💡 Where to find Transaction ID:
               </Typography>
-            </Alert>
+              <Typography variant="caption" component="div">
+                • Google Pay: Transaction details → Transaction ID
+              </Typography>
+              <Typography variant="caption" component="div">
+                • PhonePe: Transaction → View Details → UPI Ref No.
+              </Typography>
+              <Typography variant="caption" component="div">
+                • Paytm: Passbook → Transaction → UPI Ref No.
+              </Typography>
+              <Typography variant="caption" component="div">
+                • BHIM: Transaction History → Transaction ID
+              </Typography>
+            </Box>
+            
+            {upiTransactionId && (
+              <Alert severity="success" sx={{ mt: 2 }}>
+                <Typography variant="body2">
+                  Transaction ID entered. Click "Verify Payment" to confirm.
+                </Typography>
+              </Alert>
+            )}
           </DialogContent>
           <DialogActions>
             <Button 
               onClick={() => {
                 setUpiVerificationDialog(false);
                 setUpiTransactionId('');
+                setUpiPaymentParams(null);
               }}
               disabled={submitting}
             >
-              Cancel
+              Back
             </Button>
             <Button 
               onClick={verifyUPIPayment}
               variant="contained"
               disabled={submitting || !upiTransactionId.trim()}
               startIcon={submitting ? <CircularProgress size={20} /> : <CheckCircle />}
+              sx={{
+                background: gradients.primary,
+                fontWeight: 'bold',
+                minWidth: 150
+              }}
             >
               {submitting ? 'Verifying...' : 'Verify Payment'}
             </Button>
