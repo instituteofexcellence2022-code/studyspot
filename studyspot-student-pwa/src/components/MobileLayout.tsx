@@ -76,7 +76,6 @@ export default function MobileLayout({ children, setIsAuthenticated }: MobileLay
     {
       title: 'Study Tools',
       items: [
-        { text: 'QR Scanner', icon: <QRIcon />, path: '/qr-scanner', color: '#10b981' },
         { text: 'Attendance', icon: <AttendanceIcon />, path: '/attendance', color: '#14b8a6' },
         { text: 'Study Timer', icon: <TimerIcon />, path: '/study-timer', color: '#3b82f6' },
         { text: 'Tasks & Goals', icon: <TaskIcon />, path: '/tasks-goals', color: '#06b6d4' },
@@ -210,6 +209,23 @@ export default function MobileLayout({ children, setIsAuthenticated }: MobileLay
 
           {/* Compact Action Icons */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            {/* QR Scanner Icon */}
+            <IconButton 
+              color="inherit" 
+              size="small"
+              onClick={() => navigate('/qr-scanner')}
+              sx={{ 
+                width: 36,
+                height: 36,
+                bgcolor: alpha('#ffffff', 0.15),
+                border: '1px solid rgba(255,255,255,0.2)',
+                '&:hover': { bgcolor: alpha('#ffffff', 0.25) }
+              }}
+              title="QR Scanner"
+            >
+              <QRIcon sx={{ fontSize: 20 }} />
+            </IconButton>
+
             <IconButton 
               color="inherit" 
               size="small"
