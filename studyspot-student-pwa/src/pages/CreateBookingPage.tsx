@@ -1566,6 +1566,74 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
             </Grid>
           </Grid>
         </Container>
+
+        {/* UPI Payment Verification Dialog */}
+        <Dialog 
+          open={upiVerificationDialog} 
+          onClose={() => {
+            if (!submitting) {
+              setUpiVerificationDialog(false);
+            }
+          }}
+          maxWidth="sm"
+          fullWidth
+        >
+          <DialogTitle>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <QrCode2 color="primary" />
+              <Typography variant="h6">Verify UPI Payment</Typography>
+            </Box>
+          </DialogTitle>
+          <DialogContent>
+            <Alert severity="info" sx={{ mb: 2 }}>
+              <Typography variant="body2" gutterBottom>
+                <strong>Steps to verify payment:</strong>
+              </Typography>
+              <Typography variant="body2" component="div">
+                1. Complete the payment in your UPI app (Google Pay, PhonePe, Paytm, BHIM, etc.)
+              </Typography>
+              <Typography variant="body2" component="div">
+                2. Copy the <strong>Transaction ID</strong> or <strong>UPI Reference Number</strong> from your UPI app
+              </Typography>
+              <Typography variant="body2" component="div">
+                3. Paste it below and click "Verify Payment"
+              </Typography>
+            </Alert>
+            <TextField
+              fullWidth
+              label="UPI Transaction ID / Reference Number"
+              placeholder="Enter transaction ID from your UPI app"
+              value={upiTransactionId}
+              onChange={(e) => setUpiTransactionId(e.target.value)}
+              sx={{ mt: 2 }}
+              helperText="You can find this in your UPI app's transaction history"
+            />
+            <Alert severity="warning" sx={{ mt: 2 }}>
+              <Typography variant="caption">
+                If you haven't made the payment yet, please complete it in your UPI app first.
+              </Typography>
+            </Alert>
+          </DialogContent>
+          <DialogActions>
+            <Button 
+              onClick={() => {
+                setUpiVerificationDialog(false);
+                setUpiTransactionId('');
+              }}
+              disabled={submitting}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={verifyUPIPayment}
+              variant="contained"
+              disabled={submitting || !upiTransactionId.trim()}
+              startIcon={submitting ? <CircularProgress size={20} /> : <CheckCircle />}
+            >
+              {submitting ? 'Verifying...' : 'Verify Payment'}
+            </Button>
+          </DialogActions>
+        </Dialog>
       </Box>
     </MobileLayout>
   );
