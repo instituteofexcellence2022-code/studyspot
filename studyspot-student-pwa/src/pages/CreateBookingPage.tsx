@@ -159,9 +159,19 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
   useEffect(() => {
     if (id) {
       fetchLibraryDetails();
-      fetchFeePlans();
     }
   }, [id]);
+
+  // Fetch fee plans after library is loaded (or use defaults)
+  useEffect(() => {
+    if (id) {
+      // Wait a bit for library to load, then fetch fee plans
+      const timer = setTimeout(() => {
+        fetchFeePlans();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [id, library]);
 
   useEffect(() => {
     if (bookingData.date && bookingData.shift && bookingData.zone) {
@@ -213,9 +223,12 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
   const fetchFeePlans = async () => {
     try {
       const response = await api.get(`/api/fee-plans`);
-      if (response.data.success && response.data.data?.plans) {
+      console.log('[BOOKING] Fee plans API response:', response.data);
+      
+      // API returns: { success: true, data: { feePlans: [...] } }
+      if (response.data.success && response.data.data?.feePlans) {
         // Transform API response to match FeePlan interface (aligned with web owner)
-        const transformedPlans: FeePlan[] = response.data.data.plans.map((plan: any) => ({
+        const transformedPlans: FeePlan[] = response.data.data.feePlans.map((plan: any) => ({
           id: plan.id,
           name: plan.name,
           description: plan.description || '',
@@ -223,27 +236,38 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
           basePrice: plan.basePrice || plan.base_price || 0,
           status: plan.status || 'active',
           isPopular: plan.isPopular || plan.is_popular || false,
-          features: plan.features || [],
-          shiftPricing: plan.shiftPricing || plan.shift_pricing,
-          zonePricing: plan.zonePricing || plan.zone_pricing,
-          discount: plan.discount,
+          features: Array.isArray(plan.features) ? plan.features : (plan.features ? JSON.parse(plan.features) : []),
+          shiftPricing: plan.shiftPricing || plan.shift_pricing || (plan.custom_shift ? JSON.parse(plan.custom_shift) : undefined),
+          zonePricing: plan.zonePricing || plan.zone_pricing || (plan.custom_zone ? JSON.parse(plan.custom_zone) : undefined),
+          discount: plan.discount ? (typeof plan.discount === 'string' ? JSON.parse(plan.discount) : plan.discount) : undefined,
           maxSeats: plan.maxSeats || plan.max_seats,
           maxHours: plan.maxHours || plan.max_hours,
           scholarshipEligible: plan.scholarshipEligible || plan.scholarship_eligible || false,
           waiverAllowed: plan.waiverAllowed || plan.waiver_allowed || false,
         }));
-        setFeePlans(transformedPlans.filter(p => p.status === 'active'));
-      } else {
-        setFeePlans(getDefaultFeePlans());
+        const activePlans = transformedPlans.filter(p => p.status === 'active');
+        console.log('[BOOKING] Transformed fee plans:', activePlans);
+        if (activePlans.length > 0) {
+          setFeePlans(activePlans);
+          return;
+        }
       }
-    } catch (error) {
+      
+      // If no plans from API or empty, use defaults
+      console.log('[BOOKING] Using default fee plans');
+      setFeePlans(getDefaultFeePlans());
+    } catch (error: any) {
       console.warn('[BOOKING] Failed to fetch fee plans, using defaults:', error);
+      console.warn('[BOOKING] Error details:', error.response?.data || error.message);
+      // Always fallback to defaults
       setFeePlans(getDefaultFeePlans());
     }
   };
 
   const getDefaultFeePlans = (): FeePlan[] => {
-    if (!library) return [];
+    // Use library data if available, otherwise use fallback values
+    const hourlyRate = library?.hourlyRate || 50;
+    const dailyRate = library?.dailyRate || 300;
     
     return [
       {
@@ -251,7 +275,7 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
         name: 'Hourly Basic',
         description: 'Pay per hour for flexible usage',
         type: 'hourly',
-        basePrice: library.hourlyRate || 50,
+        basePrice: hourlyRate,
         status: 'active',
         isPopular: false,
         features: [
@@ -261,17 +285,17 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
           'Power outlets available'
         ],
         shiftPricing: {
-          morning: (library.hourlyRate || 50) * 0.8,
-          afternoon: library.hourlyRate || 50,
-          evening: (library.hourlyRate || 50) * 1.2,
-          night: (library.hourlyRate || 50) * 1.5,
+          morning: hourlyRate * 0.8,
+          afternoon: hourlyRate,
+          evening: hourlyRate * 1.2,
+          night: hourlyRate * 1.5,
         },
         zonePricing: {
-          ac: (library.hourlyRate || 50) * 1.2,
-          nonAc: (library.hourlyRate || 50) * 0.8,
-          premium: (library.hourlyRate || 50) * 1.5,
-          quiet: (library.hourlyRate || 50) * 1.1,
-          general: library.hourlyRate || 50,
+          ac: hourlyRate * 1.2,
+          nonAc: hourlyRate * 0.8,
+          premium: hourlyRate * 1.5,
+          quiet: hourlyRate * 1.1,
+          general: hourlyRate,
         },
         maxSeats: 1,
         maxHours: 8,
@@ -283,7 +307,7 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
         name: 'Daily Pass',
         description: 'Full day access with all amenities',
         type: 'daily',
-        basePrice: library.dailyRate || 300,
+        basePrice: dailyRate,
         status: 'active',
         isPopular: true,
         features: [
@@ -294,16 +318,16 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
           'Study materials access'
         ],
         shiftPricing: {
-          morning: (library.dailyRate || 300) * 0.8,
-          afternoon: library.dailyRate || 300,
-          evening: (library.dailyRate || 300) * 1.2,
+          morning: dailyRate * 0.8,
+          afternoon: dailyRate,
+          evening: dailyRate * 1.2,
         },
         zonePricing: {
-          ac: (library.dailyRate || 300) * 1.2,
-          nonAc: (library.dailyRate || 300) * 0.8,
-          premium: (library.dailyRate || 300) * 1.5,
-          quiet: (library.dailyRate || 300) * 1.1,
-          general: library.dailyRate || 300,
+          ac: dailyRate * 1.2,
+          nonAc: dailyRate * 0.8,
+          premium: dailyRate * 1.5,
+          quiet: dailyRate * 1.1,
+          general: dailyRate,
         },
         maxSeats: 1,
         maxHours: 14,
