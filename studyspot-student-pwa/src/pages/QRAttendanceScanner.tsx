@@ -99,15 +99,22 @@ export default function QRAttendanceScanner({ setIsAuthenticated }: QRAttendance
     // Cleanup: Stop scanner when component unmounts
     return () => {
       clearInterval(interval);
+      // Scanner cleanup will be handled by stopScanning function
+    };
+  }, [user?.id]);
+
+  // Separate effect for scanner cleanup on unmount
+  useEffect(() => {
+    return () => {
       if (scanner) {
         try {
           scanner.clear().catch(() => {});
         } catch (error) {
-          console.warn('Error cleaning up scanner:', error);
+          console.warn('Error cleaning up scanner on unmount:', error);
         }
       }
     };
-  }, [user?.id]);
+  }, [scanner]);
 
   useEffect(() => {
     if (activeSession) {
