@@ -96,7 +96,17 @@ export default function QRAttendanceScanner({ setIsAuthenticated }: QRAttendance
       }
     }, 60000); // Every minute
 
-    return () => clearInterval(interval);
+    // Cleanup: Stop scanner when component unmounts
+    return () => {
+      clearInterval(interval);
+      if (scanner) {
+        try {
+          scanner.clear().catch(() => {});
+        } catch (error) {
+          console.warn('Error cleaning up scanner:', error);
+        }
+      }
+    };
   }, [user?.id]);
 
   useEffect(() => {
@@ -150,20 +160,49 @@ export default function QRAttendanceScanner({ setIsAuthenticated }: QRAttendance
     },
   ];
 
-  const startScanning = () => {
+  const startScanning = async () => {
     setScanning(true);
     setCameraError(false);
 
     try {
+      // Check if camera is available
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Camera API not supported in this browser');
+      }
+
+      // Request camera permission first
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          video: { 
+            facingMode: { ideal: "environment" } // Prefer rear camera
+          } 
+        });
+        // Stop the test stream immediately
+        stream.getTracks().forEach(track => track.stop());
+      } catch (permError: any) {
+        if (permError.name === 'NotAllowedError' || permError.name === 'PermissionDeniedError') {
+          setCameraError(true);
+          toast.error('📷 Camera permission denied. Please allow camera access in your browser settings.');
+          setScanning(false);
+          return;
+        } else if (permError.name === 'NotFoundError' || permError.name === 'DevicesNotFoundError') {
+          setCameraError(true);
+          toast.error('📷 No camera found. Please use manual entry or upload option.');
+          setScanning(false);
+          return;
+        }
+        throw permError;
+      }
+
       // Mobile-optimized configuration
       const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-      const qrBoxSize = isMobile ? Math.min(window.innerWidth * 0.7, 300) : 250;
+      const qrBoxSize = isMobile ? Math.min(window.innerWidth * 0.8, 350) : 300;
       
       const qrScanner = new Html5QrcodeScanner(
         'qr-reader',
         {
-          fps: 10,
-          qrbox: qrBoxSize, // Responsive size
+          fps: 10, // Smooth scanning rate
+          qrbox: { width: qrBoxSize, height: qrBoxSize }, // Square scanning area
           aspectRatio: 1.0,
           rememberLastUsedCamera: true,
           // Mobile-specific settings
@@ -171,60 +210,119 @@ export default function QRAttendanceScanner({ setIsAuthenticated }: QRAttendance
             facingMode: { ideal: "environment" }, // Prefer rear camera on mobile
             width: { ideal: 1920 },
             height: { ideal: 1080 }
-          } : undefined,
+          } : {
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          },
           // Better mobile support
           supportedScanTypes: [0], // QR_CODE only for faster scanning
           showTorchButtonIfSupported: true, // Show flashlight on mobile
           showZoomSliderIfSupported: true, // Show zoom on mobile
+          // Improved scanning performance
+          disableFlip: false, // Allow flipping for better detection
+          experimentalFeatures: {
+            useBarCodeDetectorIfSupported: true, // Use native barcode detector if available
+          },
         },
-        false
+        false // verbose mode off for better performance
       );
 
-      qrScanner.render(onScanSuccess, (errorMessage) => {
-        // Camera permission or access errors
-        if (errorMessage.includes('NotAllowedError') || errorMessage.includes('NotFoundError')) {
-          setCameraError(true);
-          toast.error('📷 Camera access denied or not available. Please use manual entry or upload option.');
+      qrScanner.render(
+        onScanSuccess, 
+        (errorMessage) => {
+          // Only show errors for actual failures, not scan attempts
+          if (errorMessage.includes('NotAllowedError') || 
+              errorMessage.includes('PermissionDeniedError') ||
+              errorMessage.includes('NotFoundError') ||
+              errorMessage.includes('DevicesNotFoundError')) {
+            setCameraError(true);
+            toast.error('📷 Camera access issue. Please use manual entry or upload option.');
+            stopScanning();
+          }
+          // Other errors are just scan attempts failing, ignore them
         }
-      });
+      );
       
       setScanner(qrScanner);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error starting scanner:', error);
       setCameraError(true);
-      toast.error('Failed to start camera. Please use manual entry option.');
+      
+      let errorMsg = 'Failed to start camera. ';
+      if (error.name === 'NotAllowedError') {
+        errorMsg = 'Camera permission denied. Please allow camera access.';
+      } else if (error.name === 'NotFoundError') {
+        errorMsg = 'No camera found. Please use manual entry option.';
+      } else if (error.message?.includes('not supported')) {
+        errorMsg = 'Camera not supported in this browser.';
+      }
+      
+      toast.error(errorMsg);
       setScanning(false);
     }
   };
 
   const stopScanning = () => {
     if (scanner) {
-      scanner.clear();
-      setScanner(null);
+      try {
+        scanner.clear().catch((error) => {
+          console.warn('Error clearing scanner:', error);
+        });
+        setScanner(null);
+      } catch (error) {
+        console.error('Error stopping scanner:', error);
+        // Force cleanup
+        const qrReaderElement = document.getElementById('qr-reader');
+        if (qrReaderElement) {
+          qrReaderElement.innerHTML = '';
+        }
+        setScanner(null);
+      }
     }
     setScanning(false);
+    setCameraError(false);
   };
 
-  const onScanSuccess = async (decodedText: string) => {
+  const onScanSuccess = async (decodedText: string, decodedResult: any) => {
     console.log('📱 QR Code scanned:', decodedText);
 
-    // Stop scanner
+    // Stop scanner immediately to prevent multiple scans
     stopScanning();
+
+    // Show processing feedback
+    toast.info('Processing QR code...', { autoClose: 1000 });
 
     // Process QR code
     try {
-      const qrData = JSON.parse(decodedText);
+      // Try to parse as JSON first
+      let qrData;
+      try {
+        qrData = JSON.parse(decodedText);
+      } catch (parseError) {
+        // If not JSON, try to extract data from URL or plain text
+        if (decodedText.includes('action') || decodedText.includes('libraryId')) {
+          // Try to extract from URL parameters or query string
+          const urlParams = new URLSearchParams(decodedText);
+          qrData = {
+            action: urlParams.get('action') || decodedText.match(/action[=:](check_in|check_out)/)?.[1],
+            libraryId: urlParams.get('libraryId') || decodedText.match(/libraryId[=:]([^&\s]+)/)?.[1],
+            libraryName: urlParams.get('libraryName') || decodedText.match(/libraryName[=:]([^&\s]+)/)?.[1],
+          };
+        } else {
+          throw new Error('Invalid QR code format');
+        }
+      }
       
-      if (qrData.action === 'check_in') {
+      if (qrData.action === 'check_in' || decodedText.toLowerCase().includes('check_in')) {
         await handleCheckIn(qrData);
-      } else if (qrData.action === 'check_out') {
+      } else if (qrData.action === 'check_out' || decodedText.toLowerCase().includes('check_out')) {
         await handleCheckOut(qrData);
       } else {
-        toast.error('Invalid QR code action');
+        toast.error('Invalid QR code: Missing action (check_in or check_out)');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error parsing QR code:', error);
-      toast.error('Invalid QR code format');
+      toast.error(error.message || 'Invalid QR code format. Please scan a valid library QR code.');
     }
   };
 
@@ -520,8 +618,21 @@ export default function QRAttendanceScanner({ setIsAuthenticated }: QRAttendance
                 sx={{
                   borderRadius: 2,
                   overflow: 'hidden',
+                  position: 'relative',
+                  minHeight: 300,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  bgcolor: 'black',
                   '& video': {
                     borderRadius: 2,
+                    width: '100%',
+                    maxWidth: '100%',
+                    height: 'auto',
+                  },
+                  '& #qr-shaded-region': {
+                    borderColor: 'primary.main !important',
+                    borderWidth: '3px !important',
                   },
                 }}
               />
