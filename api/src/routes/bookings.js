@@ -119,8 +119,8 @@ router.post('/', [
   body('libraryId').isUUID().withMessage('Valid library ID is required'),
   body('seatId').notEmpty().withMessage('Valid seat ID is required'), // Allow string IDs for mock seats
   body('date').isISO8601().withMessage('Valid date is required'),
-  body('startTime').matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/).withMessage('Valid start time is required'),
-  body('endTime').matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/).withMessage('Valid end time is required'),
+  body('startTime').matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:00)?$/).withMessage('Valid start time is required (HH:MM or HH:MM:SS)'),
+  body('endTime').matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:00)?$/).withMessage('Valid end time is required (HH:MM or HH:MM:SS)'),
   body('bookingType').optional().isIn(['hourly', 'daily', 'monthly']).withMessage('Invalid booking type'),
   body('paymentMethod').optional().isIn(['online', 'offline']).withMessage('Invalid payment method'),
   body('feePlanId').optional().isString().withMessage('Fee plan ID should be a string'),
@@ -133,7 +133,13 @@ router.post('/', [
     });
   }
 
-  const { libraryId, seatId, date, startTime, endTime, bookingType = 'hourly', paymentMethod = 'online', feePlanId, totalAmount: providedAmount } = req.body;
+  const { libraryId, seatId, date, startTime: rawStartTime, endTime: rawEndTime, bookingType = 'hourly', paymentMethod = 'online', feePlanId, totalAmount: providedAmount } = req.body;
+  
+  // Normalize time format (remove seconds if present)
+  const startTime = rawStartTime?.includes(':') ? rawStartTime.split(':').slice(0, 2).join(':') : rawStartTime;
+  const endTime = rawEndTime?.includes(':') ? rawEndTime.split(':').slice(0, 2).join(':') : rawEndTime;
+  
+  logger.info(`[BOOKING] Creating booking with times: ${startTime} - ${endTime}`);
 
   // Validate date is not in the past
   const bookingDate = new Date(date);

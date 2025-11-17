@@ -515,17 +515,16 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
         bookingType = 'monthly';
       }
 
-      // Format date and time for API
+      // Format date and time for API (HH:MM format, not HH:MM:SS)
       // Handle night shift (spans midnight - end time is next day)
-      let startTime = `${selectedShift.start}:00`;
-      let endTime = `${selectedShift.end}:00`;
+      let startTime = selectedShift.start; // Already in HH:MM format
+      let endTime = selectedShift.end; // Already in HH:MM format
       let bookingDate = bookingData.date;
       
       // Night shift: 23:00 to 06:00 (next day)
+      // API validation expects HH:MM format, so use 06:00 (not 06:00:00)
       if (bookingData.shift === 'night') {
-        // End time is next day, but API expects same date with time
-        // We'll send the end time as 06:00 and let backend handle next day logic
-        endTime = '06:00:00';
+        endTime = '06:00';
       }
 
       // Get calculated price from price breakdown
@@ -551,6 +550,8 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
       };
 
       console.log('[BOOKING] Submitting booking:', bookingPayload);
+      console.log('[BOOKING] API Base URL:', import.meta.env.VITE_API_URL || 'https://studyspot-api.onrender.com');
+      console.log('[BOOKING] Full URL will be:', `${import.meta.env.VITE_API_URL || 'https://studyspot-api.onrender.com'}/api/bookings`);
 
       const response = await api.post('/api/bookings', bookingPayload);
 
@@ -564,11 +565,44 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
       }
     } catch (error: any) {
       console.error('[BOOKING] Booking creation failed:', error);
+      console.error('[BOOKING] Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        config: {
+          url: error.config?.url,
+          method: error.config?.method,
+          data: error.config?.data,
+        },
+      });
+      
+      // Check if it's a network error
+      if (!error.response) {
+        console.error('[BOOKING] Network error - no response from server');
+        toast.error('Network error: Unable to reach server. Please check your connection and try again.');
+        return;
+      }
+      
+      // Extract error message from response
       const errorMessage = error.response?.data?.error?.message || 
                           error.response?.data?.message || 
+                          error.response?.data?.error ||
                           error.message || 
                           'Failed to create booking. Please try again.';
-      toast.error(errorMessage);
+      
+      // Show validation errors in detail
+      if (error.response?.data?.error?.details) {
+        const details = error.response.data.error.details;
+        if (Array.isArray(details)) {
+          const validationErrors = details.map((d: any) => d.msg || d.message).join(', ');
+          toast.error(`Validation error: ${validationErrors}`);
+        } else {
+          toast.error(errorMessage);
+        }
+      } else {
+        toast.error(errorMessage);
+      }
     } finally {
       setSubmitting(false);
     }

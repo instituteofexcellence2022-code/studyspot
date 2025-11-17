@@ -46,7 +46,7 @@ export const apiClient = createApiClient({
   baseURL: import.meta.env.VITE_API_URL || DEFAULT_API_BASE,
   tokenStorage,
   getTenantId: () => tokenStorage.read()?.tenantId ?? null,
-  requestTimeoutMs: 10000, // 10 seconds timeout to prevent hanging
+  requestTimeoutMs: 30000, // Increased to 30 seconds for Render cold starts
   onUnauthorized: () => {
     // Only logout if we're sure it's an auth issue, not a service error
     console.warn('[StudySpot] Unauthorized access - clearing tokens');
