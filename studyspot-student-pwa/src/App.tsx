@@ -26,6 +26,7 @@ import RewardsMobile from './pages/RewardsMobile';
 import LibraryDetailsPageEnhanced from './pages/CompactLibraryDetailsPage';
 import CreateBookingPage from './pages/CreateBookingPage';
 import QRAttendanceScanner from './pages/QRAttendanceScanner';
+import AttendancePage from './pages/AttendancePage';
 import StudyTimerPage from './pages/StudyTimerPage';
 import PaymentsPage from './pages/PaymentsPage';
 import ResourcesPage from './pages/ResourcesPage';
@@ -130,7 +131,7 @@ function App() {
               path="/attendance"
               element={
                 <ProtectedRoute>
-                  <QRAttendanceScanner setIsAuthenticated={setIsAuthenticated} />
+                  <AttendancePage setIsAuthenticated={setIsAuthenticated} />
                 </ProtectedRoute>
               }
             />
