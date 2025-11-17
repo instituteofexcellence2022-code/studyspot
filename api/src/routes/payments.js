@@ -658,4 +658,132 @@ router.get('/:id',
   }
 );
 
+/**
+ * @route   POST /api/payments/verify-upi
+ * @desc    Verify UPI payment by transaction ID
+ * @access  Private
+ */
+router.post('/verify-upi',
+  verifyToken,
+  [
+    body('bookingId').notEmpty().withMessage('Booking ID is required'),
+    body('transactionId').notEmpty().trim().withMessage('Transaction ID is required'),
+    body('amount').isFloat({ min: 0.01 }).withMessage('Amount must be greater than 0')
+  ],
+  handleValidationErrors,
+  async (req, res) => {
+    try {
+      const { bookingId, transactionId, amount } = req.body;
+      const userId = req.user.id;
+      const tenantId = req.user.tenantId;
+
+      // Check if booking exists and belongs to user
+      const bookingResult = await dbQuery(`
+        SELECT id, user_id, total_amount, payment_status, library_id
+        FROM bookings
+        WHERE id = $1 AND user_id = $2
+      `, [bookingId, userId]);
+
+      if (bookingResult.rows.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: 'Booking not found'
+        });
+      }
+
+      const booking = bookingResult.rows[0];
+
+      // Check if amount matches
+      if (Math.abs(parseFloat(booking.total_amount) - parseFloat(amount)) > 0.01) {
+        return res.status(400).json({
+          success: false,
+          message: 'Payment amount does not match booking amount'
+        });
+      }
+
+      // Check if payment already exists for this transaction ID
+      const existingPayment = await dbQuery(`
+        SELECT id FROM payments
+        WHERE transaction_id = $1 AND tenant_id = $2
+      `, [transactionId, tenantId]);
+
+      if (existingPayment.rows.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'This transaction ID has already been used'
+        });
+      }
+
+      // Create payment record
+      const paymentQuery = `
+        INSERT INTO payments (
+          tenant_id, user_id, booking_id, amount, currency, payment_method,
+          payment_status, transaction_id, payment_gateway, is_verified,
+          verified_at, notes
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        RETURNING id, amount, payment_status, transaction_id, created_at
+      `;
+
+      const paymentResult = await dbQuery(paymentQuery, [
+        tenantId,
+        userId,
+        bookingId,
+        amount,
+        'INR',
+        'upi',
+        'completed', // UPI payments are considered completed once verified
+        transactionId,
+        'direct_upi', // Direct UPI (no gateway)
+        true, // Verified
+        new Date(),
+        `Direct UPI payment verified for booking ${bookingId}`
+      ]);
+
+      const payment = paymentResult.rows[0];
+
+      // Update booking payment status
+      await dbQuery(`
+        UPDATE bookings
+        SET payment_status = 'completed', updated_at = NOW()
+        WHERE id = $1
+      `, [bookingId]);
+
+      logger.info('UPI payment verified', {
+        paymentId: payment.id,
+        bookingId,
+        transactionId,
+        amount,
+        userId
+      });
+
+      res.json({
+        success: true,
+        message: 'Payment verified successfully',
+        data: {
+          payment: {
+            id: payment.id,
+            amount: payment.amount,
+            status: payment.payment_status,
+            transactionId: payment.transaction_id,
+            verifiedAt: payment.created_at
+          },
+          booking: {
+            id: bookingId,
+            paymentStatus: 'completed'
+          }
+        }
+      });
+
+    } catch (error) {
+      logger.error('Error verifying UPI payment:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to verify payment',
+        error: error.message
+      });
+    }
+  }
+);
+
 module.exports = router;

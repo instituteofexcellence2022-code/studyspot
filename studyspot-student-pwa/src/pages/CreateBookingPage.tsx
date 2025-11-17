@@ -41,6 +41,11 @@ import {
   ListItemIcon,
   ListItemText,
   LinearProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
 } from '@mui/material';
 import {
   ArrowBack,
@@ -70,6 +75,7 @@ import api from '../services/api';
 import { toast } from 'react-toastify';
 import { useAuth } from '../contexts/AuthContext';
 import { authService } from '../services/auth.service';
+import { openUPIPayment, generateUPIQRString, isUPISupported, type UPIPaymentParams } from '../utils/upiPayment';
 
 interface Library {
   id: string;
@@ -153,6 +159,9 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
   const [availableSeats, setAvailableSeats] = useState<Seat[]>([]);
   const [loadingSeats, setLoadingSeats] = useState(false);
   const [showPriceBreakdown, setShowPriceBreakdown] = useState(false);
+  const [upiVerificationDialog, setUpiVerificationDialog] = useState(false);
+  const [upiTransactionId, setUpiTransactionId] = useState('');
+  const [currentBookingId, setCurrentBookingId] = useState<string | null>(null);
   
   const [bookingData, setBookingData] = useState({
     date: '',
@@ -638,15 +647,20 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
     }
   };
 
-  // Handle UPI Payment
+  // Handle Direct UPI Payment (bypassing payment gateway)
   const handleUPIPayment = async (bookingPayload: any, amount: number) => {
     try {
       setSubmitting(true);
       
-      // First create the booking
+      // Check if UPI is supported
+      if (!isUPISupported()) {
+        toast.warning('UPI payment is best experienced on mobile devices. Please use a mobile device or try another payment method.');
+      }
+      
+      // First create the booking with pending payment status
       const bookingResponse = await api.post('/api/bookings', {
         ...bookingPayload,
-        paymentMethod: 'upi', // Override to upi
+        paymentMethod: 'upi',
       });
 
       if (!bookingResponse.data.success) {
@@ -654,80 +668,41 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
       }
 
       const booking = bookingResponse.data.data;
+      setCurrentBookingId(booking.id);
 
-      // Create Razorpay order for UPI
-      const orderResponse = await api.post('/api/payments/create-order', {
+      // Generate unique transaction ID
+      const transactionId = `STUDYSPOT-${booking.id}-${Date.now()}`;
+
+      // Get merchant UPI ID from environment or use default
+      const merchantUPIId = import.meta.env.VITE_MERCHANT_UPI_ID || 'studyspot@paytm';
+      const merchantName = import.meta.env.VITE_MERCHANT_NAME || 'StudySpot';
+
+      // Prepare UPI payment parameters
+      const upiParams: UPIPaymentParams = {
+        upiId: merchantUPIId,
+        merchantName: merchantName,
         amount: amount,
-        bookingId: booking.id,
-        paymentMethod: 'upi',
-      });
-
-      const order = orderResponse.data.data;
-
-      // Load Razorpay script
-      const script = document.createElement('script');
-      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-      script.async = true;
-      document.body.appendChild(script);
-
-      script.onload = () => {
-        const currentUser = authService.getUser() ?? {};
-        const options = {
-          key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_dummy',
-          amount: order.amount,
-          currency: 'INR',
-          name: 'StudySpot',
-          description: `Booking Payment - ${library?.name || 'Library'}`,
-          order_id: order.id,
-          method: {
-            upi: true, // Enable UPI
-          },
-          handler: async (response: any) => {
-            try {
-              // Verify payment on backend
-              await api.post('/api/payments/verify', {
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
-                bookingId: booking.id,
-              });
-
-              toast.success('Payment successful! Booking confirmed.');
-              setTimeout(() => {
-                navigate('/bookings');
-              }, 1500);
-            } catch (err: any) {
-              console.error('[BOOKING] Payment verification failed:', err);
-              toast.error('Payment verification failed. Please contact support.');
-            } finally {
-              setSubmitting(false);
-            }
-          },
-          prefill: {
-            name: currentUser.firstName || currentUser.name || '',
-            email: currentUser.email || '',
-            contact: currentUser.phone || '',
-          },
-          theme: {
-            color: '#2563eb',
-          },
-          modal: {
-            ondismiss: () => {
-              setSubmitting(false);
-              toast.info('Payment cancelled');
-            },
-          },
-        };
-
-        // @ts-ignore
-        const rzp = new window.Razorpay(options);
-        rzp.open();
+        transactionId: transactionId,
+        description: `Booking Payment - ${library?.name || 'Library'} - ${booking.id}`,
       };
 
-      script.onerror = () => {
+      // Store transaction ID for verification
+      localStorage.setItem(`upi_txn_${booking.id}`, transactionId);
+
+      // Open UPI payment
+      const opened = openUPIPayment(upiParams);
+
+      if (opened) {
         setSubmitting(false);
-        toast.error('Failed to load payment gateway. Please try again.');
-      };
+        // Show verification dialog after a short delay
+        setTimeout(() => {
+          setUpiVerificationDialog(true);
+        }, 1000);
+        
+        toast.info('Please complete the payment in your UPI app. After payment, enter the transaction ID to verify.');
+      } else {
+        throw new Error('Failed to open UPI app. Please ensure you have a UPI app installed.');
+      }
     } catch (error: any) {
       console.error('[BOOKING] UPI payment failed:', error);
       const errorMessage = error.response?.data?.error?.message || 
@@ -735,6 +710,52 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
                           error.message || 
                           'Failed to process UPI payment. Please try again.';
       toast.error(errorMessage);
+      setSubmitting(false);
+    }
+  };
+
+  // Verify UPI Payment
+  const verifyUPIPayment = async () => {
+    if (!currentBookingId || !upiTransactionId.trim()) {
+      toast.error('Please enter the transaction ID from your UPI app');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      
+      // Verify payment on backend
+      const response = await api.post('/api/payments/verify-upi', {
+        bookingId: currentBookingId,
+        transactionId: upiTransactionId.trim(),
+        amount: priceBreakdown.total,
+      });
+
+      if (response.data.success) {
+        toast.success('Payment verified! Booking confirmed.');
+        setUpiVerificationDialog(false);
+        setUpiTransactionId('');
+        setCurrentBookingId(null);
+        
+        // Clear stored transaction ID
+        if (currentBookingId) {
+          localStorage.removeItem(`upi_txn_${currentBookingId}`);
+        }
+        
+        setTimeout(() => {
+          navigate('/bookings');
+        }, 1500);
+      } else {
+        throw new Error(response.data.message || 'Payment verification failed');
+      }
+    } catch (error: any) {
+      console.error('[BOOKING] UPI verification failed:', error);
+      const errorMessage = error.response?.data?.error?.message || 
+                          error.response?.data?.message || 
+                          error.message || 
+                          'Payment verification failed. Please check the transaction ID and try again.';
+      toast.error(errorMessage);
+    } finally {
       setSubmitting(false);
     }
   };
