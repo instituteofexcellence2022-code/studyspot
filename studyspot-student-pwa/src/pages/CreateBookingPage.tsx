@@ -124,6 +124,8 @@ const SHIFTS = [
   { value: 'morning', label: 'Morning', start: '06:00', end: '12:00', hours: 6, icon: '🌅', color: '#FFA726' },
   { value: 'afternoon', label: 'Afternoon', start: '12:00', end: '18:00', hours: 6, icon: '☀️', color: '#FFB74D' },
   { value: 'evening', label: 'Evening', start: '18:00', end: '23:00', hours: 5, icon: '🌆', color: '#7986CB' },
+  { value: 'night', label: 'Night Shift', start: '23:00', end: '06:00', hours: 7, icon: '🌙', color: '#5C6BC0' },
+  { value: 'half_day', label: 'Half Day', start: '06:00', end: '14:00', hours: 8, icon: '⏰', color: '#66BB6A' },
   { value: 'full_day', label: 'Full Day', start: '06:00', end: '23:00', hours: 17, icon: '📅', color: '#4CAF50' },
 ];
 
@@ -323,6 +325,7 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
           morning: dailyRate * 0.8,
           afternoon: dailyRate,
           evening: dailyRate * 1.2,
+          night: dailyRate * 1.3,
         },
         zonePricing: {
           ac: dailyRate * 1.2,
@@ -397,11 +400,18 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
     let zonePrice = basePrice;
 
     // Apply shift pricing
-    if (selectedPlan.shiftPricing && bookingData.shift !== 'full_day') {
+    if (selectedPlan.shiftPricing && bookingData.shift !== 'full_day' && bookingData.shift !== 'half_day') {
       const shiftPricing = selectedPlan.shiftPricing[bookingData.shift as keyof typeof selectedPlan.shiftPricing];
       if (shiftPricing) {
         shiftPrice = shiftPricing;
       }
+    }
+    
+    // Handle half day pricing (use morning + afternoon average or custom pricing)
+    if (bookingData.shift === 'half_day' && selectedPlan.shiftPricing) {
+      const morningPrice = selectedPlan.shiftPricing.morning || basePrice;
+      const afternoonPrice = selectedPlan.shiftPricing.afternoon || basePrice;
+      shiftPrice = (morningPrice + afternoonPrice) / 2;
     }
 
     // Apply zone pricing
@@ -506,8 +516,17 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
       }
 
       // Format date and time for API
-      const startTime = `${selectedShift.start}:00`;
-      const endTime = `${selectedShift.end}:00`;
+      // Handle night shift (spans midnight - end time is next day)
+      let startTime = `${selectedShift.start}:00`;
+      let endTime = `${selectedShift.end}:00`;
+      let bookingDate = bookingData.date;
+      
+      // Night shift: 23:00 to 06:00 (next day)
+      if (bookingData.shift === 'night') {
+        // End time is next day, but API expects same date with time
+        // We'll send the end time as 06:00 and let backend handle next day logic
+        endTime = '06:00:00';
+      }
 
       const bookingPayload = {
         libraryId: library.id,
@@ -733,7 +752,7 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
                       </Box>
                       <Grid container spacing={2}>
                         {SHIFTS.map((shift) => (
-                          <Grid item xs={6} sm={3} key={shift.value}>
+                          <Grid item xs={6} sm={4} md={3} key={shift.value}>
                             <Card
                               variant="outlined"
                               sx={{
