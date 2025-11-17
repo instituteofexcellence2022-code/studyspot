@@ -190,6 +190,14 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
     if (id) {
       fetchLibraryDetails();
     }
+    
+    // Cleanup timer on unmount
+    return () => {
+      if ((window as any).__upiPaymentTimer) {
+        clearInterval((window as any).__upiPaymentTimer);
+        delete (window as any).__upiPaymentTimer;
+      }
+    };
   }, [id]);
 
   // Fetch fee plans after library is loaded (or use defaults)
@@ -712,7 +720,7 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
       // Start payment timer (15 minutes)
       setPaymentTimer(15 * 60);
       
-      // Auto-close verification dialog after timer expires
+      // Start timer countdown
       const timerInterval = setInterval(() => {
         setPaymentTimer((prev) => {
           if (prev <= 1) {
@@ -723,8 +731,8 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
         });
       }, 1000);
       
-      // Cleanup on unmount
-      return () => clearInterval(timerInterval);
+      // Store interval ID for cleanup
+      (window as any).__upiPaymentTimer = timerInterval;
     } catch (error: any) {
       console.error('[BOOKING] UPI payment failed:', error);
       const errorMessage = error.response?.data?.error?.message || 
