@@ -48,7 +48,6 @@ import {
   Tabs,
   Tab,
   CardMedia,
-  IconButton,
 } from '@mui/material';
 import {
   ArrowBack,
