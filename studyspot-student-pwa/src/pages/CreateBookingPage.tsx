@@ -730,8 +730,57 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
                   </Card>
                 )}
 
-                {/* 3. Fee Plan Selection */}
+                {/* 3. Zone Selection */}
                 {bookingData.shift && (
+                  <Card sx={{ borderRadius: 2, border: 1, borderColor: 'divider' }}>
+                    <CardContent>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                        <EventSeat color="primary" />
+                        <Typography variant="h6" fontWeight="600">
+                          Choose Zone
+                        </Typography>
+                      </Box>
+                      <Grid container spacing={2}>
+                        {ZONES.map((zone) => {
+                          const isSelected = bookingData.zone === zone.value;
+                          
+                          return (
+                            <Grid item xs={6} sm={4} key={zone.value}>
+                              <Card
+                                variant="outlined"
+                                sx={{
+                                  cursor: 'pointer',
+                                  border: isSelected ? 2 : 1,
+                                  borderColor: isSelected ? 'primary.main' : 'divider',
+                                  bgcolor: isSelected ? 'action.selected' : 'background.paper',
+                                  textAlign: 'center',
+                                  transition: 'all 0.2s',
+                                  '&:hover': { borderColor: 'primary.main', transform: 'translateY(-2px)' },
+                                }}
+                                onClick={() => setBookingData({ ...bookingData, zone: zone.value, feePlanId: '', seatId: '' })}
+                              >
+                                <CardContent sx={{ py: 2 }}>
+                                  <Typography variant="h4" sx={{ mb: 0.5 }}>
+                                    {zone.icon}
+                                  </Typography>
+                                  <Typography variant="body2" fontWeight="600">
+                                    {zone.label}
+                                  </Typography>
+                                  <Typography variant="caption" color="text.secondary" display="block">
+                                    {zone.description}
+                                  </Typography>
+                                </CardContent>
+                              </Card>
+                            </Grid>
+                          );
+                        })}
+                      </Grid>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* 4. Fee Plan Selection */}
+                {bookingData.zone && (
                   <Card sx={{ borderRadius: 2, border: 1, borderColor: 'divider' }}>
                     <CardContent>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
@@ -740,12 +789,26 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
                           Select Fee Plan
                         </Typography>
                       </Box>
+                      {selectedZone && (
+                        <Alert severity="info" sx={{ mb: 2 }}>
+                          Selected Zone: <strong>{selectedZone.label}</strong> - Zone-specific pricing will be applied
+                        </Alert>
+                      )}
                       <Grid container spacing={2}>
                         {feePlans.map((plan) => {
                           const isSelected = bookingData.feePlanId === plan.id;
                           const hasDiscount = plan.discount && 
                             (!plan.discount.validFrom || new Date() >= new Date(plan.discount.validFrom)) &&
                             (!plan.discount.validTo || new Date() <= new Date(plan.discount.validTo));
+                          
+                          // Calculate zone-specific price if zone is selected
+                          let displayPrice = plan.basePrice;
+                          if (bookingData.zone && plan.zonePricing) {
+                            const zonePrice = plan.zonePricing[bookingData.zone as keyof typeof plan.zonePricing];
+                            if (zonePrice) {
+                              displayPrice = zonePrice;
+                            }
+                          }
                           
                           return (
                             <Grid item xs={12} sm={6} key={plan.id}>
@@ -787,8 +850,13 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
                                       </Box>
                                       <Box sx={{ textAlign: 'right' }}>
                                         <Typography variant="h6" fontWeight="700" color="primary.main">
-                                          ₹{plan.basePrice}
+                                          ₹{displayPrice}
                                         </Typography>
+                                        {bookingData.zone && displayPrice !== plan.basePrice && (
+                                          <Typography variant="caption" color="text.secondary" display="block">
+                                            Base: ₹{plan.basePrice}
+                                          </Typography>
+                                        )}
                                         {hasDiscount && plan.discount && (
                                           <Chip
                                             icon={<LocalOffer />}
@@ -835,67 +903,8 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
                   </Card>
                 )}
 
-                {/* 4. Zone Selection */}
-                {bookingData.feePlanId && (
-                  <Card sx={{ borderRadius: 2, border: 1, borderColor: 'divider' }}>
-                    <CardContent>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                        <EventSeat color="primary" />
-                        <Typography variant="h6" fontWeight="600">
-                          Choose Zone
-                        </Typography>
-                      </Box>
-                      <Grid container spacing={2}>
-                        {ZONES.map((zone) => {
-                          const isSelected = bookingData.zone === zone.value;
-                          const zonePrice = selectedPlan?.zonePricing?.[zone.value as keyof typeof selectedPlan.zonePricing];
-                          
-                          return (
-                            <Grid item xs={6} sm={4} key={zone.value}>
-                              <Card
-                                variant="outlined"
-                                sx={{
-                                  cursor: 'pointer',
-                                  border: isSelected ? 2 : 1,
-                                  borderColor: isSelected ? 'primary.main' : 'divider',
-                                  bgcolor: isSelected ? 'action.selected' : 'background.paper',
-                                  textAlign: 'center',
-                                  transition: 'all 0.2s',
-                                  '&:hover': { borderColor: 'primary.main', transform: 'translateY(-2px)' },
-                                }}
-                                onClick={() => setBookingData({ ...bookingData, zone: zone.value, seatId: '' })}
-                              >
-                                <CardContent sx={{ py: 2 }}>
-                                  <Typography variant="h4" sx={{ mb: 0.5 }}>
-                                    {zone.icon}
-                                  </Typography>
-                                  <Typography variant="body2" fontWeight="600">
-                                    {zone.label}
-                                  </Typography>
-                                  <Typography variant="caption" color="text.secondary" display="block">
-                                    {zone.description}
-                                  </Typography>
-                                  {zonePrice && selectedPlan && (
-                                    <Chip
-                                      label={`₹${zonePrice}/${selectedPlan.type === 'hourly' ? 'hr' : 'day'}`}
-                                      size="small"
-                                      color="primary"
-                                      variant="outlined"
-                                      sx={{ mt: 0.5 }}
-                                    />
-                                  )}
-                                </CardContent>
-                              </Card>
-                            </Grid>
-                          );
-                        })}
-                      </Grid>
-                    </CardContent>
-                  </Card>
-                )}
-
                 {/* 5. Seat Selection */}
-                {bookingData.zone && (
+                {bookingData.feePlanId && (
                   <Card sx={{ borderRadius: 2, border: 1, borderColor: 'divider' }}>
                     <CardContent>
                       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
@@ -908,6 +917,15 @@ export default function CreateBookingPage({ setIsAuthenticated }: any) {
                             <Chip
                               label={selectedZone.label}
                               size="small"
+                              sx={{ ml: 1 }}
+                            />
+                          )}
+                          {selectedPlan && (
+                            <Chip
+                              label={selectedPlan.name}
+                              size="small"
+                              color="primary"
+                              variant="outlined"
                               sx={{ ml: 1 }}
                             />
                           )}
