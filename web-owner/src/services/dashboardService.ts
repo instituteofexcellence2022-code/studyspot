@@ -4,7 +4,7 @@
  */
 
 import { libraryService } from './libraryService';
-import { studentsService } from './studentsService';
+import studentsService from './studentsService';
 import { BookingService } from './bookingService';
 import { apiService } from './api';
 
@@ -78,15 +78,21 @@ export class DashboardService {
 
       // Extract data from responses
       const libraries = librariesResponse.status === 'fulfilled' 
-        ? librariesResponse.value?.libraries || librariesResponse.value?.data || []
+        ? (Array.isArray(librariesResponse.value) 
+            ? librariesResponse.value 
+            : librariesResponse.value?.data || librariesResponse.value?.items || [])
         : [];
       
       const students = studentsResponse.status === 'fulfilled'
-        ? studentsResponse.value?.students || []
+        ? (Array.isArray(studentsResponse.value)
+            ? studentsResponse.value
+            : studentsResponse.value?.students || studentsResponse.value?.data || [])
         : [];
       
       const bookings = bookingsResponse.status === 'fulfilled'
-        ? bookingsResponse.value?.bookings || bookingsResponse.value?.data || []
+        ? (Array.isArray(bookingsResponse.value)
+            ? bookingsResponse.value
+            : bookingsResponse.value?.bookings || bookingsResponse.value?.data || bookingsResponse.value?.items || [])
         : [];
 
       // Calculate statistics
@@ -203,7 +209,9 @@ export class DashboardService {
           endDate,
           status: 'confirmed',
         });
-        const bookingsList = bookings.bookings || bookings.data || [];
+        const bookingsList = Array.isArray(bookings)
+          ? bookings
+          : (bookings?.bookings || bookings?.data || bookings?.items || []);
         const totalRevenue = bookingsList.reduce((sum: number, b: any) => {
           return sum + (parseFloat(b.totalAmount || b.amount || 0));
         }, 0);

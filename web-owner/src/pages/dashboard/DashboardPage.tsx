@@ -617,7 +617,7 @@ const DashboardPageEnhanced: React.FC = () => {
               <AccessTime sx={{ mr: 1 }} /> Recent Activity
             </Typography>
             <List sx={{ mt: 1 }}>
-              {recentActivity.map((activity, index) => (
+              {recentActivity.map((activity: any, index: number) => (
                 <ListItem 
                   key={index} 
                   sx={{ 
