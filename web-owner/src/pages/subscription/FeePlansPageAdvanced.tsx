@@ -19,6 +19,8 @@ import {
   Info as InfoIcon,
 } from '@mui/icons-material';
 import FeePlanFormDialog from '../../components/fees/FeePlanFormDialog';
+import { feePlanService } from '../../services/api/feePlan.service';
+import { toast } from 'react-toastify';
 
 interface FeePlan {
   id: string;
@@ -139,8 +141,41 @@ const FeePlansPageAdvanced: React.FC = () => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [menuPlan, setMenuPlan] = useState<FeePlan | null>(null);
 
-  // Load fee plans from API
+  // Load fee plans from API using service
   const loadFeePlans = async () => {
+    setLoading(true);
+    try {
+      const fetchedPlans = await feePlanService.getFeePlans();
+      setPlans(fetchedPlans);
+      
+      if (fetchedPlans.length === 0) {
+        toast.info('No fee plans found. Create your first fee plan to get started.');
+      }
+    } catch (error: any) {
+      console.error('❌ [FeePlansPage] Failed to fetch fee plans:', error);
+      toast.error('Failed to load fee plans. Please try again.');
+      setPlans([]);
+      // Don't load demo data - show empty state instead
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load pricing rules (if needed - can be fetched from backend later)
+  const loadPricingRules = async () => {
+    try {
+      // TODO: Implement pricing rules API endpoint
+      // For now, set empty array
+      setPricingRules([]);
+    } catch (error: any) {
+      console.error('❌ [FeePlansPage] Failed to fetch pricing rules:', error);
+      setPricingRules([]);
+    }
+  };
+
+  // OLD CODE - REMOVED:
+  /*
+  const loadFeePlans_OLD = async () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
@@ -185,150 +220,27 @@ const FeePlansPageAdvanced: React.FC = () => {
     }
   };
 
-  // Load demo data
+  // Load data on mount
   useEffect(() => {
     loadFeePlans();
-    loadDemoPricingRules();
+    loadPricingRules();
   }, []);
-
-  const loadDemoPlans = () => {
-    const demoPlans: FeePlan[] = [
-      {
-        id: '1',
-        name: 'Basic Hourly',
-        description: 'Pay as you go - perfect for occasional visitors',
-        type: 'hourly',
-        basePrice: 50,
-        shiftPricing: { morning: 40, afternoon: 50, evening: 60, night: 45 },
-        zonePricing: { ac: 60, nonAc: 40, premium: 75 },
-        features: ['WiFi', 'Power Outlet', 'Water'],
-        status: 'active',
-        createdAt: '2025-01-15',
-        updatedAt: '2025-01-15',
-      },
-      {
-        id: '2',
-        name: 'Premium Monthly',
-        description: 'Best value for regular students',
-        type: 'monthly',
-        basePrice: 5000,
-        shiftPricing: { morning: 4500, afternoon: 5000, evening: 5500 },
-        zonePricing: { ac: 6000, nonAc: 4000, premium: 7500 },
-        discount: { type: 'percentage', value: 10, validFrom: '2025-01-01', validTo: '2025-12-31' },
-        features: ['24/7 Access', 'WiFi', 'Power Outlet', 'Locker', 'Free Coffee', 'Meeting Room Access'],
-        scholarshipEligible: true,
-        waiverAllowed: true,
-        isPopular: true,
-        status: 'active',
-        createdAt: '2025-01-10',
-        updatedAt: '2025-01-20',
-      },
-      {
-        id: '3',
-        name: 'Weekend Special',
-        description: 'Weekend-only access at discounted rates',
-        type: 'weekly',
-        basePrice: 1500,
-        features: ['Weekend Access', 'WiFi', 'Power Outlet'],
-        discount: { type: 'fixed', value: 200 },
-        status: 'active',
-        createdAt: '2025-01-12',
-        updatedAt: '2025-01-12',
-      },
-      {
-        id: '4',
-        name: 'Student Scholarship Plan',
-        description: 'Special plan for scholarship recipients',
-        type: 'monthly',
-        basePrice: 2000,
-        features: ['Full Access', 'WiFi', 'Study Materials', 'Mentorship'],
-        scholarshipEligible: true,
-        waiverAllowed: true,
-        discount: { type: 'percentage', value: 50 },
-        status: 'active',
-        createdAt: '2025-01-08',
-        updatedAt: '2025-01-08',
-      },
-      {
-        id: '5',
-        name: 'Combo - Morning + Evening',
-        description: 'Access to both morning and evening slots',
-        type: 'combo',
-        basePrice: 4000,
-        shiftPricing: { morning: 2000, evening: 2500 },
-        features: ['Dual Shift Access', 'WiFi', 'Locker', 'Coffee'],
-        isPopular: true,
-        status: 'active',
-        createdAt: '2025-01-05',
-        updatedAt: '2025-01-05',
-      },
-    ];
-    setPlans(demoPlans);
-  };
-
-  const loadDemoPricingRules = () => {
-    const demoRules: PricingRule[] = [
-      {
-        id: '1',
-        name: 'Summer Discount',
-        type: 'seasonal',
-        condition: 'June-August',
-        adjustment: { type: 'percentage', value: 15 },
-        priority: 1,
-        active: true,
-      },
-      {
-        id: '2',
-        name: 'Bulk Enrollment (5+)',
-        type: 'bulk',
-        condition: '5 or more students',
-        adjustment: { type: 'percentage', value: 20 },
-        priority: 2,
-        active: true,
-      },
-      {
-        id: '3',
-        name: 'Referral Bonus',
-        type: 'referral',
-        condition: 'Referred by existing student',
-        adjustment: { type: 'fixed', value: 500 },
-        priority: 3,
-        active: true,
-      },
-      {
-        id: '4',
-        name: 'Early Bird (First 50)',
-        type: 'early-bird',
-        condition: 'First 50 enrollments',
-        adjustment: { type: 'percentage', value: 25 },
-        priority: 1,
-        active: false,
-      },
-    ];
-    setPricingRules(demoRules);
-  };
 
   // Form steps
   const formSteps = ['Basic Info', 'Pricing Structure', 'Discounts & Offers', 'Review'];
 
-  // Handle plan creation/edit with API
+  // Handle plan creation/edit with API using service
   const handleSavePlan = async (planData: any) => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:3001';
-      
-      const payload = {
+      const planPayload = {
         name: planData.name,
         description: planData.description,
         type: planData.type,
         basePrice: planData.basePrice,
-        selectedShift: planData.selectedShift || null,
-        selectedZone: planData.selectedZone || null,
-        customShift: planData.customShift || null,
-        customZone: planData.customZone || null,
+        shiftPricing: planData.shiftPricing || null,
+        zonePricing: planData.zonePricing || null,
         features: planData.features || [],
-        enableDiscount: planData.enableDiscount || false,
         discount: planData.enableDiscount ? planData.discount : null,
         isPopular: planData.isPopular || false,
         scholarshipEligible: planData.scholarshipEligible || false,
@@ -337,6 +249,32 @@ const FeePlansPageAdvanced: React.FC = () => {
         maxSeats: planData.maxSeats || null,
         maxHours: planData.maxHours || null,
       };
+
+      if (currentPlan.id) {
+        // Update existing plan
+        await feePlanService.updateFeePlan(currentPlan.id, planPayload);
+        toast.success('Fee plan updated successfully');
+      } else {
+        // Create new plan
+        await feePlanService.createFeePlan(planPayload);
+        toast.success('Fee plan created successfully');
+      }
+
+      // Reload plans
+      await loadFeePlans();
+      
+      // Close dialogs
+      setCreateDialogOpen(false);
+      setEditDialogOpen(false);
+      setCurrentPlan({});
+      setActiveStep(0);
+    } catch (error: any) {
+      console.error('❌ [FeePlansPage] Failed to save fee plan:', error);
+      toast.error(error.message || 'Failed to save fee plan');
+    } finally {
+      setLoading(false);
+    }
+  };
       
       let response;
       if (editDialogOpen && selectedPlan) {
