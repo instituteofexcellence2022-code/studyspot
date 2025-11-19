@@ -71,7 +71,7 @@ export interface StudentsFilters {
 }
 
 class StudentsService {
-  private baseURL = '/api/students';
+  private baseURL = '/api/v1/students'; // Use v1 endpoint for CRUD operations
 
   /**
    * Get list of students with filters and pagination
@@ -102,15 +102,16 @@ class StudentsService {
     // Transform camelCase to snake_case for backend
     const transformedData: any = {
       first_name: data.firstName,
-      last_name: data.lastName || '',
+      last_name: data.lastName || '', // Optional
       email: data.email,
-      phone: data.phone || '0000000000', // Backend requires phone
-      date_of_birth: data.dateOfBirth,
-      gender: data.gender,
+      phone: data.phone || '0000000000', // Backend requires phone - use emergency contact or default
+      date_of_birth: data.dateOfBirth || undefined,
+      gender: data.gender || undefined,
     };
 
     // Handle address - backend expects separate fields, not nested object
     if (data.address) {
+      // Combine line1 and line2 into single address field
       if (data.address.line1) {
         transformedData.address = data.address.line1;
         if (data.address.line2) {
@@ -122,7 +123,7 @@ class StudentsService {
       if (data.address.postalCode) transformedData.pincode = data.address.postalCode;
     }
 
-    // Add metadata for additional fields
+    // Add metadata for additional fields (fee plan, status, etc.)
     const metadata: any = {};
     if (data.currentPlan) metadata.currentPlan = data.currentPlan;
     if (data.feeStatus) metadata.feeStatus = data.feeStatus;
@@ -134,7 +135,8 @@ class StudentsService {
 
     console.log('📤 [StudentsService] Creating student with transformed data:', transformedData);
     const response = await apiClient.post(this.baseURL, transformedData) as any;
-    return response.data.data.student || response.data.data;
+    console.log('✅ [StudentsService] Student created response:', response);
+    return response.data?.data?.student || response.data?.data || response.data;
   }
 
   /**
