@@ -119,7 +119,7 @@ const StudentsPageAdvanced: React.FC = () => {
   const [menuStudent, setMenuStudent] = useState<Student | null>(null);
 
   // Fetch students
-  const fetchStudents = async () => {
+  const fetchStudents = useCallback(async () => {
     try {
       setLoading(true);
       const filters: StudentsFilters = {
@@ -145,11 +145,11 @@ const StudentsPageAdvanced: React.FC = () => {
       setTotalCount(0);
       setLoading(false);
     }
-  };
+  }, [searchTerm, statusFilter, feeStatusFilter, kycFilter, page, rowsPerPage, sortField, sortOrder]);
 
   useEffect(() => {
     fetchStudents();
-  }, [searchTerm, statusFilter, feeStatusFilter, page, rowsPerPage, sortField, sortOrder, fetchStudents]);
+  }, [fetchStudents]);
 
 
   // Handle bulk import
