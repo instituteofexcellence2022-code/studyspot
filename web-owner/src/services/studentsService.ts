@@ -47,6 +47,7 @@ export interface CreateStudentData {
   gender?: string;
   address?: {
     line1?: string;
+    line2?: string;
     city?: string;
     state?: string;
     postalCode?: string;
@@ -55,6 +56,7 @@ export interface CreateStudentData {
   currentPlan?: string;
   feeStatus?: string;
   status?: string;
+  metadata?: any;
 }
 
 export interface UpdateStudentData extends Partial<CreateStudentData> {}
