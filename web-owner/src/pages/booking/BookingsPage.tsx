@@ -58,16 +58,32 @@ const BookingsPage: React.FC = () => {
       console.log('📡 [BookingsPage] Response:', response);
       
       // Handle different response formats
-      const bookingsData = response.data || response || [];
-      console.log('📡 [BookingsPage] Bookings data:', bookingsData);
+      let bookingsData: any[] = [];
       
-      setBookings(Array.isArray(bookingsData) ? bookingsData : []);
+      if (Array.isArray(response)) {
+        bookingsData = response;
+      } else if (response?.data) {
+        if (Array.isArray(response.data)) {
+          bookingsData = response.data;
+        } else if (response.data?.bookings) {
+          bookingsData = response.data.bookings;
+        } else if (response.data?.items) {
+          bookingsData = response.data.items;
+        }
+      } else if (response?.bookings) {
+        bookingsData = response.bookings;
+      } else if (response?.items) {
+        bookingsData = response.items;
+      }
+      
+      console.log('📡 [BookingsPage] Bookings data:', bookingsData);
+      setBookings(bookingsData);
+      
       setNewBookingsCount(0);
       
-      if (bookingsData.length === 0) {
-        console.log('ℹ️ [BookingsPage] No bookings found - using mock data for demo');
-        // Use mock data for demo purposes
-        setBookings(getMockBookings());
+      if (bookings.length === 0) {
+        console.log('ℹ️ [BookingsPage] No bookings found');
+        toast.info('No bookings found. Bookings will appear here once students make reservations.');
       }
     } catch (error: any) {
       console.error('❌ [BookingsPage] Failed to fetch bookings:', error);
@@ -77,74 +93,16 @@ const BookingsPage: React.FC = () => {
         status: error.response?.status,
       });
       
-      // Show info message instead of error for demo
-      toast.info('Using demo booking data - connect to backend for real data');
+      // Show error message
+      toast.error('Failed to load bookings. Please try again.');
       
-      // Use mock data as fallback
-      setBookings(getMockBookings());
+      // Set empty array instead of mock data
+      setBookings([]);
     } finally {
       setLoading(false);
     }
   };
 
-  // Mock booking data for demo
-  const getMockBookings = () => [
-    {
-      id: '1',
-      studentName: 'Rajesh Kumar',
-      libraryName: 'Central Study Hub',
-      date: '2024-11-04',
-      startTime: '2024-11-04T09:00:00Z',
-      time: '09:00 AM',
-      status: 'confirmed',
-      totalAmount: 500,
-      amount: 500,
-    },
-    {
-      id: '2',
-      studentName: 'Priya Sharma',
-      libraryName: 'Tech Library',
-      date: '2024-11-04',
-      startTime: '2024-11-04T10:30:00Z',
-      time: '10:30 AM',
-      status: 'pending',
-      totalAmount: 350,
-      amount: 350,
-    },
-    {
-      id: '3',
-      studentName: 'Amit Patel',
-      libraryName: 'Main Branch Library',
-      date: '2024-11-03',
-      startTime: '2024-11-03T14:00:00Z',
-      time: '02:00 PM',
-      status: 'checked_in',
-      totalAmount: 600,
-      amount: 600,
-    },
-    {
-      id: '4',
-      studentName: 'Sneha Reddy',
-      libraryName: 'North Campus Library',
-      date: '2024-11-02',
-      startTime: '2024-11-02T11:00:00Z',
-      time: '11:00 AM',
-      status: 'completed',
-      totalAmount: 450,
-      amount: 450,
-    },
-    {
-      id: '5',
-      studentName: 'Vikram Singh',
-      libraryName: 'Central Study Hub',
-      date: '2024-11-01',
-      startTime: '2024-11-01T08:00:00Z',
-      time: '08:00 AM',
-      status: 'cancelled',
-      totalAmount: 400,
-      amount: 400,
-    },
-  ];
 
   // 🔴 NEW: Real-time event listeners
   useEffect(() => {
