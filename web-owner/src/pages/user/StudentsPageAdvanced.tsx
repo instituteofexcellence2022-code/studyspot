@@ -921,18 +921,96 @@ const StudentsPageAdvanced: React.FC = () => {
         onSave={async (studentData) => {
           try {
             setLoading(true);
+            
+            // Transform formData to match backend API structure
+            const transformedData: any = {
+              firstName: studentData.firstName,
+              lastName: studentData.lastName || '', // Optional
+              email: studentData.email,
+              phone: studentData.phone || undefined,
+              dateOfBirth: studentData.dateOfBirth || undefined,
+              gender: studentData.gender || undefined,
+              currentPlan: studentData.currentPlan || 'Monthly Premium',
+              feeStatus: studentData.feeStatus || 'pending',
+              status: studentData.status || 'active',
+            };
+
+            // Add address if provided
+            if (studentData.addressLine1 || studentData.city || studentData.state || 
+                studentData.pincode || studentData.postalCode || studentData.district) {
+              transformedData.address = {
+                line1: studentData.addressLine1 || undefined,
+                line2: studentData.addressLine2 || undefined,
+                city: studentData.city || undefined,
+                state: studentData.state || undefined,
+                postalCode: studentData.pincode || studentData.postalCode || undefined,
+                country: studentData.country || 'India',
+              };
+              
+              // Add district to metadata if provided
+              if (studentData.district) {
+                transformedData.metadata = {
+                  ...(transformedData.metadata || {}),
+                  district: studentData.district,
+                };
+              }
+            }
+
+            // Add guardian/emergency contact if provided
+            if (studentData.guardianName || studentData.guardianPhone || studentData.emergencyContact) {
+              transformedData.metadata = {
+                ...(transformedData.metadata || {}),
+                guardianName: studentData.guardianName || undefined,
+                guardianPhone: studentData.guardianPhone || undefined,
+                emergencyContact: studentData.emergencyContact || undefined,
+              };
+            }
+
+            // Add blood group if provided
+            if (studentData.bloodGroup) {
+              transformedData.metadata = {
+                ...(transformedData.metadata || {}),
+                bloodGroup: studentData.bloodGroup,
+              };
+            }
+
+            // Add groups and tags if provided
+            if (studentData.groups && studentData.groups.length > 0) {
+              transformedData.groups = studentData.groups;
+            }
+            if (studentData.tags && studentData.tags.length > 0) {
+              transformedData.tags = studentData.tags;
+            }
+            if (studentData.notes) {
+              transformedData.metadata = {
+                ...(transformedData.metadata || {}),
+                notes: studentData.notes,
+              };
+            }
+
+            console.log('📤 Sending student data:', transformedData);
+
             if (editMode && currentStudent?.id) {
-              await studentsService.updateStudent(currentStudent.id, studentData);
+              await studentsService.updateStudent(currentStudent.id, transformedData);
               setSnackbar({ open: true, message: '✅ Student updated successfully!', severity: 'success' });
             } else {
-              await studentsService.createStudent(studentData);
+              await studentsService.createStudent(transformedData);
               setSnackbar({ open: true, message: '✅ Student created successfully!', severity: 'success' });
             }
             fetchStudents();
+            setAddDialogOpen(false);
             setLoading(false);
-          } catch (error) {
-            console.error('Failed to save student:', error);
-            setSnackbar({ open: true, message: '❌ Failed to save student', severity: 'error' });
+          } catch (error: any) {
+            console.error('❌ Failed to save student:', error);
+            const errorMessage = error?.response?.data?.error?.message || 
+                                error?.response?.data?.message || 
+                                error?.message || 
+                                'Failed to save student';
+            setSnackbar({ 
+              open: true, 
+              message: `❌ ${errorMessage}`, 
+              severity: 'error' 
+            });
             setLoading(false);
           }
         }}
