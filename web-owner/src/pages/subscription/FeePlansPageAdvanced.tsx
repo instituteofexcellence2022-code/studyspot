@@ -19,7 +19,7 @@ import {
   Info as InfoIcon,
 } from '@mui/icons-material';
 import FeePlanFormDialog from '../../components/fees/FeePlanFormDialog';
-import FeePlanService from '../../services/api/feePlan.service';
+import feePlanService from '../../services/api/feePlan.service';
 import { toast } from 'react-toastify';
 
 interface FeePlan {
@@ -100,7 +100,6 @@ function TabPanel(props: TabPanelProps) {
 
 const FeePlansPageAdvanced: React.FC = () => {
   const theme = useTheme();
-  const feePlanService = new FeePlanService();
   
   // State management
   const [plans, setPlans] = useState<FeePlan[]>([]);
@@ -174,52 +173,6 @@ const FeePlansPageAdvanced: React.FC = () => {
     }
   };
 
-  // OLD CODE - REMOVED:
-  /*
-  const loadFeePlans_OLD = async () => {
-    setLoading(true);
-    try {
-      const token = localStorage.getItem('token');
-      const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:3001';
-      
-      const response = await fetch(`${apiUrl}/api/fee-plans`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      const data = await response.json();
-      
-      if (response.ok && data.success) {
-        // Transform API data to match our FeePlan interface
-        const transformedPlans = data.data.feePlans.map((plan: any) => ({
-          id: plan.id,
-          name: plan.name,
-          description: plan.description,
-          type: plan.type,
-          basePrice: parseFloat(plan.base_price),
-          features: plan.features || [],
-          status: plan.status,
-          maxSeats: plan.max_seats,
-          maxHours: plan.max_hours,
-          scholarshipEligible: plan.scholarship_eligible,
-          waiverAllowed: plan.waiver_allowed,
-          isPopular: plan.is_popular,
-          discount: plan.discount,
-          createdAt: plan.created_at,
-          updatedAt: plan.updated_at,
-        }));
-        
-        setPlans(transformedPlans);
-      }
-    } catch (error) {
-      console.error('Error loading fee plans:', error);
-      // Fallback to demo data if API fails
-      loadDemoPlans();
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Load data on mount
   useEffect(() => {
