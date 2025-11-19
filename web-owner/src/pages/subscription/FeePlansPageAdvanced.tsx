@@ -281,20 +281,23 @@ const FeePlansPageAdvanced: React.FC = () => {
     try {
       setLoading(true);
       // Create a new plan based on the duplicated one
-      const duplicatedPlan: Omit<FeePlan, 'id' | 'createdAt' | 'updatedAt'> = {
+      // Ensure status is 'active' | 'inactive' (service doesn't accept 'draft')
+      const status: 'active' | 'inactive' = plan.status === 'draft' || plan.status === 'inactive' ? 'active' : plan.status;
+      
+      const duplicatedPlan = {
         name: `${plan.name} (Copy)`,
-        description: plan.description,
+        description: plan.description || '',
         type: plan.type,
         basePrice: plan.basePrice,
         shiftPricing: plan.shiftPricing,
         zonePricing: plan.zonePricing,
         discount: plan.discount,
-        features: plan.features,
+        features: plan.features || [],
         maxSeats: plan.maxSeats,
         maxHours: plan.maxHours,
         scholarshipEligible: plan.scholarshipEligible,
         waiverAllowed: plan.waiverAllowed,
-        status: plan.status === 'draft' ? 'active' : plan.status,
+        status: status,
         isPopular: plan.isPopular,
       };
       
