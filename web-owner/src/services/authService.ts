@@ -192,48 +192,61 @@ class AuthService {
         throw apiError;
       }
 
-      // Student portal approach: response.data?.data || response.data
-      const payload = response.data?.data || response.data;
+      // apiClient.post returns axios response, so response.data is the actual response
+      // Backend returns: { success: true, data: { user, token, tokens: { accessToken, refreshToken, expiresAt } }, message }
+      const backendResponse = response.data;
       
-      console.log('[AuthService] Payload extracted:', {
-        hasPayload: !!payload,
-        payloadKeys: payload ? Object.keys(payload) : [],
-        hasUser: !!payload?.user,
-        hasToken: !!payload?.token,
-        hasTokens: !!payload?.tokens,
+      console.log('[AuthService] Backend response structure:', {
+        hasResponse: !!backendResponse,
+        responseKeys: backendResponse ? Object.keys(backendResponse) : [],
+        hasSuccess: !!backendResponse?.success,
+        successValue: backendResponse?.success,
+        hasData: !!backendResponse?.data,
+        dataKeys: backendResponse?.data ? Object.keys(backendResponse.data) : [],
+        hasUser: !!backendResponse?.data?.user,
+        hasToken: !!backendResponse?.data?.token,
+        hasTokens: !!backendResponse?.data?.tokens,
       });
 
-      // Backend returns: { success: true, data: { user, token, tokens: { accessToken, refreshToken, expiresAt } }, message }
-      // OR direct: { user, token, tokens: { accessToken, refreshToken, expiresAt } }
+      // Check if response has success flag
+      if (backendResponse?.success !== true) {
+        const errorMsg = backendResponse?.error?.message || 
+                        backendResponse?.message || 
+                        'Registration failed';
+        console.error('[AuthService] ❌ Registration failed:', errorMsg);
+        throw new Error(errorMsg);
+      }
+
+      // Extract data from response.data (backend wraps in { success: true, data: {...} })
+      const payload = backendResponse.data;
       
-      // Extract user and tokens (match student portal logic)
-      let user: any;
-      let accessToken: string;
-      let refreshToken: string | undefined;
-      let expiresAt: number | undefined;
+      if (!payload) {
+        console.error('[AuthService] ❌ No data in response');
+        throw new Error('Invalid response: Missing data field');
+      }
 
-      // Check if payload has success wrapper
-      const actualData = payload?.success === true ? payload.data : payload;
-
-      // Get user
-      user = actualData?.user || payload?.user;
+      // Extract user and tokens
+      const user = payload.user;
       if (!user) {
-        console.error('[AuthService] ❌ User not found in response');
+        console.error('[AuthService] ❌ User not found in payload');
         throw new Error('Invalid response: Missing user data');
       }
 
       // Get tokens (prefer tokens object, fallback to token string)
-      if (actualData?.tokens || payload?.tokens) {
-        const tokens = actualData?.tokens || payload?.tokens;
-        accessToken = tokens.accessToken || tokens.token || actualData?.token || payload?.token;
-        refreshToken = tokens.refreshToken;
-        expiresAt = tokens.expiresAt;
-      } else if (actualData?.token || payload?.token) {
-        accessToken = actualData?.token || payload?.token;
-        refreshToken = actualData?.refreshToken || payload?.refreshToken;
-        expiresAt = actualData?.expiresAt || payload?.expiresAt;
+      let accessToken: string;
+      let refreshToken: string | undefined;
+      let expiresAt: number | undefined;
+
+      if (payload.tokens) {
+        accessToken = payload.tokens.accessToken || payload.tokens.token || payload.token;
+        refreshToken = payload.tokens.refreshToken;
+        expiresAt = payload.tokens.expiresAt;
+      } else if (payload.token) {
+        accessToken = payload.token;
+        refreshToken = payload.refreshToken;
+        expiresAt = payload.expiresAt;
       } else {
-        console.error('[AuthService] ❌ No token or tokens found in response');
+        console.error('[AuthService] ❌ No token or tokens found in payload');
         throw new Error('Invalid response: Missing token or tokens');
       }
 
