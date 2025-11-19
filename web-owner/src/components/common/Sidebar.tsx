@@ -712,20 +712,47 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
       >
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: 0 }}>
-          <Avatar 
-            sx={{ 
-                bgcolor: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-              width: 36,
-              height: 36,
-              mr: 1.5,
-                fontSize: '0.9rem',
-                fontWeight: 700,
-                boxShadow: `0 2px 8px ${alpha(theme.palette.primary.main, 0.3)}`,
-            }}
-          >
-            {user?.firstName?.charAt(0) || 'U'}
-          </Avatar>
-            <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Tooltip title="View Profile" placement="right" sx={{ zIndex: theme.zIndex.drawer + 10 }}>
+            <IconButton
+              onClick={() => handleNavigation(ROUTES.PROFILE)}
+              sx={{ 
+                p: 0,
+                mr: 1.5,
+                '&:hover': {
+                  transform: 'scale(1.05)',
+                  transition: 'transform 0.2s',
+                }
+              }}
+            >
+              <Avatar 
+                sx={{ 
+                  bgcolor: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+                  width: 36,
+                  height: 36,
+                  fontSize: '0.9rem',
+                  fontWeight: 700,
+                  boxShadow: `0 2px 8px ${alpha(theme.palette.primary.main, 0.3)}`,
+                  cursor: 'pointer',
+                  src: (user as any)?.profileImage || (user as any)?.avatar || (user as any)?.metadata?.profileImage,
+                }}
+              >
+                {!((user as any)?.profileImage || (user as any)?.avatar || (user as any)?.metadata?.profileImage) && 
+                  `${user?.firstName?.charAt(0) || 'U'}${user?.lastName?.charAt(0) || ''}`
+                }
+              </Avatar>
+            </IconButton>
+          </Tooltip>
+            <Box 
+              sx={{ 
+                flex: 1, 
+                minWidth: 0,
+                cursor: 'pointer',
+                '&:hover': {
+                  opacity: 0.8,
+                }
+              }}
+              onClick={() => handleNavigation(ROUTES.PROFILE)}
+            >
               <Typography variant="body2" fontWeight={600} noWrap sx={{ mb: 0.2, fontSize: '0.8rem' }}>
               {user?.firstName} {user?.lastName}
             </Typography>
