@@ -1416,17 +1416,27 @@ const StudentsPageAdvanced: React.FC = () => {
       />
 
 
-      {/* Snackbar */}
+      {/* Snackbar - Fixed position to prevent layout shifts */}
       <Snackbar
         open={snackbar.open}
         autoHideDuration={4000}
         onClose={() => setSnackbar({ ...snackbar, open: false })}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        sx={{
+          // Fixed position to prevent layout shifts
+          position: 'fixed !important',
+          bottom: '24px !important',
+          right: '24px !important',
+          zIndex: 9999,
+          // Prevent affecting page layout
+          pointerEvents: snackbar.open ? 'auto' : 'none',
+        }}
       >
         <Alert
           onClose={() => setSnackbar({ ...snackbar, open: false })}
           severity={snackbar.severity}
           variant="filled"
+          sx={{ minWidth: '300px' }}
         >
           {snackbar.message}
         </Alert>
