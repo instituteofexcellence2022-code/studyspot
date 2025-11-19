@@ -773,19 +773,71 @@ fastify.post('/api/auth/register', async (request, reply) => {
     // Determine user role (default to library_owner for web owner portal registrations)
     const userRole = role || 'library_owner';
 
+    // Create or get tenant for library owner
+    console.log('[REGISTER] Step 3: Creating/getting tenant...');
+    let tenantId: string | null = null;
+    try {
+      // Generate tenant slug from email
+      const tenantSlug = email.toLowerCase().split('@')[0].replace(/[^a-z0-9]/g, '');
+      const tenantName = `${firstName}'s Library`;
+      const databaseName = `tenant_${tenantSlug}_${Date.now().toString().slice(-6)}`;
+
+      // Check if tenant already exists for this email
+      const existingTenant = await coreDb.query(
+        'SELECT id FROM tenants WHERE email = $1',
+        [email.toLowerCase()]
+      );
+
+      if (existingTenant.rows.length > 0) {
+        tenantId = existingTenant.rows[0].id;
+        console.log('[REGISTER] Step 3a: Using existing tenant:', tenantId);
+      } else {
+        // Create new tenant
+        const tenantResult = await coreDb.query(
+          `INSERT INTO tenants (name, slug, email, phone, status, subscription_plan, subscription_status, 
+           database_name, database_host, max_libraries, max_students, max_staff, created_at, updated_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), NOW())
+           RETURNING id`,
+          [
+            tenantName,
+            tenantSlug,
+            email.toLowerCase(),
+            phone || null,
+            'active',
+            'free',
+            'active',
+            databaseName,
+            process.env.CORE_DB_HOST || 'localhost',
+            1, // max_libraries
+            100, // max_students
+            10, // max_staff
+          ]
+        );
+        tenantId = tenantResult.rows[0].id;
+        console.log('[REGISTER] Step 3b: Created new tenant:', tenantId);
+
+        // Note: Tenant database schema should be created separately via migration
+        // For now, we'll use the same database with tenant_id filtering
+      }
+    } catch (tenantError: any) {
+      console.error('[REGISTER] Tenant creation failed:', tenantError);
+      // Continue without tenant - user can be created but won't have tenant access
+      console.warn('[REGISTER] Continuing without tenant - user will need manual tenant assignment');
+    }
+
     // Create user (without transaction for pooler compatibility)
-    console.log('[REGISTER] Step 3: Inserting user into database...');
+    console.log('[REGISTER] Step 4: Inserting user into database...');
     let result;
     try {
       // Use simple query instead of transaction (pooler doesn't support transactions)
       // lastName is optional, use null if not provided
       result = await coreDb.query(
-        `INSERT INTO admin_users (email, password_hash, first_name, last_name, role, is_active, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
-         RETURNING id, email, first_name, last_name, role, is_active, created_at, updated_at`,
-        [email.toLowerCase(), passwordHash, firstName, lastName || null, userRole, true]
+        `INSERT INTO admin_users (email, password_hash, first_name, last_name, role, tenant_id, is_active, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
+         RETURNING id, email, first_name, last_name, role, tenant_id, is_active, created_at, updated_at`,
+        [email.toLowerCase(), passwordHash, firstName, lastName || null, userRole, tenantId, true]
       );
-      console.log('[REGISTER] Step 4: User inserted successfully');
+      console.log('[REGISTER] Step 5: User inserted successfully');
     } catch (insertError: any) {
       console.error('[REGISTER] User insert failed:', insertError);
       console.error('[REGISTER] Insert error details:', {
@@ -799,20 +851,20 @@ fastify.post('/api/auth/register', async (request, reply) => {
     }
 
     const user = result.rows[0];
-    console.log('[REGISTER] Step 5: User object:', { id: user.id, email: user.email });
+    console.log('[REGISTER] Step 6: User object:', { id: user.id, email: user.email, tenant_id: user.tenant_id });
 
     // Generate tokens for immediate login
     let accessToken, refreshToken;
     try {
-      console.log('[REGISTER] Step 6: Generating access token...');
-      console.log('[REGISTER] User object for token:', { id: user.id, email: user.email, role: user.role });
+      console.log('[REGISTER] Step 7: Generating access token...');
+      console.log('[REGISTER] User object for token:', { id: user.id, email: user.email, role: user.role, tenant_id: user.tenant_id });
       console.log('[REGISTER] JWT plugin available:', !!fastify.jwt);
       accessToken = generateAccessToken(user);
-      console.log('[REGISTER] Step 7: Access token generated, length:', accessToken?.length);
+      console.log('[REGISTER] Step 8: Access token generated, length:', accessToken?.length);
       
-      console.log('[REGISTER] Step 8: Generating refresh token...');
+      console.log('[REGISTER] Step 9: Generating refresh token...');
       refreshToken = generateRefreshToken(user);
-      console.log('[REGISTER] Step 9: Refresh token generated, length:', refreshToken?.length);
+      console.log('[REGISTER] Step 10: Refresh token generated, length:', refreshToken?.length);
     } catch (tokenError: any) {
       console.error('[REGISTER] Token generation failed:', tokenError);
       console.error('[REGISTER] Token error details:', {
@@ -837,14 +889,14 @@ fastify.post('/api/auth/register', async (request, reply) => {
     // Store refresh token (optional - skip if database has triggers that require tenant)
     // TODO: Re-enable once tenant validation is fixed in database
     try {
-      console.log('[REGISTER] Step 10: Storing refresh token...');
+      console.log('[REGISTER] Step 11: Storing refresh token...');
       // Temporarily skip refresh token storage to avoid database trigger errors
       // await coreDb.query(
       //   `INSERT INTO refresh_tokens (user_id, user_type, token, expires_at)
       //    VALUES ($1, $2, $3, NOW() + INTERVAL '7 days')`,
       //   [user.id, userRole, refreshToken]
       // );
-      console.log('[REGISTER] Step 11: Refresh token storage skipped (temporary)');
+      console.log('[REGISTER] Step 12: Refresh token storage skipped (temporary)');
     } catch (tokenError: any) {
       console.warn('[REGISTER] Failed to store refresh token (non-critical):', tokenError.message);
       logger.warn('Failed to store refresh token:', tokenError.message);
@@ -852,7 +904,7 @@ fastify.post('/api/auth/register', async (request, reply) => {
     }
 
     // Build auth payload
-    console.log('[REGISTER] Step 12: Building auth payload...');
+    console.log('[REGISTER] Step 13: Building auth payload...');
     let authPayload;
     try {
       authPayload = buildAuthPayload(
@@ -862,7 +914,7 @@ fastify.post('/api/auth/register', async (request, reply) => {
         },
         { accessToken, refreshToken }
       );
-      console.log('[REGISTER] Step 13: Auth payload built successfully');
+      console.log('[REGISTER] Step 14: Auth payload built successfully');
     } catch (payloadError: any) {
       console.error('[REGISTER] Auth payload build failed:', payloadError);
       logger.error('Auth payload build failed:', payloadError);
