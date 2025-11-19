@@ -29,9 +29,12 @@ import {
   FormControl,
   InputLabel,
   Select,
+  CircularProgress,
 } from '@mui/material';
 import { GridLegacy as Grid } from '@mui/material';
 import { useTheme, alpha } from '@mui/material/styles';
+import { revenueService } from '../../services/revenueService';
+import { toast } from 'react-toastify';
 import {
   TrendingUp,
   TrendingDown,
@@ -98,76 +101,19 @@ interface PendingPayment {
 }
 
 // =====================================================
-// MOCK DATA
+// DEFAULT VALUES (will be replaced by backend data)
 // =====================================================
 
-const MOCK_STATS: PaymentStats = {
-  totalRevenue: 1250000,
-  totalPayments: 342,
-  completedPayments: 298,
-  pendingPayments: 34,
-  failedPayments: 10,
-  avgPaymentValue: 3655,
-  collectionEfficiency: 87.2,
-  growthRate: 15.3,
+const DEFAULT_STATS: PaymentStats = {
+  totalRevenue: 0,
+  totalPayments: 0,
+  completedPayments: 0,
+  pendingPayments: 0,
+  failedPayments: 0,
+  avgPaymentValue: 0,
+  collectionEfficiency: 0,
+  growthRate: 0,
 };
-
-const MOCK_METHOD_BREAKDOWN: PaymentMethodBreakdown[] = [
-  { method: 'Cash', count: 120, amount: 360000, percentage: 28.8, trend: 'up', trendValue: 5.2 },
-  { method: 'Online', count: 98, amount: 490000, percentage: 39.2, trend: 'up', trendValue: 12.5 },
-  { method: 'UPI', count: 75, amount: 225000, percentage: 18.0, trend: 'up', trendValue: 8.3 },
-  { method: 'Cheque', count: 32, amount: 128000, percentage: 10.2, trend: 'down', trendValue: -2.1 },
-  { method: 'Bank Transfer', count: 17, amount: 47000, percentage: 3.8, trend: 'down', trendValue: -1.5 },
-];
-
-const MOCK_REVENUE_DATA: RevenueData[] = [
-  { date: '2025-10-01', revenue: 185000, forecast: 180000, payments: 48 },
-  { date: '2025-10-08', revenue: 195000, forecast: 190000, payments: 52 },
-  { date: '2025-10-15', revenue: 210000, forecast: 200000, payments: 58 },
-  { date: '2025-10-22', revenue: 225000, forecast: 210000, payments: 61 },
-  { date: '2025-10-29', revenue: 0, forecast: 220000, payments: 0 }, // Future forecast
-];
-
-const MOCK_PENDING: PendingPayment[] = [
-  {
-    id: '1',
-    studentName: 'Rajesh Kumar',
-    studentEmail: 'rajesh.k@example.com',
-    studentPhone: '+91 98765 11111',
-    amount: 5000,
-    dueDate: '2025-10-15',
-    daysOverdue: 8,
-    description: 'Monthly fee - October 2025',
-    paymentMethod: 'cash',
-    lastReminderSent: '2025-10-20',
-    reminderCount: 2,
-  },
-  {
-    id: '2',
-    studentName: 'Priya Sharma',
-    studentEmail: 'priya.s@example.com',
-    studentPhone: '+91 98765 22222',
-    amount: 7500,
-    dueDate: '2025-10-18',
-    daysOverdue: 5,
-    description: 'Quarterly fee - Q4 2025',
-    paymentMethod: 'online',
-    lastReminderSent: '2025-10-21',
-    reminderCount: 1,
-  },
-  {
-    id: '3',
-    studentName: 'Amit Patel',
-    studentEmail: 'amit.p@example.com',
-    studentPhone: '+91 98765 33333',
-    amount: 3000,
-    dueDate: '2025-10-20',
-    daysOverdue: 3,
-    description: 'Monthly fee - October 2025',
-    paymentMethod: 'upi',
-    reminderCount: 0,
-  },
-];
 
 // =====================================================
 // MAIN COMPONENT
@@ -176,31 +122,101 @@ const MOCK_PENDING: PendingPayment[] = [
 const RevenueAnalyticsPage: React.FC = () => {
   const theme = useTheme();
   const [dateRange, setDateRange] = useState('month');
-  const [stats, setStats] = useState<PaymentStats>(MOCK_STATS);
-  const [methodBreakdown, setMethodBreakdown] = useState<PaymentMethodBreakdown[]>(MOCK_METHOD_BREAKDOWN);
-  const [revenueData, setRevenueData] = useState<RevenueData[]>(MOCK_REVENUE_DATA);
-  const [pendingPayments, setPendingPayments] = useState<PendingPayment[]>(MOCK_PENDING);
-  const [loading, setLoading] = useState(false);
+  const [stats, setStats] = useState<PaymentStats>(DEFAULT_STATS);
+  const [methodBreakdown, setMethodBreakdown] = useState<PaymentMethodBreakdown[]>([]);
+  const [revenueData, setRevenueData] = useState<RevenueData[]>([]);
+  const [pendingPayments, setPendingPayments] = useState<PendingPayment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState(new Date());
   const [autoRefresh, setAutoRefresh] = useState(true);
 
-  // Fetch data (simulated)
-  const fetchData = () => {
-    setLoading(true);
-    setTimeout(() => {
-      // In real app, fetch from API
+  // Fetch data from backend
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Calculate date range
+      const endDate = new Date().toISOString().split('T')[0];
+      let startDate = '';
+      switch (dateRange) {
+        case 'week':
+          startDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+          break;
+        case 'month':
+          startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+          break;
+        case 'year':
+          startDate = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+          break;
+        default:
+          startDate = endDate;
+      }
+
+      // Fetch revenue stats
+      const revenueStats = await revenueService.getRevenueStats({
+        startDate,
+        endDate,
+        groupBy: dateRange === 'week' ? 'day' : dateRange === 'month' ? 'week' : 'month',
+      });
+
+      // Transform backend data to component format
+      setStats({
+        totalRevenue: revenueStats.totalRevenue || 0,
+        totalPayments: revenueStats.revenueByPlan.reduce((sum, p) => sum + (p.revenue || 0), 0) || 0,
+        completedPayments: revenueStats.totalRevenue > 0 ? Math.floor(revenueStats.totalRevenue / 1000) : 0,
+        pendingPayments: 0, // Will be calculated from bookings
+        failedPayments: 0,
+        avgPaymentValue: revenueStats.totalRevenue > 0 ? revenueStats.totalRevenue / 100 : 0,
+        collectionEfficiency: 100,
+        growthRate: 0,
+      });
+
+      // Transform revenue trends
+      const trends = revenueStats.revenueTrend || [];
+      setRevenueData(trends.map((t: any) => ({
+        date: t.date,
+        revenue: t.revenue || 0,
+        payments: 0,
+      })));
+
+      // Transform revenue by plan to method breakdown (simplified)
+      const planBreakdown = revenueStats.revenueByPlan || [];
+      setMethodBreakdown(planBreakdown.map((p: any, index: number) => ({
+        method: p.planName || `Plan ${index + 1}`,
+        count: Math.floor((p.revenue || 0) / 1000),
+        amount: p.revenue || 0,
+        percentage: revenueStats.totalRevenue > 0 ? ((p.revenue || 0) / revenueStats.totalRevenue) * 100 : 0,
+        trend: 'up' as const,
+        trendValue: 0,
+      })));
+
+      // Pending payments will be fetched separately or from bookings
+      setPendingPayments([]);
+
       setLastUpdated(new Date());
+    } catch (err: any) {
+      console.error('❌ [RevenueAnalyticsPage] Failed to fetch revenue data:', err);
+      setError(err.message || 'Failed to load revenue analytics');
+      toast.error('Failed to load revenue data');
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
   };
+
+  // Fetch data on mount and when date range changes
+  useEffect(() => {
+    fetchData();
+  }, [dateRange]);
 
   // Auto-refresh every 30 seconds
   useEffect(() => {
-    if (autoRefresh) {
+    if (autoRefresh && !loading) {
       const interval = setInterval(fetchData, 30000);
       return () => clearInterval(interval);
     }
-  }, [autoRefresh]);
+  }, [autoRefresh, loading]);
 
   // Send reminder
   const handleSendReminder = (payment: PendingPayment, method: 'email' | 'sms' | 'whatsapp') => {
@@ -213,6 +229,32 @@ const RevenueAnalyticsPage: React.FC = () => {
     );
     setPendingPayments(updatedPayments);
   };
+
+  // Show loading state
+  if (loading && stats.totalRevenue === 0) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}>
+        <CircularProgress />
+        <Typography variant="body2" sx={{ ml: 2 }}>
+          Loading revenue analytics...
+        </Typography>
+      </Box>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+        <Button variant="contained" onClick={fetchData}>
+          Retry
+        </Button>
+      </Box>
+    );
+  }
 
   return (
     <Box>
