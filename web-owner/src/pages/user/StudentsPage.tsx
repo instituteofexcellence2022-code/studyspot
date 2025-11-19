@@ -59,6 +59,14 @@ interface Student {
   currentPlan?: string;
   status: string;
   enrollmentDate: string;
+  address?: {
+    line1?: string;
+    line2?: string;
+    city?: string;
+    state?: string;
+    postalCode?: string;
+    country?: string;
+  };
 }
 
 const StudentsPageEnhanced: React.FC = () => {
