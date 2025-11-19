@@ -208,10 +208,20 @@ const FeePlansPageAdvanced: React.FC = () => {
         // Update existing plan
         await feePlanService.updateFeePlan(currentPlan.id, planPayload);
         toast.success('Fee plan updated successfully');
+        setSnackbar({ 
+          open: true, 
+          message: '✅ Plan updated successfully!', 
+          severity: 'success' 
+        });
       } else {
         // Create new plan
         await feePlanService.createFeePlan(planPayload);
         toast.success('Fee plan created successfully');
+        setSnackbar({ 
+          open: true, 
+          message: '✅ Plan created successfully!', 
+          severity: 'success' 
+        });
       }
 
       // Reload plans
@@ -225,54 +235,6 @@ const FeePlansPageAdvanced: React.FC = () => {
     } catch (error: any) {
       console.error('❌ [FeePlansPage] Failed to save fee plan:', error);
       toast.error(error.message || 'Failed to save fee plan');
-    } finally {
-      setLoading(false);
-    }
-  };
-      
-      let response;
-      if (editDialogOpen && selectedPlan) {
-        // Update existing plan
-        response = await fetch(`${apiUrl}/api/fee-plans/${selectedPlan.id}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify(payload)
-        });
-      } else {
-        // Create new plan
-        response = await fetch(`${apiUrl}/api/fee-plans`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify(payload)
-        });
-      }
-      
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to save fee plan');
-      }
-      
-      // Reload plans from API
-      await loadFeePlans();
-      
-      setSnackbar({ 
-        open: true, 
-        message: editDialogOpen ? '✅ Plan updated successfully!' : '✅ Plan created successfully!', 
-        severity: 'success' 
-      });
-      
-      setCreateDialogOpen(false);
-      setEditDialogOpen(false);
-      setActiveStep(0);
-    } catch (error: any) {
-      console.error('Error saving fee plan:', error);
       setSnackbar({ 
         open: true, 
         message: error.message || 'Failed to save fee plan. Please try again.', 
