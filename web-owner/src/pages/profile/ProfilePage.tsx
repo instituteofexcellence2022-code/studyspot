@@ -46,6 +46,9 @@ import {
   Verified,
   CloudUpload,
   Delete as DeleteIcon,
+  CheckCircle,
+  Cancel as CancelIcon2,
+  Send,
 } from '@mui/icons-material';
 import { useAppSelector, useAppDispatch } from '../../hooks/redux';
 import { updateUser } from '../../store/slices/authSlice';
@@ -88,6 +91,16 @@ const ProfilePage: React.FC = () => {
   const [changePasswordDialog, setChangePasswordDialog] = useState(false);
   const [twoFactorDialog, setTwoFactorDialog] = useState(false);
   const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [emailVerified, setEmailVerified] = useState((user as any)?.emailVerified || false);
+  const [phoneVerified, setPhoneVerified] = useState((user as any)?.phoneVerified || false);
+  const [emailVerificationDialog, setEmailVerificationDialog] = useState(false);
+  const [phoneVerificationDialog, setPhoneVerificationDialog] = useState(false);
+  const [emailCode, setEmailCode] = useState('');
+  const [phoneCode, setPhoneCode] = useState('');
+  const [sendingEmailCode, setSendingEmailCode] = useState(false);
+  const [sendingPhoneCode, setSendingPhoneCode] = useState(false);
+  const [verifyingEmail, setVerifyingEmail] = useState(false);
+  const [verifyingPhone, setVerifyingPhone] = useState(false);
 
   const [formData, setFormData] = useState({
     firstName: user?.firstName || '',
@@ -308,6 +321,129 @@ const ProfilePage: React.FC = () => {
     }
   };
 
+  const handleSendEmailVerification = async () => {
+    try {
+      setSendingEmailCode(true);
+      const response = await apiClient.post('/api/auth/verify-email/send');
+      
+      if (response.data?.success) {
+        setSnackbar({ 
+          open: true, 
+          message: '✅ Verification code sent to your email!', 
+          severity: 'success' 
+        });
+        setEmailVerificationDialog(true);
+      } else {
+        throw new Error(response.data?.message || 'Failed to send verification code');
+      }
+    } catch (error: any) {
+      console.error('Failed to send email verification:', error);
+      const errorMessage = error?.response?.data?.message || error?.message || 'Failed to send verification code';
+      setSnackbar({ open: true, message: `❌ ${errorMessage}`, severity: 'error' });
+    } finally {
+      setSendingEmailCode(false);
+    }
+  };
+
+  const handleVerifyEmail = async () => {
+    if (!emailCode || emailCode.length < 4) {
+      setSnackbar({ open: true, message: '❌ Please enter the verification code', severity: 'error' });
+      return;
+    }
+
+    try {
+      setVerifyingEmail(true);
+      const response = await apiClient.post('/api/auth/verify-email', { code: emailCode });
+      
+      if (response.data?.success) {
+        setEmailVerified(true);
+        dispatch(updateUser({
+          ...user,
+          emailVerified: true,
+        } as any));
+        setSnackbar({ 
+          open: true, 
+          message: '✅ Email verified successfully!', 
+          severity: 'success' 
+        });
+        setEmailVerificationDialog(false);
+        setEmailCode('');
+      } else {
+        throw new Error(response.data?.message || 'Verification failed');
+      }
+    } catch (error: any) {
+      console.error('Failed to verify email:', error);
+      const errorMessage = error?.response?.data?.message || error?.message || 'Invalid verification code';
+      setSnackbar({ open: true, message: `❌ ${errorMessage}`, severity: 'error' });
+    } finally {
+      setVerifyingEmail(false);
+    }
+  };
+
+  const handleSendPhoneVerification = async () => {
+    if (!formData.phone) {
+      setSnackbar({ open: true, message: '❌ Please add a phone number first', severity: 'error' });
+      return;
+    }
+
+    try {
+      setSendingPhoneCode(true);
+      const response = await apiClient.post('/api/auth/verify-phone/send', { phone: formData.phone });
+      
+      if (response.data?.success) {
+        setSnackbar({ 
+          open: true, 
+          message: '✅ Verification code sent to your phone!', 
+          severity: 'success' 
+        });
+        setPhoneVerificationDialog(true);
+      } else {
+        throw new Error(response.data?.message || 'Failed to send verification code');
+      }
+    } catch (error: any) {
+      console.error('Failed to send phone verification:', error);
+      const errorMessage = error?.response?.data?.message || error?.message || 'Failed to send verification code';
+      setSnackbar({ open: true, message: `❌ ${errorMessage}`, severity: 'error' });
+    } finally {
+      setSendingPhoneCode(false);
+    }
+  };
+
+  const handleVerifyPhone = async () => {
+    if (!phoneCode || phoneCode.length < 4) {
+      setSnackbar({ open: true, message: '❌ Please enter the verification code', severity: 'error' });
+      return;
+    }
+
+    try {
+      setVerifyingPhone(true);
+      const response = await apiClient.post('/api/auth/verify-phone', { code: phoneCode });
+      
+      if (response.data?.success) {
+        setPhoneVerified(true);
+        dispatch(updateUser({
+          ...user,
+          phoneVerified: true,
+        } as any));
+        setSnackbar({ 
+          open: true, 
+          message: '✅ Phone number verified successfully!', 
+          severity: 'success' 
+        });
+        setPhoneVerificationDialog(false);
+        setPhoneCode('');
+      } else {
+        throw new Error(response.data?.message || 'Verification failed');
+      }
+    } catch (error: any) {
+      console.error('Failed to verify phone:', error);
+      const errorMessage = error?.response?.data?.message || error?.message || 'Invalid verification code';
+      setSnackbar({ open: true, message: `❌ ${errorMessage}`, severity: 'error' });
+    } finally {
+      setVerifyingPhone(false);
+    }
+  };
+
   const accountInfo = [
     { label: 'User ID', value: user?.id?.substring(0, 8) + '...', icon: <Verified /> },
     { label: 'Email', value: user?.email, icon: <Email /> },
@@ -456,25 +592,90 @@ const ProfilePage: React.FC = () => {
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Email Address"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  disabled
-                  variant="filled"
-                  helperText="Email cannot be changed"
-                />
+                <Box>
+                  <TextField
+                    fullWidth
+                    label="Email Address"
+                    value={formData.email}
+                    disabled
+                    variant="filled"
+                    helperText="Email cannot be changed"
+                    InputProps={{
+                      endAdornment: emailVerified ? (
+                        <Chip 
+                          icon={<CheckCircle />} 
+                          label="Verified" 
+                          color="success" 
+                          size="small"
+                          sx={{ mr: 1 }}
+                        />
+                      ) : (
+                        <Chip 
+                          icon={<CancelIcon2 />} 
+                          label="Not Verified" 
+                          color="warning" 
+                          size="small"
+                          sx={{ mr: 1 }}
+                        />
+                      ),
+                    }}
+                  />
+                  {!emailVerified && (
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      startIcon={<Send />}
+                      onClick={handleSendEmailVerification}
+                      disabled={sendingEmailCode}
+                      sx={{ mt: 1 }}
+                    >
+                      {sendingEmailCode ? 'Sending...' : 'Verify Email'}
+                    </Button>
+                  )}
+                </Box>
               </Grid>
               <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Phone Number"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  disabled={!editMode || loading}
-                  variant={editMode ? 'outlined' : 'filled'}
-                />
+                <Box>
+                  <TextField
+                    fullWidth
+                    label="Phone Number"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    disabled={!editMode || loading}
+                    variant={editMode ? 'outlined' : 'filled'}
+                    InputProps={{
+                      endAdornment: phoneVerified && formData.phone ? (
+                        <Chip 
+                          icon={<CheckCircle />} 
+                          label="Verified" 
+                          color="success" 
+                          size="small"
+                          sx={{ mr: 1 }}
+                        />
+                      ) : formData.phone ? (
+                        <Chip 
+                          icon={<CancelIcon2 />} 
+                          label="Not Verified" 
+                          color="warning" 
+                          size="small"
+                          sx={{ mr: 1 }}
+                        />
+                      ) : null,
+                    }}
+                  />
+                  {formData.phone && !phoneVerified && (
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      startIcon={<Send />}
+                      onClick={handleSendPhoneVerification}
+                      disabled={sendingPhoneCode || !formData.phone}
+                      sx={{ mt: 1 }}
+                    >
+                      {sendingPhoneCode ? 'Sending...' : 'Verify Phone'}
+                    </Button>
+                  )}
+                </Box>
               </Grid>
               <Grid item xs={12}>
                 <TextField
@@ -699,6 +900,132 @@ const ProfilePage: React.FC = () => {
             disabled={loading}
           >
             {loading ? 'Processing...' : (twoFactorEnabled ? 'Disable 2FA' : 'Enable 2FA')}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Email Verification Dialog */}
+      <Dialog 
+        open={emailVerificationDialog} 
+        onClose={() => {
+          setEmailVerificationDialog(false);
+          setEmailCode('');
+        }}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <Email sx={{ mr: 1 }} />
+            Verify Email Address
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 2 }}>
+            <Alert severity="info" sx={{ mb: 3 }}>
+              We've sent a verification code to <strong>{formData.email}</strong>. Please enter the code below.
+            </Alert>
+            <TextField
+              fullWidth
+              label="Verification Code"
+              value={emailCode}
+              onChange={(e) => setEmailCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              placeholder="Enter 6-digit code"
+              disabled={verifyingEmail}
+              inputProps={{ maxLength: 6, style: { textAlign: 'center', fontSize: '1.5rem', letterSpacing: '0.5rem' } }}
+              sx={{ mb: 2 }}
+            />
+            <Typography variant="body2" color="text.secondary" align="center">
+              Didn't receive the code?{' '}
+              <Button
+                size="small"
+                onClick={handleSendEmailVerification}
+                disabled={sendingEmailCode}
+              >
+                Resend
+              </Button>
+            </Typography>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button 
+            onClick={() => {
+              setEmailVerificationDialog(false);
+              setEmailCode('');
+            }} 
+            disabled={verifyingEmail}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleVerifyEmail} 
+            variant="contained" 
+            disabled={verifyingEmail || !emailCode || emailCode.length < 4}
+          >
+            {verifyingEmail ? 'Verifying...' : 'Verify'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Phone Verification Dialog */}
+      <Dialog 
+        open={phoneVerificationDialog} 
+        onClose={() => {
+          setPhoneVerificationDialog(false);
+          setPhoneCode('');
+        }}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <Phone sx={{ mr: 1 }} />
+            Verify Phone Number
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 2 }}>
+            <Alert severity="info" sx={{ mb: 3 }}>
+              We've sent a verification code to <strong>{formData.phone}</strong>. Please enter the code below.
+            </Alert>
+            <TextField
+              fullWidth
+              label="Verification Code"
+              value={phoneCode}
+              onChange={(e) => setPhoneCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              placeholder="Enter 6-digit code"
+              disabled={verifyingPhone}
+              inputProps={{ maxLength: 6, style: { textAlign: 'center', fontSize: '1.5rem', letterSpacing: '0.5rem' } }}
+              sx={{ mb: 2 }}
+            />
+            <Typography variant="body2" color="text.secondary" align="center">
+              Didn't receive the code?{' '}
+              <Button
+                size="small"
+                onClick={handleSendPhoneVerification}
+                disabled={sendingPhoneCode}
+              >
+                Resend
+              </Button>
+            </Typography>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button 
+            onClick={() => {
+              setPhoneVerificationDialog(false);
+              setPhoneCode('');
+            }} 
+            disabled={verifyingPhone}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleVerifyPhone} 
+            variant="contained" 
+            disabled={verifyingPhone || !phoneCode || phoneCode.length < 4}
+          >
+            {verifyingPhone ? 'Verifying...' : 'Verify'}
           </Button>
         </DialogActions>
       </Dialog>
