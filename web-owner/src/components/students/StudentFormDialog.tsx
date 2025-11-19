@@ -268,11 +268,6 @@ const StudentFormDialog: React.FC<StudentFormProps> = ({ open, onClose, onSave, 
       case 1: // Contact Details
         return (
           <Grid container spacing={1.5}>
-            <Grid item xs={12}>
-              <Alert severity="info" sx={{ py: 1, fontSize: '0.813rem' }}>
-                Contact information for communication and emergencies
-              </Alert>
-            </Grid>
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
@@ -516,11 +511,6 @@ const StudentFormDialog: React.FC<StudentFormProps> = ({ open, onClose, onSave, 
       case 2: // Fee & Plan
         return (
           <Grid container spacing={1.5}>
-            <Grid item xs={12}>
-              <Alert severity="info" sx={{ py: 1, fontSize: '0.813rem' }}>
-                Configure student's plan and fee status
-              </Alert>
-            </Grid>
             <Grid item xs={12} sm={6}>
               <FormControl fullWidth size="small">
                 <InputLabel>Plan (Default: Monthly Premium)</InputLabel>
@@ -575,11 +565,6 @@ const StudentFormDialog: React.FC<StudentFormProps> = ({ open, onClose, onSave, 
       case 3: // KYC & Extras
         return (
           <Grid container spacing={1.5}>
-            <Grid item xs={12}>
-              <Alert severity="info" sx={{ py: 1, fontSize: '0.813rem' }}>
-                Additional information and grouping (Optional)
-              </Alert>
-            </Grid>
             <Grid item xs={12} sm={6}>
               <FormControl fullWidth size="small">
                 <InputLabel>Groups (Optional)</InputLabel>
@@ -692,30 +677,11 @@ const StudentFormDialog: React.FC<StudentFormProps> = ({ open, onClose, onSave, 
       }}
     >
       <DialogTitle sx={{ pb: 1.5 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <Box sx={{ flex: 1 }}>
-            <Typography variant="h6" fontWeight={700} sx={{ mb: 0.5 }}>
-              {editMode ? 'Edit Student' : 'Add New Student'}
-            </Typography>
-            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
-              {editMode ? 'Update student information' : 'Quick registration - only first name and email required'}
-            </Typography>
-          </Box>
-        </Box>
+        <Typography variant="h6" fontWeight={700}>
+          {editMode ? 'Edit Student' : 'Add New Student'}
+        </Typography>
       </DialogTitle>
       <DialogContent sx={{ px: 3, py: 2 }}>
-        {!editMode && (
-          <Alert 
-            severity="info" 
-            sx={{ 
-              mb: 2, 
-              py: 1,
-              '& .MuiAlert-message': { fontSize: '0.813rem' }
-            }}
-          >
-            <strong>Quick Add:</strong> Fill in first name and email to create student. Other fields can be added later.
-          </Alert>
-        )}
         <Box>
           <Stepper activeStep={activeStep} sx={{ mb: 3, '& .MuiStepLabel-root': { fontSize: '0.75rem' } }}>
             {steps.map((label) => (
