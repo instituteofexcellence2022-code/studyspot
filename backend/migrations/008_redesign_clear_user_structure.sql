@@ -88,66 +88,156 @@ CREATE INDEX idx_platform_staff_is_active ON platform_staff(is_active);
 -- ============================================
 
 -- Migrate library owners
-INSERT INTO library_owners (id, tenant_id, email, password_hash, first_name, last_name, phone, is_active, last_login_at, last_login_ip, metadata, created_at, updated_at)
-SELECT 
-    id,
-    tenant_id,
-    email,
-    password_hash,
-    first_name,
-    last_name,
-    phone,
-    is_active,
-    last_login_at,
-    last_login_ip,
-    COALESCE(metadata, '{}'::jsonb),
-    created_at,
-    updated_at
-FROM admin_users
-WHERE user_type = 'library_owner' OR (tenant_id IS NOT NULL AND user_type IS NULL)
-ON CONFLICT (id) DO NOTHING;
+-- Check if metadata column exists, if not use empty jsonb
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'admin_users' AND column_name = 'metadata'
+    ) THEN
+        INSERT INTO library_owners (id, tenant_id, email, password_hash, first_name, last_name, phone, is_active, last_login_at, last_login_ip, metadata, created_at, updated_at)
+        SELECT 
+            id,
+            tenant_id,
+            email,
+            password_hash,
+            first_name,
+            last_name,
+            phone,
+            is_active,
+            last_login_at,
+            last_login_ip,
+            COALESCE(metadata, '{}'::jsonb),
+            created_at,
+            updated_at
+        FROM admin_users
+        WHERE (user_type = 'library_owner' OR (tenant_id IS NOT NULL AND user_type IS NULL))
+        AND tenant_id IS NOT NULL
+        ON CONFLICT (id) DO NOTHING;
+    ELSE
+        INSERT INTO library_owners (id, tenant_id, email, password_hash, first_name, last_name, phone, is_active, last_login_at, last_login_ip, metadata, created_at, updated_at)
+        SELECT 
+            id,
+            tenant_id,
+            email,
+            password_hash,
+            first_name,
+            last_name,
+            phone,
+            is_active,
+            last_login_at,
+            last_login_ip,
+            '{}'::jsonb as metadata,
+            created_at,
+            updated_at
+        FROM admin_users
+        WHERE (user_type = 'library_owner' OR (tenant_id IS NOT NULL AND user_type IS NULL))
+        AND tenant_id IS NOT NULL
+        ON CONFLICT (id) DO NOTHING;
+    END IF;
+END $$;
 
 -- Migrate platform super admins
-INSERT INTO platform_admins (id, email, password_hash, first_name, last_name, phone, is_active, last_login_at, last_login_ip, metadata, created_at, updated_at)
-SELECT 
-    id,
-    email,
-    password_hash,
-    first_name,
-    last_name,
-    phone,
-    is_active,
-    last_login_at,
-    last_login_ip,
-    COALESCE(metadata, '{}'::jsonb),
-    created_at,
-    updated_at
-FROM admin_users
-WHERE role = 'super_admin' AND (user_type = 'platform_admin' OR user_type IS NULL OR tenant_id IS NULL)
-ON CONFLICT (id) DO NOTHING;
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'admin_users' AND column_name = 'metadata'
+    ) THEN
+        INSERT INTO platform_admins (id, email, password_hash, first_name, last_name, phone, is_active, last_login_at, last_login_ip, metadata, created_at, updated_at)
+        SELECT 
+            id,
+            email,
+            password_hash,
+            first_name,
+            last_name,
+            phone,
+            is_active,
+            last_login_at,
+            last_login_ip,
+            COALESCE(metadata, '{}'::jsonb),
+            created_at,
+            updated_at
+        FROM admin_users
+        WHERE role = 'super_admin' 
+        AND (user_type = 'platform_admin' OR user_type IS NULL OR tenant_id IS NULL)
+        ON CONFLICT (id) DO NOTHING;
+    ELSE
+        INSERT INTO platform_admins (id, email, password_hash, first_name, last_name, phone, is_active, last_login_at, last_login_ip, metadata, created_at, updated_at)
+        SELECT 
+            id,
+            email,
+            password_hash,
+            first_name,
+            last_name,
+            phone,
+            is_active,
+            last_login_at,
+            last_login_ip,
+            '{}'::jsonb as metadata,
+            created_at,
+            updated_at
+        FROM admin_users
+        WHERE role = 'super_admin' 
+        AND (user_type = 'platform_admin' OR user_type IS NULL OR tenant_id IS NULL)
+        ON CONFLICT (id) DO NOTHING;
+    END IF;
+END $$;
 
 -- Migrate platform staff
-INSERT INTO platform_staff (id, email, password_hash, first_name, last_name, phone, role, department, permissions, is_active, last_login_at, last_login_ip, metadata, created_at, updated_at)
-SELECT 
-    id,
-    email,
-    password_hash,
-    first_name,
-    last_name,
-    phone,
-    role,
-    department,
-    COALESCE(permissions, '[]'::jsonb),
-    is_active,
-    last_login_at,
-    last_login_ip,
-    COALESCE(metadata, '{}'::jsonb),
-    created_at,
-    updated_at
-FROM admin_users
-WHERE role IN ('admin', 'support', 'analyst', 'sales', 'finance') 
-AND (user_type = 'platform_admin' OR user_type IS NULL OR tenant_id IS NULL)
-ON CONFLICT (id) DO NOTHING;
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'admin_users' AND column_name = 'metadata'
+    ) THEN
+        INSERT INTO platform_staff (id, email, password_hash, first_name, last_name, phone, role, department, permissions, is_active, last_login_at, last_login_ip, metadata, created_at, updated_at)
+        SELECT 
+            id,
+            email,
+            password_hash,
+            first_name,
+            last_name,
+            phone,
+            role,
+            department,
+            COALESCE(permissions, '[]'::jsonb),
+            is_active,
+            last_login_at,
+            last_login_ip,
+            COALESCE(metadata, '{}'::jsonb),
+            created_at,
+            updated_at
+        FROM admin_users
+        WHERE role IN ('admin', 'support', 'analyst', 'sales', 'finance') 
+        AND (user_type = 'platform_admin' OR user_type IS NULL OR tenant_id IS NULL)
+        AND role != 'super_admin'
+        ON CONFLICT (id) DO NOTHING;
+    ELSE
+        INSERT INTO platform_staff (id, email, password_hash, first_name, last_name, phone, role, department, permissions, is_active, last_login_at, last_login_ip, metadata, created_at, updated_at)
+        SELECT 
+            id,
+            email,
+            password_hash,
+            first_name,
+            last_name,
+            phone,
+            role,
+            department,
+            COALESCE(permissions, '[]'::jsonb),
+            is_active,
+            last_login_at,
+            last_login_ip,
+            '{}'::jsonb as metadata,
+            created_at,
+            updated_at
+        FROM admin_users
+        WHERE role IN ('admin', 'support', 'analyst', 'sales', 'finance') 
+        AND (user_type = 'platform_admin' OR user_type IS NULL OR tenant_id IS NULL)
+        AND role != 'super_admin'
+        ON CONFLICT (id) DO NOTHING;
+    END IF;
+END $$;
 
 -- ============================================
 -- STEP 5: UPDATE TENANTS TABLE
