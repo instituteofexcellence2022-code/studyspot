@@ -1,6 +1,7 @@
 /**
  * Health Check Service
  * Checks backend connectivity and health status
+ * Uses fetch directly to avoid circular dependencies
  */
 
 export interface HealthStatus {
@@ -19,16 +20,8 @@ class HealthService {
   private lastCheck = 0;
 
   /**
-   * Get API client lazily to avoid circular dependencies
-   */
-  private async getApiClient() {
-    // Dynamic import to avoid circular dependency issues
-    const { apiClient } = await import('./sdk');
-    return apiClient;
-  }
-
-  /**
    * Check backend health
+   * Uses fetch directly to avoid circular dependencies with apiClient
    */
   async checkHealth(forceRefresh = false): Promise<HealthStatus> {
     const now = Date.now();
@@ -45,86 +38,43 @@ class HealthService {
     console.log('[HealthService] Checking backend health at:', healthEndpoint);
     
     try {
-      // Try using fetch first (more reliable for CORS and network errors)
-      let response: any;
-      let healthData: any;
+      // Use fetch directly to avoid circular dependency with apiClient
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
       
-      try {
-        // Try axios first (handles CORS better with credentials)
-        const apiClient = await this.getApiClient();
-        response = await apiClient.get('/health', {
-          timeout: 15000, // 15 second timeout for Render wake-up
-        });
-        healthData = response.data;
-        console.log('[HealthService] Health check successful (axios):', response.status);
-      } catch (axiosError: any) {
-        // Fallback to fetch if axios fails (might be CORS issue)
-        console.log('[HealthService] Axios failed, trying fetch:', axiosError.message);
-        
-        try {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 15000);
-          
-          const fetchResponse = await fetch(healthEndpoint, {
-            method: 'GET',
-            mode: 'cors', // Explicitly request CORS
-            credentials: 'omit', // Don't send credentials to avoid CORS preflight
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            signal: controller.signal,
-          });
-          
-          clearTimeout(timeoutId);
-          
-          if (!fetchResponse.ok) {
-            throw new Error(`HTTP ${fetchResponse.status}: ${fetchResponse.statusText}`);
-          }
-          
-          healthData = await fetchResponse.json();
-          response = { status: fetchResponse.status, data: healthData };
-          console.log('[HealthService] Health check successful (fetch):', fetchResponse.status);
-        } catch (fetchError: any) {
-          // Both methods failed - check if it's a CORS error
-          const isCorsError = fetchError?.message?.includes('CORS') || 
-                            fetchError?.message?.includes('cors') ||
-                            fetchError?.name === 'TypeError' && fetchError?.message?.includes('Failed to fetch');
-          
-          if (isCorsError) {
-            throw new Error(`CORS error: The backend is blocking requests from this origin. Please check CORS configuration on the backend.`);
-          }
-          
-          // Re-throw the original axios error if fetch also fails
-          throw axiosError;
-        }
+      const fetchResponse = await fetch(healthEndpoint, {
+        method: 'GET',
+        mode: 'cors',
+        credentials: 'omit',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        signal: controller.signal,
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (!fetchResponse.ok) {
+        throw new Error(`HTTP ${fetchResponse.status}: ${fetchResponse.statusText}`);
       }
+      
+      const healthData = await fetchResponse.json();
+      const response = { status: fetchResponse.status, data: healthData };
+      console.log('[HealthService] Health check successful:', fetchResponse.status);
 
       const latency = Date.now() - startTime;
       
       // Parse response - handle various formats
-      // Format 1: { success: true, data: { status: 'healthy' } } - YOUR FORMAT
-      // Format 2: { status: 'healthy' }
-      // Format 3: { data: { status: 'healthy' } }
-      
-      // Get the actual response data (handle both fetch and axios responses)
       const rawData = healthData || response?.data || response.data;
-      
-      // Extract nested data if present
       const nestedData = rawData?.data;
       const topLevel = rawData;
       
       // Check health from multiple possible locations
-      // Priority: Check top-level success + nested status, then nested status, then top-level status
       const isHealthy = 
-        // Format: { success: true, data: { status: 'healthy' } }
         (topLevel?.success === true && nestedData?.status === 'healthy') ||
-        // Format: { success: true, data: { status: 'healthy' } } - alternative check
         (topLevel?.success === true && nestedData?.status !== 'unhealthy') ||
-        // Format: { status: 'healthy' }
         (topLevel?.status === 'healthy') ||
-        // Format: { data: { status: 'healthy' } }
         (nestedData?.status === 'healthy') ||
-        // Fallback: Any 2xx response with success: true
         (response.status >= 200 && response.status < 300 && topLevel?.success === true);
       
       console.log('[HealthService] Parsed health data:', {
@@ -165,7 +115,7 @@ class HealthService {
         url: healthEndpoint,
         error: error?.message,
         code: error?.code,
-        response: error?.response?.status,
+        name: error?.name,
       });
       
       // Determine error type
@@ -177,12 +127,11 @@ class HealthService {
         const errorCode = error?.code || 'UNKNOWN';
         const errorMessage = error?.message || 'Network Error';
         
-        if (errorCode === 'ECONNREFUSED') {
+        if (errorCode === 'ECONNREFUSED' || errorMessage.includes('ECONNREFUSED')) {
           status = 'unhealthy';
           message = `Cannot connect to backend at ${baseURL}. Please ensure the backend is running.`;
         } else if (errorCode === 'ECONNABORTED' || errorCode === 'ETIMEDOUT' || errorMessage.includes('timeout') || errorMessage.includes('aborted')) {
           status = 'unhealthy';
-          // Render free tier services sleep after inactivity and can take 30-60 seconds to wake up
           if (baseURL.includes('render.com') || baseURL.includes('onrender.com')) {
             message = `Backend timeout. Render services may be sleeping (free tier). The first request can take 30-60 seconds to wake up the service. Please wait and try again, or check the Render dashboard.`;
           } else {
@@ -251,4 +200,3 @@ class HealthService {
 // Export instance after class definition to avoid initialization issues
 const healthService = new HealthService();
 export { healthService };
-
