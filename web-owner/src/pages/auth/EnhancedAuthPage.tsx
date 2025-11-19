@@ -133,12 +133,13 @@ const EnhancedAuthPage: React.FC = () => {
     }
 
     try {
-      const result = await authService.register(
-        registerData.email,
-        registerData.password,
-        `${registerData.firstName} ${registerData.lastName}`,
-        registerData.role
-      );
+      const result = await authService.register({
+        email: registerData.email,
+        password: registerData.password,
+        firstName: registerData.firstName,
+        lastName: registerData.lastName,
+        role: registerData.role,
+      });
       
       if (result.success) {
         toast.success('Registration successful!');

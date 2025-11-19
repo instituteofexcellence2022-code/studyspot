@@ -71,7 +71,10 @@ class AuthService {
     role?: string;
   }): Promise<AuthResponse> {
     if (USE_MOCK) {
-      return await mockAuthService.registerDetailed(data);
+      return await mockAuthService.registerDetailed({
+        ...data,
+        lastName: data.lastName || '',
+      });
     }
 
     try {
@@ -112,10 +115,7 @@ class AuthService {
       }
       
       // Fallback: If no tokens returned, auto-login the user
-      return await this.login({
-        email: data.email,
-        password: data.password,
-      });
+      return await this.login(data.email, data.password);
     } catch (error: any) {
       // If API gateway is unreachable or returns 5xx, try auth service directly
       if (!error?.response || error.response?.status >= 500) {
@@ -164,10 +164,7 @@ class AuthService {
             };
           }
 
-          return await this.login({
-            email: data.email,
-            password: data.password,
-          });
+          return await this.login(data.email, data.password);
         } catch (fallbackError: any) {
           throw this.handleError(fallbackError);
         }
