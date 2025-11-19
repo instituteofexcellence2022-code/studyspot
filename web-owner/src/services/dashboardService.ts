@@ -53,7 +53,7 @@ export class DashboardService {
         
         // Students (active)
         studentsService.getStudents({
-          status: ['active'],
+          status: 'active',
           page: 1,
           limit: 1000,
         }),
@@ -80,19 +80,19 @@ export class DashboardService {
       const libraries = librariesResponse.status === 'fulfilled' 
         ? (Array.isArray(librariesResponse.value) 
             ? librariesResponse.value 
-            : librariesResponse.value?.data || librariesResponse.value?.items || [])
+            : (librariesResponse.value as any)?.data || [])
         : [];
       
       const students = studentsResponse.status === 'fulfilled'
         ? (Array.isArray(studentsResponse.value)
             ? studentsResponse.value
-            : studentsResponse.value?.students || studentsResponse.value?.data || [])
+            : (studentsResponse.value as any)?.students || (studentsResponse.value as any)?.data || [])
         : [];
       
       const bookings = bookingsResponse.status === 'fulfilled'
         ? (Array.isArray(bookingsResponse.value)
             ? bookingsResponse.value
-            : bookingsResponse.value?.bookings || bookingsResponse.value?.data || bookingsResponse.value?.items || [])
+            : (bookingsResponse.value as any)?.data || [])
         : [];
 
       // Calculate statistics
@@ -211,7 +211,7 @@ export class DashboardService {
         });
         const bookingsList = Array.isArray(bookings)
           ? bookings
-          : (bookings?.bookings || bookings?.data || bookings?.items || []);
+          : ((bookings as any)?.data || []);
         const totalRevenue = bookingsList.reduce((sum: number, b: any) => {
           return sum + (parseFloat(b.totalAmount || b.amount || 0));
         }, 0);

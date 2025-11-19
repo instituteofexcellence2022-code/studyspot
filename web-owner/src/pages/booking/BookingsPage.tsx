@@ -60,20 +60,22 @@ const BookingsPage: React.FC = () => {
       // Handle different response formats
       let bookingsData: any[] = [];
       
-      if (Array.isArray(response)) {
-        bookingsData = response;
-      } else if (response?.data) {
-        if (Array.isArray(response.data)) {
-          bookingsData = response.data;
-        } else if (response.data?.bookings) {
-          bookingsData = response.data.bookings;
-        } else if (response.data?.items) {
-          bookingsData = response.data.items;
+      const responseData = response as any;
+      
+      if (Array.isArray(responseData)) {
+        bookingsData = responseData;
+      } else if (responseData?.data) {
+        if (Array.isArray(responseData.data)) {
+          bookingsData = responseData.data;
+        } else if (responseData.data?.bookings && Array.isArray(responseData.data.bookings)) {
+          bookingsData = responseData.data.bookings;
+        } else if (responseData.data?.items && Array.isArray(responseData.data.items)) {
+          bookingsData = responseData.data.items;
         }
-      } else if (response?.bookings) {
-        bookingsData = response.bookings;
-      } else if (response?.items) {
-        bookingsData = response.items;
+      } else if (responseData?.bookings && Array.isArray(responseData.bookings)) {
+        bookingsData = responseData.bookings;
+      } else if (responseData?.items && Array.isArray(responseData.items)) {
+        bookingsData = responseData.items;
       }
       
       console.log('📡 [BookingsPage] Bookings data:', bookingsData);
