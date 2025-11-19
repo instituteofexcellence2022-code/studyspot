@@ -18,27 +18,16 @@ import {
 } from '@mui/material';
 import {
   BusinessCenter,
-  PlayArrow,
   Google as GoogleIcon,
   GitHub as GitHubIcon,
-  SkipNext,
   Visibility,
   VisibilityOff,
 } from '@mui/icons-material';
 import { useAppDispatch } from '../../hooks/redux';
-import { login, setCredentials } from '../../store/slices/authSlice';
-import { ROUTES, STORAGE_KEYS } from '../../constants';
+import { login } from '../../store/slices/authSlice';
+import { ROUTES } from '../../constants';
 import errorService from '../../services/errorService';
 import { authService } from '../../services/authService';
-
-const DEMO_ACCOUNT = {
-  email: 'owner@demo.com',
-  password: 'Demo123456',
-  firstName: 'Demo',
-  lastName: 'Owner',
-  phone: '+1234567890',
-  role: 'library_owner',
-};
 
 const REMEMBER_ME_KEY = 'studyspot_remember_me';
 const REMEMBERED_EMAIL_KEY = 'studyspot_remembered_email';
@@ -100,74 +89,6 @@ const CleanLoginPage: React.FC = () => {
     }
   };
 
-  const handleRegister = async (userData: typeof DEMO_ACCOUNT) => {
-    try {
-      console.log('🔵 Attempting registration via authService...');
-      
-      // Use authService.registerDetailed for better data handling
-      const response = await (authService as any).registerDetailed({
-        email: userData.email,
-        password: userData.password,
-        firstName: userData.firstName,
-        lastName: userData.lastName,
-        phone: userData.phone,
-        role: userData.role,
-      });
-
-      console.log('✅ Registration response:', response);
-      
-      if (response.success) {
-        return { success: true, message: 'Account created successfully!' };
-      } else {
-        throw new Error(response.message || 'Registration failed');
-      }
-    } catch (err: any) {
-      const appError = errorService.parseError(err);
-      errorService.logError(appError, 'Registration');
-      
-      // If user already exists, that's okay for demo account
-      if (appError.code === 'CONFLICT' || 
-          appError.message?.toLowerCase().includes('exists') ||
-          err?.message?.toLowerCase().includes('exists')) {
-        return { success: true, message: 'Account already exists, logging in...' };
-      }
-      
-      throw new Error(appError.userMessage || err?.message || 'Registration failed');
-    }
-  };
-
-  const handleDemoAccountClick = async () => {
-    try {
-      setError('');
-      setSuccess('');
-      setLoading(true);
-
-      // Step 1: Try to register demo account
-      setSuccess('🔄 Setting up demo account...');
-      console.log('Step 1: Registering demo account');
-      
-      try {
-        const regResult = await handleRegister(DEMO_ACCOUNT);
-        setSuccess(regResult.message);
-        console.log('Registration result:', regResult);
-      } catch (regError: any) {
-        console.log('Registration error (might be okay if user exists):', regError.message);
-      }
-
-      // Step 2: Login with demo credentials
-      await new Promise(resolve => setTimeout(resolve, 500)); // Brief pause
-      setSuccess('🔄 Logging in...');
-      console.log('Step 2: Logging in with demo credentials');
-      
-      await handleLogin(DEMO_ACCOUNT.email, DEMO_ACCOUNT.password);
-
-    } catch (err: any) {
-      const appError = errorService.parseError(err);
-      errorService.logError(appError, 'Demo Account');
-      setError(appError.userMessage);
-      setLoading(false);
-    }
-  };
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -180,43 +101,6 @@ const CleanLoginPage: React.FC = () => {
     await handleLogin(email, password);
   };
 
-  const handleSkipLogin = () => {
-    console.log('🔓 SKIP LOGIN - Bypassing authentication');
-    
-    // Create mock user data
-    const mockUser = {
-      id: 'demo-user-skip-123',
-      email: 'owner@demo.com',
-      firstName: 'Demo',
-      lastName: 'Owner',
-      role: 'library_owner' as const,
-      phone: '+1234567890',
-      status: 'active' as const,
-      tenantId: '00000000-0000-0000-0000-000000000000',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-
-    const mockToken = 'skip-login-demo-token';
-
-    // Store in localStorage
-    localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, mockToken);
-    localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, mockToken);
-    localStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(mockUser));
-
-    // Dispatch to Redux
-    dispatch(setCredentials({
-      user: mockUser,
-      token: mockToken,
-      refreshToken: mockToken,
-    }));
-
-    // Navigate to dashboard
-    setSuccess('✅ Skipped login! Redirecting to dashboard...');
-    setTimeout(() => {
-      navigate(ROUTES.DASHBOARD);
-    }, 500);
-  };
 
   return (
     <Container maxWidth="sm">
@@ -266,39 +150,6 @@ const CleanLoginPage: React.FC = () => {
             </Alert>
           )}
 
-          {/* Demo Account Button */}
-          <Button
-            fullWidth
-            variant="contained"
-            color="success"
-            size="large"
-            startIcon={<PlayArrow />}
-            onClick={handleDemoAccountClick}
-            disabled={loading}
-            sx={{ mb: 2, py: 1.5 }}
-          >
-            {loading ? <CircularProgress size={24} /> : 'Try Demo Account'}
-          </Button>
-
-          {/* Skip Login Button */}
-          <Button
-            fullWidth
-            variant="outlined"
-            color="warning"
-            size="large"
-            startIcon={<SkipNext />}
-            onClick={handleSkipLogin}
-            disabled={loading}
-            sx={{ mb: 3, py: 1.5 }}
-          >
-            Skip Login (Go to Dashboard)
-          </Button>
-
-          <Divider sx={{ my: 3 }}>
-            <Typography variant="body2" color="text.secondary">
-              OR LOGIN WITH EMAIL
-            </Typography>
-          </Divider>
 
           {/* Login Form */}
           <form onSubmit={handleFormSubmit}>
