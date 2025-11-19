@@ -621,85 +621,131 @@ const StudentsPageAdvanced: React.FC = () => {
       {/* Tab Content */}
       {activeTab === 0 && (
         <Box>
-          {/* Action Buttons */}
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-            <Box sx={{ flex: '1 1 200px', minWidth: '200px' }}>
-              <Button
-                fullWidth
-                variant="contained"
-                startIcon={<AddIcon />}
-                onClick={() => { setEditMode(false); setCurrentStudent({}); setAddDialogOpen(true); }}
-              >
-                Add Student
-              </Button>
-            </Box>
-            <Box sx={{ flex: '1 1 200px', minWidth: '200px' }}>
-              <Button
-                fullWidth
-                variant="outlined"
-                startIcon={<UploadIcon />}
-                onClick={() => setBulkImportDialogOpen(true)}
-              >
-                Bulk Import
-              </Button>
-            </Box>
-            <Box sx={{ flex: '1 1 200px', minWidth: '200px' }}>
-              <Button
-                fullWidth
-                variant="outlined"
-                startIcon={<BadgeIcon />}
-                onClick={handleGenerateIDCards}
-                disabled={selectedStudents.length === 0}
-              >
-                Generate ID Cards ({selectedStudents.length})
-              </Button>
-            </Box>
-            <Box sx={{ flex: '1 1 200px', minWidth: '200px' }}>
-              <Button
-                fullWidth
-                variant="outlined"
-                startIcon={<ExportIcon />}
-                onClick={() => studentsService.exportToCSV({})}
-              >
-                Export All
-              </Button>
-            </Box>
+          {/* Action Buttons - Stabilized layout */}
+      <Card sx={{ 
+        mb: 3,
+        // Prevent layout shifts
+        position: 'relative',
+        minHeight: 80,
+      }}>
+        <CardContent sx={{ 
+          // Stable padding
+          p: 2,
+          '&:last-child': { pb: 2 },
+        }}>
+          <Box sx={{ 
+            display: 'grid',
+            gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' },
+            gap: 2,
+            // Prevent layout shifts
+            minHeight: 48,
+            alignItems: 'stretch',
+          }}>
+            <Button
+              fullWidth
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => { setEditMode(false); setCurrentStudent({}); setAddDialogOpen(true); }}
+              sx={{
+                // Fixed height to prevent shifts
+                minHeight: 48,
+                height: '100%',
+              }}
+            >
+              Add Student
+            </Button>
+            <Button
+              fullWidth
+              variant="outlined"
+              startIcon={<UploadIcon />}
+              onClick={() => setBulkImportDialogOpen(true)}
+              sx={{
+                minHeight: 48,
+                height: '100%',
+              }}
+            >
+              Bulk Import
+            </Button>
+            <Button
+              fullWidth
+              variant="outlined"
+              startIcon={<BadgeIcon />}
+              onClick={handleGenerateIDCards}
+              disabled={selectedStudents.length === 0}
+              sx={{
+                minHeight: 48,
+                height: '100%',
+              }}
+            >
+              Generate ID Cards ({selectedStudents.length})
+            </Button>
+            <Button
+              fullWidth
+              variant="outlined"
+              startIcon={<ExportIcon />}
+              onClick={() => studentsService.exportToCSV({})}
+              sx={{
+                minHeight: 48,
+                height: '100%',
+              }}
+            >
+              Export All
+            </Button>
           </Box>
         </CardContent>
       </Card>
 
       {/* Enhanced Search and Filters */}
-      <Paper sx={{ p: 2, mb: 2 }}>
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'center' }}>
+      <Paper sx={{ 
+        p: 2, 
+        mb: 2,
+        // Prevent layout shifts
+        position: 'relative',
+        minHeight: 80,
+      }}>
+        <Box sx={{ 
+          display: 'grid',
+          gridTemplateColumns: { xs: '1fr', sm: '1fr auto', md: '1fr auto auto' },
+          gap: 2,
+          alignItems: 'center',
+          // Prevent layout shifts
+          minHeight: 56,
+        }}>
           {/* Search */}
-          <Box sx={{ flex: '1 1 300px', minWidth: '300px' }}>
-            <TextField
-              fullWidth
-              size="small"
-              placeholder="Search by name, email, phone, student ID..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon />
-                  </InputAdornment>
-                ),
-                endAdornment: searchTerm && (
-                  <InputAdornment position="end">
-                    <IconButton size="small" onClick={() => setSearchTerm('')}>
-                      <Close />
-                    </IconButton>
-                  </InputAdornment>
-                ),
-              }}
-            />
-          </Box>
+          <TextField
+            fullWidth
+            size="small"
+            placeholder="Search by name, email, phone, student ID..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            sx={{
+              // Fixed height to prevent shifts
+              minHeight: 40,
+            }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon />
+                </InputAdornment>
+              ),
+              endAdornment: searchTerm && (
+                <InputAdornment position="end">
+                  <IconButton size="small" onClick={() => setSearchTerm('')}>
+                    <Close />
+                  </IconButton>
+                </InputAdornment>
+              ),
+            }}
+          />
 
           {/* Quick Filters */}
-          <Box sx={{ flex: '0 0 auto', display: 'flex', gap: 1 }}>
+          <Box sx={{ 
+            display: 'flex', 
+            gap: 1,
+            flexWrap: 'nowrap',
+            // Prevent wrapping that causes shifts
+            minWidth: 'fit-content',
+          }}>
             <FormControl size="small" sx={{ minWidth: 120 }}>
               <InputLabel>Status</InputLabel>
               <Select
@@ -764,7 +810,13 @@ const StudentsPageAdvanced: React.FC = () => {
           </Box>
 
           {/* Quick Actions */}
-          <Box sx={{ flex: '0 0 auto', display: 'flex', gap: 1 }}>
+          <Box sx={{ 
+            display: 'flex', 
+            gap: 1,
+            flexWrap: 'nowrap',
+            // Prevent wrapping
+            minWidth: 'fit-content',
+          }}>
             <Tooltip title="Advanced Filters">
               <IconButton size="small" onClick={() => {/* Advanced filters dialog */}}>
                 <FilterIcon />
