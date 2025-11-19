@@ -69,11 +69,12 @@ const StudentsPageEnhanced: React.FC = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
-  const [currentStudent, setCurrentStudent] = useState<Partial<Student>>({
+  const [currentStudent, setCurrentStudent] = useState<Partial<Student & { studentId?: string; district?: string }>>({
     firstName: '',
     lastName: '',
     email: '',
     phone: '',
+    studentId: '',
     currentPlan: 'Monthly Premium',
     feeStatus: 'pending',
     status: 'active',
@@ -223,6 +224,7 @@ const StudentsPageEnhanced: React.FC = () => {
         email: '',
         phone: '',
         studentId: defaultStudentId,
+        district: '',
         currentPlan: 'Monthly Premium',
         feeStatus: 'pending',
         status: 'active',
