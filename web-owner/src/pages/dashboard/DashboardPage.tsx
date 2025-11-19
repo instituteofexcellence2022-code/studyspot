@@ -394,7 +394,7 @@ const DashboardPageEnhanced: React.FC = () => {
             </Tooltip>
             <Tooltip title="Refresh dashboard">
               <IconButton 
-                onClick={handleRefresh} 
+                onClick={fetchDashboardStats} 
                 disabled={loading}
                 size="small"
                 color="primary"
@@ -751,6 +751,8 @@ const DashboardPageEnhanced: React.FC = () => {
           }
         `}
       </style>
+        </>
+      )}
     </Box>
   );
 };
