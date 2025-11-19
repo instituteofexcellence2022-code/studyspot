@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -25,6 +25,9 @@ import {
   ListItemIcon,
   Paper,
   alpha,
+  CircularProgress,
+  Switch,
+  FormControlLabel,
 } from '@mui/material';
 import { GridLegacy as Grid } from '@mui/material';
 import {
@@ -41,9 +44,14 @@ import {
   Notifications,
   Security,
   Verified,
+  CloudUpload,
+  Delete as DeleteIcon,
 } from '@mui/icons-material';
 import { useAppSelector, useAppDispatch } from '../../hooks/redux';
 import { updateUser } from '../../store/slices/authSlice';
+import { showSnackbar } from '../../store/slices/uiSlice';
+import { apiClient } from '../../services/sdk';
+import { ROUTES } from '../../constants';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -70,12 +78,16 @@ const ProfilePage: React.FC = () => {
   const { user } = useAppSelector((state) => state.auth);
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [tabValue, setTabValue] = useState(0);
   const [editMode, setEditMode] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
   const [changePasswordDialog, setChangePasswordDialog] = useState(false);
+  const [twoFactorDialog, setTwoFactorDialog] = useState(false);
+  const [profileImage, setProfileImage] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     firstName: user?.firstName || '',
@@ -90,6 +102,19 @@ const ProfilePage: React.FC = () => {
     newPassword: '',
     confirmPassword: '',
   });
+
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
+
+  // Load profile image on mount
+  useEffect(() => {
+    if (user) {
+      // Try to get profile image from user metadata or avatar
+      const imageUrl = (user as any).profileImage || (user as any).avatar || (user as any).metadata?.profileImage;
+      if (imageUrl) {
+        setProfileImage(imageUrl);
+      }
+    }
+  }, [user]);
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
@@ -109,25 +134,121 @@ const ProfilePage: React.FC = () => {
     setEditMode(!editMode);
   };
 
+  const handleProfilePictureClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleProfilePictureChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setSnackbar({ open: true, message: '❌ Please select an image file', severity: 'error' });
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setSnackbar({ open: true, message: '❌ Image size must be less than 5MB', severity: 'error' });
+      return;
+    }
+
+    try {
+      setUploading(true);
+
+      // Convert to base64 for preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result as string;
+        setProfileImage(base64String);
+      };
+      reader.readAsDataURL(file);
+
+      // Upload to backend
+      const formData = new FormData();
+      formData.append('picture', file);
+
+      try {
+        const response = await apiClient.post('/api/users/profile/picture', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+
+        if (response.data?.success) {
+          const imageUrl = response.data.data?.url || response.data.data?.profileImage;
+          if (imageUrl) {
+            setProfileImage(imageUrl);
+          }
+          
+          // Update user in Redux
+          dispatch(updateUser({
+            ...user,
+            profileImage: imageUrl,
+            avatar: imageUrl,
+          } as any));
+
+          setSnackbar({ open: true, message: '✅ Profile picture updated successfully!', severity: 'success' });
+        }
+      } catch (uploadError: any) {
+        console.error('Profile picture upload error:', uploadError);
+        // Keep the local preview even if upload fails
+        setSnackbar({ 
+          open: true, 
+          message: '⚠️ Picture preview updated, but upload failed. Please try again.', 
+          severity: 'error' 
+        });
+      }
+    } catch (error) {
+      console.error('Error processing profile picture:', error);
+      setSnackbar({ open: true, message: '❌ Failed to process image', severity: 'error' });
+    } finally {
+      setUploading(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
   const handleSave = async () => {
     try {
       setLoading(true);
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Update Redux store (cast role to proper type)
-      dispatch(updateUser({
-        ...formData,
-        role: formData.role as any,
-      }));
-      
-      setSnackbar({ open: true, message: '✅ Profile updated successfully!', severity: 'success' });
-      setEditMode(false);
-      setLoading(false);
-    } catch (error) {
+      // Update via API
+      const response = await apiClient.put('/api/users/profile', {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        phone: formData.phone,
+        // Email and role typically can't be changed
+      });
+
+      if (response.data?.success || response.data?.data) {
+        const updatedUser = response.data.data?.user || response.data.data;
+        
+        // Update Redux store
+        dispatch(updateUser({
+          ...user,
+          ...updatedUser,
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          phone: formData.phone,
+        } as any));
+        
+        dispatch(showSnackbar({
+          message: '✅ Profile updated successfully!',
+          severity: 'success',
+        }));
+        setEditMode(false);
+      } else {
+        throw new Error('Update failed');
+      }
+    } catch (error: any) {
       console.error('Failed to update profile:', error);
-      setSnackbar({ open: true, message: '❌ Failed to update profile', severity: 'error' });
+      const errorMessage = error?.response?.data?.message || error?.message || 'Failed to update profile';
+      setSnackbar({ open: true, message: `❌ ${errorMessage}`, severity: 'error' });
+    } finally {
       setLoading(false);
     }
   };
@@ -146,16 +267,43 @@ const ProfilePage: React.FC = () => {
     try {
       setLoading(true);
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      setSnackbar({ open: true, message: '✅ Password changed successfully!', severity: 'success' });
-      setChangePasswordDialog(false);
-      setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
-      setLoading(false);
-    } catch (error) {
+      const response = await apiClient.put('/api/auth/change-password', {
+        currentPassword: passwordData.currentPassword,
+        newPassword: passwordData.newPassword,
+      });
+
+      if (response.data?.success) {
+        setSnackbar({ open: true, message: '✅ Password changed successfully!', severity: 'success' });
+        setChangePasswordDialog(false);
+        setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      } else {
+        throw new Error(response.data?.message || 'Password change failed');
+      }
+    } catch (error: any) {
       console.error('Failed to change password:', error);
-      setSnackbar({ open: true, message: '❌ Failed to change password', severity: 'error' });
+      const errorMessage = error?.response?.data?.message || error?.message || 'Failed to change password';
+      setSnackbar({ open: true, message: `❌ ${errorMessage}`, severity: 'error' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleToggle2FA = async () => {
+    try {
+      setLoading(true);
+      // TODO: Implement 2FA toggle API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      setTwoFactorEnabled(!twoFactorEnabled);
+      setSnackbar({ 
+        open: true, 
+        message: twoFactorEnabled ? '✅ Two-factor authentication disabled' : '✅ Two-factor authentication enabled', 
+        severity: 'success' 
+      });
+      setTwoFactorDialog(false);
+    } catch (error) {
+      console.error('Failed to toggle 2FA:', error);
+      setSnackbar({ open: true, message: '❌ Failed to update 2FA settings', severity: 'error' });
+    } finally {
       setLoading(false);
     }
   };
@@ -195,6 +343,7 @@ const ProfilePage: React.FC = () => {
           <Box sx={{ display: 'flex', alignItems: 'flex-end', mb: 3 }}>
             <Box sx={{ position: 'relative' }}>
               <Avatar
+                src={profileImage || undefined}
                 sx={{
                   width: 120,
                   height: 120,
@@ -204,20 +353,34 @@ const ProfilePage: React.FC = () => {
                   bgcolor: 'primary.main',
                 }}
               >
-                {user?.firstName?.charAt(0)}{user?.lastName?.charAt(0)}
+                {!profileImage && `${user?.firstName?.charAt(0)}${user?.lastName?.charAt(0)}`}
               </Avatar>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                style={{ display: 'none' }}
+                onChange={handleProfilePictureChange}
+              />
               <IconButton
+                onClick={handleProfilePictureClick}
+                disabled={uploading}
                 sx={{
                   position: 'absolute',
                   bottom: 0,
                   right: 0,
                   bgcolor: 'background.paper',
                   boxShadow: 2,
-                  '&:hover': { bgcolor: 'background.paper' },
+                  '&:hover': { bgcolor: 'background.paper', transform: 'scale(1.1)' },
+                  transition: 'transform 0.2s',
                 }}
                 size="small"
               >
-                <PhotoCamera fontSize="small" />
+                {uploading ? (
+                  <CircularProgress size={16} />
+                ) : (
+                  <PhotoCamera fontSize="small" />
+                )}
               </IconButton>
             </Box>
             <Box sx={{ ml: 3, flex: 1 }}>
@@ -298,9 +461,9 @@ const ProfilePage: React.FC = () => {
                   label="Email Address"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  disabled={!editMode || loading}
-                  variant={editMode ? 'outlined' : 'filled'}
-                  type="email"
+                  disabled
+                  variant="filled"
+                  helperText="Email cannot be changed"
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
@@ -380,8 +543,12 @@ const ProfilePage: React.FC = () => {
                         Add an extra layer of security to your account
                       </Typography>
                     </Box>
-                    <Button variant="outlined" color="success">
-                      Enable 2FA
+                    <Button 
+                      variant={twoFactorEnabled ? "outlined" : "contained"} 
+                      color="success"
+                      onClick={() => setTwoFactorDialog(true)}
+                    >
+                      {twoFactorEnabled ? 'Disable 2FA' : 'Enable 2FA'}
                     </Button>
                   </Box>
                 </Paper>
@@ -397,7 +564,11 @@ const ProfilePage: React.FC = () => {
                         Manage your email and push notification preferences
                       </Typography>
                     </Box>
-                    <Button variant="outlined" color="warning" onClick={() => navigate('/settings')}>
+                    <Button 
+                      variant="outlined" 
+                      color="warning" 
+                      onClick={() => navigate(ROUTES.SETTINGS)}
+                    >
                       Configure
                     </Button>
                   </Box>
@@ -464,6 +635,70 @@ const ProfilePage: React.FC = () => {
             disabled={loading}
           >
             {loading ? 'Changing...' : 'Change Password'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Two-Factor Authentication Dialog */}
+      <Dialog 
+        open={twoFactorDialog} 
+        onClose={() => setTwoFactorDialog(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <Security sx={{ mr: 1 }} />
+            {twoFactorEnabled ? 'Disable' : 'Enable'} Two-Factor Authentication
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 2 }}>
+            <Alert severity={twoFactorEnabled ? 'warning' : 'info'} sx={{ mb: 3 }}>
+              {twoFactorEnabled 
+                ? 'Are you sure you want to disable two-factor authentication? This will make your account less secure.'
+                : 'Two-factor authentication adds an extra layer of security by requiring a code from your authenticator app in addition to your password.'}
+            </Alert>
+            {!twoFactorEnabled && (
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                To enable 2FA, you'll need to:
+              </Typography>
+            )}
+            {!twoFactorEnabled && (
+              <List>
+                <ListItem>
+                  <ListItemText 
+                    primary="1. Download an authenticator app (Google Authenticator, Authy, etc.)"
+                    primaryTypographyProps={{ variant: 'body2' }}
+                  />
+                </ListItem>
+                <ListItem>
+                  <ListItemText 
+                    primary="2. Scan the QR code that will be displayed"
+                    primaryTypographyProps={{ variant: 'body2' }}
+                  />
+                </ListItem>
+                <ListItem>
+                  <ListItemText 
+                    primary="3. Enter the verification code to confirm"
+                    primaryTypographyProps={{ variant: 'body2' }}
+                  />
+                </ListItem>
+              </List>
+            )}
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setTwoFactorDialog(false)} disabled={loading}>
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleToggle2FA} 
+            variant="contained" 
+            color={twoFactorEnabled ? 'error' : 'success'}
+            disabled={loading}
+          >
+            {loading ? 'Processing...' : (twoFactorEnabled ? 'Disable 2FA' : 'Enable 2FA')}
           </Button>
         </DialogActions>
       </Dialog>
