@@ -35,6 +35,7 @@ import { showSnackbar } from '../../store/slices/uiSlice';
 import { ROUTES, USER_ROLES } from '../../constants';
 import { RegisterRequest } from '../../types';
 import { healthService, HealthStatus } from '../../services/healthService';
+import { testBackendConnection, testRegistrationEndpoint } from '../../utils/testConnection';
 
 interface RegisterFormData extends RegisterRequest {
   confirmPassword: string;
@@ -275,9 +276,30 @@ const RegisterPage: React.FC = () => {
               If you see network errors, ensure the backend is running and accessible at this URL.
             </Typography>
             {healthStatus && (
-              <Typography variant="caption" component="div" sx={{ mt: 0.5, fontStyle: 'italic' }}>
-                Last checked: {new Date(healthStatus.timestamp).toLocaleTimeString()}
-              </Typography>
+              <>
+                <Typography variant="caption" component="div" sx={{ mt: 0.5, fontStyle: 'italic' }}>
+                  Last checked: {new Date(healthStatus.timestamp).toLocaleTimeString()}
+                </Typography>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={async () => {
+                    const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+                    console.log('Testing connection to:', apiUrl);
+                    const healthTest = await testBackendConnection(apiUrl);
+                    const regTest = await testRegistrationEndpoint(apiUrl);
+                    console.log('Health test:', healthTest);
+                    console.log('Registration endpoint test:', regTest);
+                    dispatch(showSnackbar({
+                      message: `Connection test: Health ${healthTest.success ? '✅' : '❌'}, Registration ${regTest.success ? '✅' : '❌'}`,
+                      severity: healthTest.success && regTest.success ? 'success' : 'error',
+                    }));
+                  }}
+                  sx={{ mt: 1, fontSize: '0.7rem' }}
+                >
+                  Test Connection
+                </Button>
+              </>
             )}
           </Alert>
         </Collapse>

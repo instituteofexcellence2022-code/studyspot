@@ -27,26 +27,34 @@ const PORT = parseInt(process.env.AUTH_SERVICE_PORT || '3001');
 // MIDDLEWARE
 // ============================================
 
+// Parse CORS origins from environment or use defaults
+const corsOrigins = process.env.CORS_ORIGIN?.split(',').map(o => o.trim()) || [
+  'http://localhost:3000',  // Owner Portal
+  'http://localhost:3001',  // Student PWA / Owner Portal (Vite)
+  'http://localhost:3002',  // Legacy
+  'http://localhost:5173',  // Vite dev server
+  'http://127.0.0.1:3000',   // Owner Portal (alternative)
+  'http://127.0.0.1:3001',   // Owner Portal (alternative)
+  'http://127.0.0.1:5173',   // Vite dev server (alternative)
+  'https://studyspot-librarys.vercel.app',  // Library Owner Portal
+  'https://studyspot-admin-2.vercel.app',   // Admin Portal
+  'https://studyspot-student.vercel.app',   // Student Portal
+  'https://main.studyspot-student.pages.dev',  // Cloudflare Student PWA
+  'https://studyspot-student.pages.dev',  // Cloudflare root domain
+  'https://studyspot-student.netlify.app',  // Netlify Student Portal
+  /\.pages\.dev$/,  // All Cloudflare Pages domains
+  /\.vercel\.app$/,  // All Vercel domains
+  /\.netlify\.app$/,  // All Netlify domains
+  /localhost:\d+$/,  // Any localhost port
+  /127\.0\.0\.1:\d+$/,  // Any 127.0.0.1 port
+];
+
 fastify.register(cors, {
-  origin: process.env.CORS_ORIGIN?.split(',') || [
-    'http://localhost:3000',  // Owner Portal
-    'http://localhost:3001',  // Student PWA / Owner Portal (Vite)
-    'http://localhost:3002',  // Legacy
-    'http://localhost:5173',  // Vite dev server
-    'http://127.0.0.1:3000',   // Owner Portal (alternative)
-    'http://127.0.0.1:3001',   // Owner Portal (alternative)
-    'http://127.0.0.1:5173',   // Vite dev server (alternative)
-    'https://main.studyspot-student.pages.dev',  // Cloudflare Student PWA
-    'https://studyspot-student.pages.dev',  // Cloudflare root domain
-    /\.pages\.dev$/,  // All Cloudflare Pages domains
-    /\.vercel\.app$/,  // All Vercel domains
-    /\.netlify\.app$/,  // All Netlify domains
-    /localhost:\d+$/,  // Any localhost port
-    /127\.0\.0\.1:\d+$/,  // Any 127.0.0.1 port
-  ],
+  origin: corsOrigins,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-tenant-id'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-tenant-id', 'X-Requested-With'],
+  exposedHeaders: ['Content-Type', 'Authorization'],
 });
 
 fastify.register(helmet);
@@ -221,6 +229,11 @@ const buildAuthPayload = (user: any, tokens: { accessToken: string; refreshToken
 // ============================================
 // ROUTES
 // ============================================
+
+// Handle OPTIONS requests for CORS preflight
+fastify.options('*', async (request, reply) => {
+  return reply.status(204).send();
+});
 
 // Health check (with optional DB check)
 fastify.get('/health', async (request, reply) => {

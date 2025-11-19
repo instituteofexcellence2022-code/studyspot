@@ -51,16 +51,50 @@ export const apiService = {
       return result;
     } catch (error: any) {
       // Re-throw with enhanced error information
-      console.error('[apiService.post] Error:', {
-        url,
-        message: error?.message,
-        code: error?.code,
-        response: error?.response?.data,
-        status: error?.response?.status,
-        isNetworkError: !error?.response,
-        isTimeout: error?.code === 'ECONNABORTED' || error?.code === 'ETIMEDOUT',
-        isConnectionRefused: error?.code === 'ECONNREFUSED',
-      });
+      console.error('[apiService.post] ===== ERROR OCCURRED =====');
+      console.error('[apiService.post] Error type:', error?.constructor?.name);
+      console.error('[apiService.post] Error message:', error?.message);
+      console.error('[apiService.post] Error code:', error?.code);
+      console.error('[apiService.post] Full URL attempted:', fullUrl);
+      console.error('[apiService.post] Has response:', !!error?.response);
+      console.error('[apiService.post] Response status:', error?.response?.status);
+      console.error('[apiService.post] Response status text:', error?.response?.statusText);
+      console.error('[apiService.post] Response data:', error?.response?.data);
+      console.error('[apiService.post] Response headers:', error?.response?.headers);
+      console.error('[apiService.post] Is network error:', !error?.response);
+      console.error('[apiService.post] Is timeout:', error?.code === 'ECONNABORTED' || error?.code === 'ETIMEDOUT');
+      console.error('[apiService.post] Is connection refused:', error?.code === 'ECONNREFUSED');
+      console.error('[apiService.post] Request config:', error?.config);
+      console.error('[apiService.post] Full error object:', error);
+      console.error('[apiService.post] ===== ERROR END =====');
+      
+      // Enhance error message for better debugging
+      if (!error?.response) {
+        // Network error - no response from server
+        if (error?.code === 'ECONNREFUSED') {
+          error.message = `Cannot connect to ${baseURL}. The server may be down or the URL is incorrect.`;
+        } else if (error?.code === 'ECONNABORTED' || error?.code === 'ETIMEDOUT') {
+          error.message = `Request to ${baseURL} timed out. The server may be slow or unresponsive.`;
+        } else if (error?.message?.includes('Network Error') || error?.message?.includes('Failed to fetch')) {
+          error.message = `Network error: Cannot reach ${baseURL}. Check CORS configuration and ensure the server is running.`;
+        }
+      } else {
+        // HTTP error - server responded with error
+        const status = error.response.status;
+        const errorData = error.response.data;
+        const errorMsg = errorData?.error?.message || errorData?.message || error.message;
+        
+        if (status === 503) {
+          error.message = `Service unavailable: ${errorMsg || 'The backend service is temporarily unavailable'}`;
+        } else if (status === 404) {
+          error.message = `Endpoint not found: ${fullUrl}. Check if the API route exists.`;
+        } else if (status === 500) {
+          error.message = `Server error: ${errorMsg || 'An internal server error occurred'}`;
+        } else {
+          error.message = errorMsg || `HTTP ${status}: ${error.response.statusText}`;
+        }
+      }
+      
       throw error;
     }
   },

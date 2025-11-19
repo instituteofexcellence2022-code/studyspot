@@ -24,6 +24,8 @@ export function createApiClient(options: ApiClientOptions) {
     headers: {
       'Content-Type': 'application/json',
     },
+    withCredentials: false, // Don't send credentials for CORS (unless needed)
+    validateStatus: (status) => status < 500, // Don't throw on 4xx errors
   });
 
   instance.interceptors.request.use((config) => {

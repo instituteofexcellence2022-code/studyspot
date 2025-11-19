@@ -53,19 +53,35 @@ async function proxyToService(
   headers: any,
   body?: any
 ) {
+  const targetUrl = `${serviceUrl}${path}`;
+  
   try {
-    logger.info(`Proxying to ${serviceName}`, { path, method });
+    logger.info(`Proxying to ${serviceName}`, { 
+      path, 
+      method, 
+      targetUrl,
+      serviceUrl,
+      hasBody: !!body,
+    });
 
+    // Remove problematic headers that might cause issues
+    const cleanHeaders = { ...headers };
+    delete cleanHeaders.host;
+    delete cleanHeaders['content-length'];
+    
     const response = await axios({
       method: method as any,
-      url: `${serviceUrl}${path}`,
-      headers: {
-        ...headers,
-        host: undefined, // Remove host header
-      },
+      url: targetUrl,
+      headers: cleanHeaders,
       data: body,
       timeout: 30000, // 30 seconds
       validateStatus: () => true, // Accept all status codes
+      maxRedirects: 5,
+    });
+
+    logger.info(`Proxy response from ${serviceName}`, {
+      status: response.status,
+      path,
     });
 
     return {
@@ -76,17 +92,32 @@ async function proxyToService(
   } catch (error: any) {
     logger.error(`Proxy error to ${serviceName}`, {
       error: error.message,
+      code: error.code,
       path,
       method,
+      targetUrl,
+      serviceUrl,
+      isTimeout: error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT',
+      isConnectionRefused: error.code === 'ECONNREFUSED',
+      response: error.response ? {
+        status: error.response.status,
+        data: error.response.data,
+      } : null,
     });
 
+    // Return more detailed error information
     return {
-      statusCode: 503,
+      statusCode: error.response?.status || 503,
       data: {
         success: false,
         error: {
-          code: 'SERVICE_UNAVAILABLE',
-          message: `${serviceName} service is unavailable`,
+          code: error.response?.status ? 'SERVICE_ERROR' : 'SERVICE_UNAVAILABLE',
+          message: error.response?.data?.error?.message || 
+                   error.response?.data?.message ||
+                   error.message ||
+                   `${serviceName} service is unavailable`,
+          details: error.code || 'Unknown error',
+          serviceUrl: targetUrl,
         },
       },
     };
