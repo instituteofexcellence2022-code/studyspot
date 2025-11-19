@@ -38,6 +38,7 @@ import {
   Person as ProfileIcon,
   Settings as SettingsIcon,
   Logout as LogoutIcon,
+  Verified,
   ExpandLess,
   ExpandMore,
   Notifications,
@@ -769,16 +770,38 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
                   }} 
                 />
                 <Chip 
-                  label="ACTIVE" 
+                  label={user?.status?.toUpperCase() || 'ACTIVE'} 
                   size="small" 
                   sx={{ 
-                    bgcolor: alpha('#4caf50', 0.1),
-                    color: '#4caf50',
+                    bgcolor: 
+                      user?.status === 'active' ? alpha('#4caf50', 0.1) :
+                      user?.status === 'suspended' ? alpha('#f44336', 0.1) :
+                      user?.status === 'pending' ? alpha('#ff9800', 0.1) :
+                      alpha('#9e9e9e', 0.1),
+                    color: 
+                      user?.status === 'active' ? '#4caf50' :
+                      user?.status === 'suspended' ? '#f44336' :
+                      user?.status === 'pending' ? '#ff9800' :
+                      '#9e9e9e',
                     fontWeight: 600,
                     fontSize: '0.6rem',
                     height: 16,
                   }} 
                 />
+                {(user as any)?.metadata?.kyc?.status === 'verified' && (
+                  <Chip 
+                    icon={<Verified sx={{ fontSize: '0.7rem !important' }} />}
+                    label="KYC" 
+                    size="small" 
+                    sx={{ 
+                      bgcolor: alpha('#4caf50', 0.1),
+                      color: '#4caf50',
+                      fontWeight: 600,
+                      fontSize: '0.6rem',
+                      height: 16,
+                    }} 
+                  />
+                )}
               </Box>
             </Box>
           </Box>

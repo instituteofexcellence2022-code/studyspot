@@ -554,13 +554,68 @@ const ProfilePage: React.FC = () => {
     }
   };
 
+  const getStatusColor = (status?: string) => {
+    switch (status?.toLowerCase()) {
+      case 'active': return 'success';
+      case 'suspended': return 'error';
+      case 'pending': return 'warning';
+      case 'inactive': return 'default';
+      default: return 'success';
+    }
+  };
+
   const accountInfo = [
     { label: 'User ID', value: user?.id?.substring(0, 8) + '...', icon: <Verified /> },
-    { label: 'Email', value: user?.email, icon: <Email /> },
-    { label: 'Phone', value: user?.phone || 'Not provided', icon: <Phone /> },
-    { label: 'Role', value: user?.role?.replace('_', ' ').toUpperCase(), icon: <Work /> },
-    { label: 'Status', value: user?.status || 'Active', icon: <Security /> },
+    { 
+      label: 'Email', 
+      value: (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <span>{user?.email}</span>
+          {emailVerified ? (
+            <Chip icon={<CheckCircle />} label="Verified" color="success" size="small" />
+          ) : (
+            <Chip icon={<CancelIcon2 />} label="Not Verified" color="warning" size="small" />
+          )}
+        </Box>
+      ), 
+      icon: <Email /> 
+    },
+    { 
+      label: 'Phone', 
+      value: (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <span>{user?.phone || 'Not provided'}</span>
+          {user?.phone && (phoneVerified ? (
+            <Chip icon={<CheckCircle />} label="Verified" color="success" size="small" />
+          ) : (
+            <Chip icon={<CancelIcon2 />} label="Not Verified" color="warning" size="small" />
+          ))}
+        </Box>
+      ), 
+      icon: <Phone /> 
+    },
+    { label: 'Role', value: user?.role?.replace('_', ' ').toUpperCase() || 'USER', icon: <Work /> },
+    { 
+      label: 'Status', 
+      value: (
+        <Chip 
+          label={user?.status?.toUpperCase() || 'ACTIVE'} 
+          color={getStatusColor(user?.status) as any}
+          size="small"
+        />
+      ), 
+      icon: <Security /> 
+    },
     { label: 'Member Since', value: new Date(user?.createdAt || Date.now()).toLocaleDateString(), icon: <CalendarToday /> },
+    { 
+      label: 'KYC Status', 
+      value: aadhaarVerified ? (
+        <Chip icon={<CheckCircle />} label="Verified" color="success" size="small" />
+      ) : (
+        <Chip icon={<CancelIcon2 />} label="Not Verified" color="warning" size="small" />
+      ), 
+      icon: <Badge /> 
+    },
   ];
 
   return (
@@ -569,7 +624,26 @@ const ProfilePage: React.FC = () => {
       <Box sx={{ mb: 3 }}>
         <Typography variant="h4" component="h1" gutterBottom>
           My Profile
-          <Chip label="Active" color="success" size="small" sx={{ ml: 2 }} />
+          <Chip 
+            label={user?.status?.toUpperCase() || 'ACTIVE'} 
+            color={
+              user?.status === 'active' ? 'success' :
+              user?.status === 'suspended' ? 'error' :
+              user?.status === 'pending' ? 'warning' :
+              'default'
+            } 
+            size="small" 
+            sx={{ ml: 2 }} 
+          />
+          {aadhaarVerified && (
+            <Chip 
+              icon={<CheckCircle />}
+              label="KYC Verified" 
+              color="success" 
+              size="small" 
+              sx={{ ml: 1 }} 
+            />
+          )}
         </Typography>
         <Typography variant="body2" color="text.secondary">
           Manage your personal information and account settings
@@ -636,13 +710,36 @@ const ProfilePage: React.FC = () => {
               <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                 {user?.email}
               </Typography>
-              <Box sx={{ display: 'flex', gap: 1 }}>
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                 <Chip 
-                  label={user?.role?.replace('_', ' ').toUpperCase()} 
+                  label={user?.role?.replace('_', ' ').toUpperCase() || 'USER'} 
                   color="primary" 
                   size="small" 
                 />
-                <Chip label="Verified" color="success" size="small" icon={<Verified />} />
+                {aadhaarVerified && (
+                  <Chip 
+                    label="KYC Verified" 
+                    color="success" 
+                    size="small" 
+                    icon={<CheckCircle />} 
+                  />
+                )}
+                {emailVerified && (
+                  <Chip 
+                    label="Email Verified" 
+                    color="info" 
+                    size="small" 
+                    icon={<Email />} 
+                  />
+                )}
+                {phoneVerified && formData.phone && (
+                  <Chip 
+                    label="Phone Verified" 
+                    color="info" 
+                    size="small" 
+                    icon={<Phone />} 
+                  />
+                )}
               </Box>
             </Box>
             <Box>
