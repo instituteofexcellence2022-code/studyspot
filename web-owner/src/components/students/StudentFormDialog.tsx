@@ -76,7 +76,10 @@ const StudentFormDialog: React.FC<StudentFormProps> = ({ open, onClose, onSave, 
     
     if (step === 0) {
       if (!formData.firstName) newErrors.firstName = 'First name is required';
-      if (!formData.lastName) newErrors.lastName = 'Last name is required';
+      // Last name is optional - only validate if provided
+      if (formData.lastName && formData.lastName.trim().length < 2) {
+        newErrors.lastName = 'Last name must be at least 2 characters if provided';
+      }
     } else if (step === 1) {
       if (!formData.email) newErrors.email = 'Email is required';
       if (formData.email && !/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = 'Invalid email';
@@ -129,11 +132,11 @@ const StudentFormDialog: React.FC<StudentFormProps> = ({ open, onClose, onSave, 
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
-                label="Last Name *"
+                label="Last Name (Optional)"
                 value={formData.lastName}
                 onChange={(e) => handleChange('lastName', e.target.value)}
                 error={!!errors.lastName}
-                helperText={errors.lastName}
+                helperText={errors.lastName || 'Optional - leave blank if not applicable'}
               />
             </Grid>
             <Grid item xs={12} sm={6}>
