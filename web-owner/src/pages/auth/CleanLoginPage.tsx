@@ -11,6 +11,10 @@ import {
   CircularProgress,
   Divider,
   Stack,
+  FormControlLabel,
+  Checkbox,
+  InputAdornment,
+  IconButton,
 } from '@mui/material';
 import {
   BusinessCenter,
@@ -18,6 +22,8 @@ import {
   Google as GoogleIcon,
   GitHub as GitHubIcon,
   SkipNext,
+  Visibility,
+  VisibilityOff,
 } from '@mui/icons-material';
 import { useAppDispatch } from '../../hooks/redux';
 import { login, setCredentials } from '../../store/slices/authSlice';
@@ -35,14 +41,26 @@ const DEMO_ACCOUNT = {
   role: 'library_owner',
 };
 
+const REMEMBER_ME_KEY = 'studyspot_remember_me';
+const REMEMBERED_EMAIL_KEY = 'studyspot_remembered_email';
+
 const CleanLoginPage: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(() => {
+    // Load remembered email if available
+    const remembered = localStorage.getItem(REMEMBERED_EMAIL_KEY);
+    return remembered || '';
+  });
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(() => {
+    // Check if remember me was previously enabled
+    return localStorage.getItem(REMEMBER_ME_KEY) === 'true';
+  });
 
   const handleLogin = async (loginEmail: string, loginPassword: string) => {
     try {
@@ -59,6 +77,15 @@ const CleanLoginPage: React.FC = () => {
       })).unwrap();
 
       console.log('✅ Login successful:', result);
+
+      // Handle Remember Me
+      if (rememberMe) {
+        localStorage.setItem(REMEMBER_ME_KEY, 'true');
+        localStorage.setItem(REMEMBERED_EMAIL_KEY, loginEmail);
+      } else {
+        localStorage.removeItem(REMEMBER_ME_KEY);
+        localStorage.removeItem(REMEMBERED_EMAIL_KEY);
+      }
 
       setSuccess('✅ Login successful! Redirecting...');
       
@@ -285,17 +312,69 @@ const CleanLoginPage: React.FC = () => {
                 onChange={(e) => setEmail(e.target.value)}
                 disabled={loading}
                 autoComplete="email"
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <BusinessCenter sx={{ color: 'text.secondary', fontSize: 20 }} />
+                    </InputAdornment>
+                  ),
+                }}
               />
 
               <TextField
                 fullWidth
                 label="Password"
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={loading}
                 autoComplete="current-password"
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        aria-label="toggle password visibility"
+                        onClick={() => setShowPassword(!showPassword)}
+                        onMouseDown={(e) => e.preventDefault()}
+                        edge="end"
+                        size="small"
+                      >
+                        {showPassword ? <VisibilityOff /> : <Visibility />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
               />
+
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={rememberMe}
+                      onChange={(e) => setRememberMe(e.target.checked)}
+                      disabled={loading}
+                      size="small"
+                    />
+                  }
+                  label={
+                    <Typography variant="body2" color="text.secondary">
+                      Remember me
+                    </Typography>
+                  }
+                />
+                <Typography
+                  variant="body2"
+                  component={Link}
+                  to={ROUTES.FORGOT_PASSWORD}
+                  sx={{
+                    color: 'primary.main',
+                    textDecoration: 'none',
+                    '&:hover': { textDecoration: 'underline' },
+                  }}
+                >
+                  Forgot password?
+                </Typography>
+              </Box>
 
               <Button
                 fullWidth
@@ -303,7 +382,7 @@ const CleanLoginPage: React.FC = () => {
                 type="submit"
                 size="large"
                 disabled={loading}
-                sx={{ py: 1.5 }}
+                sx={{ py: 1.5, mt: 1 }}
               >
                 {loading ? <CircularProgress size={24} /> : 'Sign In'}
               </Button>
