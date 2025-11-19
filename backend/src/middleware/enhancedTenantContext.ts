@@ -136,24 +136,45 @@ export const enhancedTenantContext = async (request: FastifyRequest, reply: Fast
       return;
     }
 
-    // Verify user has access to this tenant (unless super admin)
+    // Verify user has access to this tenant
     if (user) {
+      const userType = user.userType || user.user_type;
       const userRoles = Array.isArray(user.roles) ? user.roles : [user.role];
       const isSuperAdmin = userRoles.includes('super_admin');
+      const isPlatformAdmin = userType === 'platform_admin';
 
-      if (!isSuperAdmin) {
+      // Platform admins (super_admin, admin, etc.) can access any tenant
+      if (isPlatformAdmin && (isSuperAdmin || userRoles.includes('admin') || userRoles.includes('support'))) {
+        logger.info('Platform admin accessing tenant', {
+          userId: user.userId || user.id,
+          userType,
+          roles: userRoles,
+          tenantId,
+        });
+        // Allow access
+      } else {
+        // Library owners and staff can only access their own tenant
         const userTenantId = user.tenantId || user.tenant_id;
         
-        // Check user's tenant_id in database
+        // Check user's tenant_id in database if not in token
         if (!userTenantId) {
           const userResult = await coreDb.query(
-            'SELECT tenant_id FROM admin_users WHERE id = $1',
+            'SELECT tenant_id, user_type FROM admin_users WHERE id = $1',
             [user.userId || user.id]
           );
           
           if (userResult.rows.length > 0) {
             const dbTenantId = userResult.rows[0].tenant_id;
-            if (dbTenantId && dbTenantId !== tenantId) {
+            const dbUserType = userResult.rows[0].user_type;
+            
+            // Platform admins don't have tenant_id
+            if (dbUserType === 'platform_admin') {
+              // Allow platform admin access
+              logger.info('Platform admin (from DB) accessing tenant', {
+                userId: user.userId || user.id,
+                tenantId,
+              });
+            } else if (dbTenantId && dbTenantId !== tenantId) {
               logger.warn('Tenant access violation', {
                 userId: user.userId || user.id,
                 userTenantId: dbTenantId,

@@ -26,10 +26,15 @@ export const requireAdmin = async (request: FastifyRequest, reply: FastifyReply)
       return;
     }
 
-    // Check if user has admin role
+    // Check if user is platform admin (not library owner)
+    const userType = user.userType || user.user_type;
     const adminRoles = ['super_admin', 'admin', 'support', 'analyst', 'sales', 'finance'];
     const userRoles = Array.isArray(user.roles) ? user.roles : [user.role];
+    const isPlatformAdmin = userType === 'platform_admin';
     const hasAdminRole = userRoles.some(role => adminRoles.includes(role));
+    
+    // Platform admins must have platform_admin user_type AND admin role
+    if (!isPlatformAdmin || !hasAdminRole) {
 
     if (!hasAdminRole) {
       logger.warn('Unauthorized admin access attempt', {

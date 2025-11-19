@@ -141,12 +141,18 @@ const generateAccessToken = (user: any) => {
     ? [user.role]
     : [];
 
+  // Determine user_type
+  const userType = user?.user_type || 
+                   (user?.tenant_id || user?.tenantId ? 'library_owner' : 'platform_admin');
+
   const payload: Record<string, unknown> = {
     sub: user.id,
     userId: user.id,
     email: user.email,
     roles,
     permissions: user.permissions ?? [],
+    userType,
+    user_type: userType,
     tenantId,
     tenant_id: tenantId,
     type: 'access',
@@ -209,12 +215,18 @@ const formatUserResponse = (user: any) => {
     // Ignore parse errors
   }
 
+  // Determine user_type
+  const userType = user?.user_type || 
+                   (user?.tenant_id || user?.tenantId ? 'library_owner' : 'platform_admin');
+
   return {
     id: user.id,
     email: user.email,
     firstName: user.first_name ?? user.firstName ?? null,
     lastName: user.last_name ?? user.lastName ?? null,
     role: user.role ?? null,
+    userType,
+    user_type: userType,
     tenantId: resolveTenantId(user),
     status: user.is_active === false ? 'inactive' : 'active',
     createdAt: user.created_at ?? null,
@@ -436,12 +448,20 @@ fastify.post('/api/v1/auth/admin/login', async (request, reply) => {
     const accessToken = generateAccessToken(user);
     const refreshToken = generateRefreshToken(user);
 
+    // Determine user_type for refresh token and audit log
+    const userType = user.user_type || (user.tenant_id ? 'library_owner' : 'platform_admin');
+    const auditUserType = userType === 'library_owner' ? 'library_owner' : 'platform_admin';
+
     // Store refresh token
-    await coreDb.query(
-      `INSERT INTO refresh_tokens (user_id, user_type, token, expires_at)
-       VALUES ($1, $2, $3, NOW() + INTERVAL '7 days')`,
-      [user.id, 'admin', refreshToken]
-    );
+    try {
+      await coreDb.query(
+        `INSERT INTO refresh_tokens (user_id, user_type, token, expires_at)
+         VALUES ($1, $2, $3, NOW() + INTERVAL '7 days')`,
+        [user.id, auditUserType, refreshToken]
+      );
+    } catch (tokenError: any) {
+      logger.warn('Refresh token storage failed (non-critical):', tokenError.message);
+    }
 
     // Update last login
     try {
@@ -457,11 +477,15 @@ fastify.post('/api/v1/auth/admin/login', async (request, reply) => {
     }
 
     // Create audit log
-    await coreDb.query(
-      `INSERT INTO audit_logs (user_id, user_type, action, ip_address)
-       VALUES ($1, $2, $3, $4)`,
-      [user.id, 'admin', 'login', request.ip]
-    );
+    try {
+      await coreDb.query(
+        `INSERT INTO audit_logs (user_id, user_type, action, ip_address, user_agent)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [user.id, auditUserType, 'login', request.ip, request.headers['user-agent'] || 'unknown']
+      );
+    } catch (auditError: any) {
+      logger.warn('Audit log creation failed (non-critical):', auditError.message);
+    }
 
     // Remove sensitive data
     return {
@@ -770,8 +794,11 @@ fastify.post('/api/auth/register', async (request, reply) => {
     const passwordHash = await bcrypt.hash(password, 10);
     console.log('[REGISTER] Step 2: Password hashed successfully');
 
-    // Determine user role (default to library_owner for web owner portal registrations)
-    const userRole = role || 'library_owner';
+    // Determine user type and role
+    // For web owner portal: library_owner
+    // For web admin portal: platform_admin (would need special endpoint)
+    const userType = 'library_owner'; // Default for web owner portal registration
+    const userRole = 'library_owner'; // Library owners always have this role
 
     // Create or get tenant for library owner
     console.log('[REGISTER] Step 3: Creating/getting tenant...');
@@ -831,11 +858,12 @@ fastify.post('/api/auth/register', async (request, reply) => {
     try {
       // Use simple query instead of transaction (pooler doesn't support transactions)
       // lastName is optional, use null if not provided
+      // user_type: 'library_owner' for web owner portal registrations
       result = await coreDb.query(
-        `INSERT INTO admin_users (email, password_hash, first_name, last_name, role, tenant_id, is_active, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
-         RETURNING id, email, first_name, last_name, role, tenant_id, is_active, created_at, updated_at`,
-        [email.toLowerCase(), passwordHash, firstName, lastName || null, userRole, tenantId, true]
+        `INSERT INTO admin_users (email, password_hash, first_name, last_name, role, user_type, tenant_id, is_active, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
+         RETURNING id, email, first_name, last_name, role, user_type, tenant_id, is_active, created_at, updated_at`,
+        [email.toLowerCase(), passwordHash, firstName, lastName || null, userRole, userType, tenantId, true]
       );
       console.log('[REGISTER] Step 5: User inserted successfully');
     } catch (insertError: any) {
@@ -851,7 +879,20 @@ fastify.post('/api/auth/register', async (request, reply) => {
     }
 
     const user = result.rows[0];
-    console.log('[REGISTER] Step 6: User object:', { id: user.id, email: user.email, tenant_id: user.tenant_id });
+    console.log('[REGISTER] Step 6: User object:', { id: user.id, email: user.email, user_type: user.user_type, tenant_id: user.tenant_id });
+
+    // Update tenant with owner_id
+    if (tenantId && user.id) {
+      try {
+        await coreDb.query(
+          'UPDATE tenants SET owner_id = $1 WHERE id = $2',
+          [user.id, tenantId]
+        );
+        console.log('[REGISTER] Step 6a: Tenant owner_id updated');
+      } catch (updateError) {
+        console.warn('[REGISTER] Failed to update tenant owner_id (non-critical):', updateError);
+      }
+    }
 
     // Generate tokens for immediate login
     let accessToken, refreshToken;
