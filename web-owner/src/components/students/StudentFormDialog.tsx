@@ -268,7 +268,8 @@ const StudentFormDialog: React.FC<StudentFormProps> = ({ open, onClose, onSave, 
                 value={formData.email}
                 onChange={(e) => handleChange('email', e.target.value)}
                 error={!!errors.email}
-                helperText={errors.email}
+                helperText={errors.email || 'We\'ll use this for communication and login'}
+                placeholder="student@example.com"
               />
             </Grid>
             <Grid item xs={12} sm={6}>
