@@ -137,7 +137,53 @@ const StudentsPageEnhanced: React.FC = () => {
     fetchStudents();
   }, [searchTerm, statusFilter, feeStatusFilter, planFilter, page, rowsPerPage, sortField, sortOrder]);
 
-  // Validation function
+  // Auto-generate student ID
+  const generateStudentId = (firstName: string, lastName?: string): string => {
+    const firstInitial = firstName.charAt(0).toUpperCase();
+    const lastInitial = lastName ? lastName.charAt(0).toUpperCase() : '';
+    const timestamp = Date.now().toString().slice(-6);
+    return `${firstInitial}${lastInitial}${timestamp}`;
+  };
+
+  // Auto-fill from email domain (smart defaults)
+  const autoFillFromEmail = (email: string) => {
+    if (!email || !email.includes('@')) return;
+    
+    const domain = email.split('@')[1];
+    const emailName = email.split('@')[0];
+    
+    // Auto-suggest first name from email if empty
+    if (!currentStudent.firstName && emailName) {
+      const suggestedName = emailName.split('.')[0] || emailName.split('_')[0];
+      if (suggestedName.length >= 2) {
+        setCurrentStudent(prev => ({ ...prev, firstName: suggestedName.charAt(0).toUpperCase() + suggestedName.slice(1) }));
+      }
+    }
+  };
+
+  // PIN code lookup for address auto-fill
+  const lookupPinCode = async (pincode: string) => {
+    if (!pincode || pincode.length !== 6 || !/^\d{6}$/.test(pincode)) return;
+    
+    try {
+      const response = await fetch(`https://api.postalpincode.in/pincode/${pincode}`);
+      const data = await response.json();
+      
+      if (data && data[0] && data[0].Status === 'Success' && data[0].PostOffice && data[0].PostOffice.length > 0) {
+        const postOffice = data[0].PostOffice[0];
+        setCurrentStudent(prev => ({
+          ...prev,
+          city: postOffice.District || prev.city,
+          state: postOffice.State || prev.state,
+          district: postOffice.District || prev.district,
+        }));
+      }
+    } catch (error) {
+      console.error('PIN code lookup failed:', error);
+    }
+  };
+
+  // Validation function - lastName is now optional
   const validateStudent = (student: Partial<Student>): boolean => {
     const newErrors: Partial<Record<keyof Student, string>> = {};
     
@@ -145,8 +191,9 @@ const StudentsPageEnhanced: React.FC = () => {
       newErrors.firstName = 'First name must be at least 2 characters';
     }
     
-    if (!student.lastName || student.lastName.trim().length < 2) {
-      newErrors.lastName = 'Last name must be at least 2 characters';
+    // Last name is optional - only validate if provided
+    if (student.lastName && student.lastName.trim().length < 2) {
+      newErrors.lastName = 'Last name must be at least 2 characters if provided';
     }
     
     if (!student.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(student.email)) {
@@ -168,11 +215,14 @@ const StudentsPageEnhanced: React.FC = () => {
       setCurrentStudent(student);
     } else {
       setEditMode(false);
+      // Auto-generate student ID and set smart defaults
+      const defaultStudentId = generateStudentId('', '');
       setCurrentStudent({
         firstName: '',
-        lastName: '',
+        lastName: '', // Optional - not required
         email: '',
         phone: '',
+        studentId: defaultStudentId,
         currentPlan: 'Monthly Premium',
         feeStatus: 'pending',
         status: 'active',
@@ -205,16 +255,21 @@ const StudentsPageEnhanced: React.FC = () => {
         });
         setSnackbar({ open: true, message: '✅ Student updated successfully!', severity: 'success' });
       } else {
-        // Create new student
+        // Create new student - auto-generate student ID if not provided
         console.log('➕ Creating new student');
+        const studentId = currentStudent.studentId || generateStudentId(
+          currentStudent.firstName!,
+          currentStudent.lastName
+        );
+        
         await studentsService.createStudent({
           firstName: currentStudent.firstName!,
-          lastName: currentStudent.lastName!,
+          lastName: currentStudent.lastName || '', // Optional - can be empty
           email: currentStudent.email!,
           phone: currentStudent.phone,
-          currentPlan: currentStudent.currentPlan,
-          feeStatus: currentStudent.feeStatus,
-          status: currentStudent.status,
+          currentPlan: currentStudent.currentPlan || 'Monthly Premium',
+          feeStatus: currentStudent.feeStatus || 'pending',
+          status: currentStudent.status || 'active',
         });
         setSnackbar({ open: true, message: '✅ Student created successfully!', severity: 'success' });
       }
@@ -607,28 +662,70 @@ const StudentsPageEnhanced: React.FC = () => {
       {/* Add/Edit Dialog */}
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>
-          {editMode ? 'Edit Student' : 'Add New Student'}
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Box>
+              {editMode ? 'Edit Student' : 'Add New Student'}
+              {!editMode && (
+                <Typography variant="caption" display="block" color="text.secondary" sx={{ mt: 0.5 }}>
+                  Quick registration - only first name and email required
+                </Typography>
+              )}
+            </Box>
+            {!editMode && currentStudent.studentId && (
+              <Chip 
+                label={`ID: ${currentStudent.studentId}`} 
+                size="small" 
+                color="primary" 
+                variant="outlined"
+              />
+            )}
+          </Box>
         </DialogTitle>
         <DialogContent>
+          {!editMode && (
+            <Alert severity="info" sx={{ mb: 2 }}>
+              <Typography variant="body2">
+                <strong>Quick Add:</strong> Fill in first name and email to create student. Other fields can be added later.
+              </Typography>
+            </Alert>
+          )}
           <Grid container spacing={2} sx={{ mt: 0.5 }}>
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
                 label="First Name *"
                 value={currentStudent.firstName || ''}
-                onChange={(e) => setCurrentStudent({ ...currentStudent, firstName: e.target.value })}
+                onChange={(e) => {
+                  const firstName = e.target.value;
+                  setCurrentStudent({ 
+                    ...currentStudent, 
+                    firstName,
+                    // Auto-generate student ID when name changes
+                    studentId: generateStudentId(firstName, currentStudent.lastName)
+                  });
+                }}
                 error={!!errors.firstName}
-                helperText={errors.firstName}
+                helperText={errors.firstName || 'Required - minimum 2 characters'}
+                autoFocus
+                placeholder="Enter first name"
               />
             </Grid>
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
-                label="Last Name *"
+                label="Last Name (Optional)"
                 value={currentStudent.lastName || ''}
-                onChange={(e) => setCurrentStudent({ ...currentStudent, lastName: e.target.value })}
+                onChange={(e) => {
+                  const lastName = e.target.value;
+                  setCurrentStudent({ 
+                    ...currentStudent, 
+                    lastName,
+                    // Auto-generate student ID when name changes
+                    studentId: generateStudentId(currentStudent.firstName || '', lastName)
+                  });
+                }}
                 error={!!errors.lastName}
-                helperText={errors.lastName}
+                helperText={errors.lastName || 'Optional - leave blank if not applicable'}
               />
             </Grid>
             <Grid item xs={12}>
@@ -637,45 +734,59 @@ const StudentsPageEnhanced: React.FC = () => {
                 label="Email *"
                 type="email"
                 value={currentStudent.email || ''}
-                onChange={(e) => setCurrentStudent({ ...currentStudent, email: e.target.value })}
+                onChange={(e) => {
+                  const email = e.target.value;
+                  setCurrentStudent({ ...currentStudent, email });
+                  // Auto-fill suggestions from email
+                  autoFillFromEmail(email);
+                }}
                 error={!!errors.email}
-                helperText={errors.email}
+                helperText={errors.email || 'We\'ll use this for communication and login'}
+                placeholder="student@example.com"
               />
             </Grid>
             <Grid item xs={12}>
               <TextField
                 fullWidth
-                label="Phone"
+                label="Phone (Optional)"
                 value={currentStudent.phone || ''}
-                onChange={(e) => setCurrentStudent({ ...currentStudent, phone: e.target.value })}
+                onChange={(e) => {
+                  let phone = e.target.value.replace(/\D/g, ''); // Remove non-digits
+                  if (phone.length > 10) phone = phone.slice(0, 10);
+                  setCurrentStudent({ ...currentStudent, phone });
+                }}
                 error={!!errors.phone}
-                helperText={errors.phone}
+                helperText={errors.phone || '10-digit mobile number (optional)'}
+                placeholder="9876543210"
+                inputProps={{ maxLength: 10 }}
               />
             </Grid>
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
                 select
-                label="Plan"
+                label="Plan (Default: Monthly Premium)"
                 value={currentStudent.currentPlan || 'Monthly Premium'}
                 onChange={(e) => setCurrentStudent({ ...currentStudent, currentPlan: e.target.value })}
+                helperText="Can be changed later"
               >
                 <MenuItem value="Hourly Plan">Hourly Plan</MenuItem>
                 <MenuItem value="Daily Plan">Daily Plan</MenuItem>
                 <MenuItem value="Weekly Plan">Weekly Plan</MenuItem>
-                <MenuItem value="Monthly Premium">Monthly Premium</MenuItem>
+                <MenuItem value="Monthly Premium">Monthly Premium (Recommended)</MenuItem>
               </TextField>
             </Grid>
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
                 select
-                label="Fee Status"
+                label="Fee Status (Default: Pending)"
                 value={currentStudent.feeStatus || 'pending'}
                 onChange={(e) => setCurrentStudent({ ...currentStudent, feeStatus: e.target.value })}
+                helperText="Auto-set to pending for new students"
               >
                 <MenuItem value="paid">Paid</MenuItem>
-                <MenuItem value="pending">Pending</MenuItem>
+                <MenuItem value="pending">Pending (Default)</MenuItem>
                 <MenuItem value="overdue">Overdue</MenuItem>
               </TextField>
             </Grid>
@@ -683,11 +794,12 @@ const StudentsPageEnhanced: React.FC = () => {
               <TextField
                 fullWidth
                 select
-                label="Status"
+                label="Status (Default: Active)"
                 value={currentStudent.status || 'active'}
                 onChange={(e) => setCurrentStudent({ ...currentStudent, status: e.target.value })}
+                helperText="New students are active by default"
               >
-                <MenuItem value="active">Active</MenuItem>
+                <MenuItem value="active">Active (Default)</MenuItem>
                 <MenuItem value="inactive">Inactive</MenuItem>
               </TextField>
             </Grid>
