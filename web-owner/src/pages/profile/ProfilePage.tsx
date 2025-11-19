@@ -194,53 +194,70 @@ const ProfilePage: React.FC = () => {
     try {
       setUploading(true);
 
-      // Convert to base64 for preview
+      // Convert to base64 for preview and upload
       const reader = new FileReader();
-      reader.onloadend = () => {
+      reader.onloadend = async () => {
         const base64String = reader.result as string;
         setProfileImage(base64String);
+
+        // Upload to backend as base64 (works better through API Gateway)
+        try {
+          const response = await apiClient.post('/api/users/profile/picture', {
+            profileImage: base64String,
+          }, {
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          });
+
+          if (response.data?.success) {
+            const imageUrl = response.data.data?.url || response.data.data?.profileImage || base64String;
+            if (imageUrl) {
+              setProfileImage(imageUrl);
+            }
+            
+            // Update user in Redux
+            dispatch(updateUser({
+              ...user,
+              profileImage: imageUrl,
+              avatar: imageUrl,
+            } as any));
+
+            setSnackbar({ open: true, message: '✅ Profile picture updated successfully!', severity: 'success' });
+          } else {
+            throw new Error(response.data?.error?.message || 'Upload failed');
+          }
+        } catch (uploadError: any) {
+          console.error('Profile picture upload error:', uploadError);
+          console.error('Upload error details:', {
+            message: uploadError?.message,
+            response: uploadError?.response?.data,
+            status: uploadError?.response?.status,
+          });
+          // Keep the local preview even if upload fails
+          setSnackbar({ 
+            open: true, 
+            message: uploadError?.response?.data?.error?.message || 
+                    uploadError?.message || 
+                    '⚠️ Picture preview updated, but upload failed. Please try again.', 
+            severity: 'error' 
+          });
+        } finally {
+          setUploading(false);
+          // Reset file input
+          if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+          }
+        }
+      };
+      reader.onerror = () => {
+        setSnackbar({ open: true, message: '❌ Failed to read image file', severity: 'error' });
+        setUploading(false);
       };
       reader.readAsDataURL(file);
-
-      // Upload to backend
-      const formData = new FormData();
-      formData.append('picture', file);
-
-      try {
-        const response = await apiClient.post('/api/users/profile/picture', formData, {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        });
-
-        if (response.data?.success) {
-          const imageUrl = response.data.data?.url || response.data.data?.profileImage;
-          if (imageUrl) {
-            setProfileImage(imageUrl);
-          }
-          
-          // Update user in Redux
-          dispatch(updateUser({
-            ...user,
-            profileImage: imageUrl,
-            avatar: imageUrl,
-          } as any));
-
-          setSnackbar({ open: true, message: '✅ Profile picture updated successfully!', severity: 'success' });
-        }
-      } catch (uploadError: any) {
-        console.error('Profile picture upload error:', uploadError);
-        // Keep the local preview even if upload fails
-        setSnackbar({ 
-          open: true, 
-          message: '⚠️ Picture preview updated, but upload failed. Please try again.', 
-          severity: 'error' 
-        });
-      }
     } catch (error) {
       console.error('Error processing profile picture:', error);
       setSnackbar({ open: true, message: '❌ Failed to process image', severity: 'error' });
-    } finally {
       setUploading(false);
       // Reset file input
       if (fileInputRef.current) {
