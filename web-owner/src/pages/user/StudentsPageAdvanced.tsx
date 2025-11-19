@@ -922,78 +922,83 @@ const StudentsPageAdvanced: React.FC = () => {
           try {
             setLoading(true);
             
-            // Transform formData to match backend API structure
+            // Transform formData to match backend API structure (snake_case + proper field mapping)
             const transformedData: any = {
-              firstName: studentData.firstName,
-              lastName: studentData.lastName || '', // Optional
+              first_name: studentData.firstName,
+              last_name: studentData.lastName || '', // Optional
               email: studentData.email,
-              phone: studentData.phone || undefined,
-              dateOfBirth: studentData.dateOfBirth || undefined,
+              phone: studentData.phone || studentData.emergencyContact || '0000000000', // Backend requires phone
+              date_of_birth: studentData.dateOfBirth || undefined,
               gender: studentData.gender || undefined,
-              currentPlan: studentData.currentPlan || 'Monthly Premium',
-              feeStatus: studentData.feeStatus || 'pending',
-              status: studentData.status || 'active',
             };
 
-            // Add address if provided
-            if (studentData.addressLine1 || studentData.city || studentData.state || 
-                studentData.pincode || studentData.postalCode || studentData.district) {
-              transformedData.address = {
-                line1: studentData.addressLine1 || undefined,
-                line2: studentData.addressLine2 || undefined,
-                city: studentData.city || undefined,
-                state: studentData.state || undefined,
-                postalCode: studentData.pincode || studentData.postalCode || undefined,
-                country: studentData.country || 'India',
-              };
-              
-              // Add district to metadata if provided
-              if (studentData.district) {
-                transformedData.metadata = {
-                  ...(transformedData.metadata || {}),
-                  district: studentData.district,
-                };
+            // Add address fields (backend expects separate fields, not nested object)
+            if (studentData.addressLine1) {
+              transformedData.address = studentData.addressLine1;
+              if (studentData.addressLine2) {
+                transformedData.address += ', ' + studentData.addressLine2;
               }
             }
-
-            // Add guardian/emergency contact if provided
-            if (studentData.guardianName || studentData.guardianPhone || studentData.emergencyContact) {
-              transformedData.metadata = {
-                ...(transformedData.metadata || {}),
-                guardianName: studentData.guardianName || undefined,
-                guardianPhone: studentData.guardianPhone || undefined,
-                emergencyContact: studentData.emergencyContact || undefined,
-              };
+            if (studentData.city) {
+              transformedData.city = studentData.city;
+            }
+            if (studentData.state) {
+              transformedData.state = studentData.state;
+            }
+            if (studentData.pincode || studentData.postalCode) {
+              transformedData.pincode = studentData.pincode || studentData.postalCode;
             }
 
-            // Add blood group if provided
-            if (studentData.bloodGroup) {
-              transformedData.metadata = {
-                ...(transformedData.metadata || {}),
-                bloodGroup: studentData.bloodGroup,
-              };
+            // Add parent/guardian phone if provided
+            if (studentData.guardianPhone) {
+              transformedData.parent_phone = studentData.guardianPhone;
+            } else if (studentData.emergencyContact) {
+              transformedData.parent_phone = studentData.emergencyContact;
             }
 
-            // Add groups and tags if provided
-            if (studentData.groups && studentData.groups.length > 0) {
-              transformedData.groups = studentData.groups;
-            }
-            if (studentData.tags && studentData.tags.length > 0) {
-              transformedData.tags = studentData.tags;
-            }
-            if (studentData.notes) {
-              transformedData.metadata = {
-                ...(transformedData.metadata || {}),
-                notes: studentData.notes,
-              };
+            // Store additional data in metadata (for future use or other endpoints)
+            const metadata: any = {};
+            if (studentData.district) metadata.district = studentData.district;
+            if (studentData.guardianName) metadata.guardianName = studentData.guardianName;
+            if (studentData.bloodGroup) metadata.bloodGroup = studentData.bloodGroup;
+            if (studentData.notes) metadata.notes = studentData.notes;
+            if (studentData.groups && studentData.groups.length > 0) metadata.groups = studentData.groups;
+            if (studentData.tags && studentData.tags.length > 0) metadata.tags = studentData.tags;
+            if (studentData.currentPlan) metadata.currentPlan = studentData.currentPlan;
+            if (studentData.feeStatus) metadata.feeStatus = studentData.feeStatus;
+            if (studentData.status) metadata.status = studentData.status;
+            
+            if (Object.keys(metadata).length > 0) {
+              transformedData.metadata = JSON.stringify(metadata);
             }
 
-            console.log('📤 Sending student data:', transformedData);
+            console.log('📤 Sending student data to backend:', transformedData);
 
             if (editMode && currentStudent?.id) {
-              await studentsService.updateStudent(currentStudent.id, transformedData);
+              // For update, use camelCase as the service might handle conversion
+              const updateData: any = {
+                firstName: studentData.firstName,
+                lastName: studentData.lastName || '',
+                email: studentData.email,
+                phone: studentData.phone || studentData.emergencyContact,
+                dateOfBirth: studentData.dateOfBirth,
+                gender: studentData.gender,
+                address: transformedData.address ? {
+                  line1: studentData.addressLine1,
+                  line2: studentData.addressLine2,
+                  city: studentData.city,
+                  state: studentData.state,
+                  postalCode: studentData.pincode || studentData.postalCode,
+                  country: studentData.country || 'India',
+                } : undefined,
+                currentPlan: studentData.currentPlan || 'Monthly Premium',
+                feeStatus: studentData.feeStatus || 'pending',
+                status: studentData.status || 'active',
+              };
+              await studentsService.updateStudent(currentStudent.id, updateData);
               setSnackbar({ open: true, message: '✅ Student updated successfully!', severity: 'success' });
             } else {
+              // For create, send snake_case directly to match backend
               await studentsService.createStudent(transformedData);
               setSnackbar({ open: true, message: '✅ Student created successfully!', severity: 'success' });
             }

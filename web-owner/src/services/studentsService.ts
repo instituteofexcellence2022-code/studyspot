@@ -96,10 +96,45 @@ class StudentsService {
 
   /**
    * Create new student
+   * Transforms camelCase to snake_case for backend compatibility
    */
   async createStudent(data: CreateStudentData): Promise<Student> {
-    const response = await apiClient.post(this.baseURL, data) as any;
-    return response.data.data.student;
+    // Transform camelCase to snake_case for backend
+    const transformedData: any = {
+      first_name: data.firstName,
+      last_name: data.lastName || '',
+      email: data.email,
+      phone: data.phone || '0000000000', // Backend requires phone
+      date_of_birth: data.dateOfBirth,
+      gender: data.gender,
+    };
+
+    // Handle address - backend expects separate fields, not nested object
+    if (data.address) {
+      if (data.address.line1) {
+        transformedData.address = data.address.line1;
+        if (data.address.line2) {
+          transformedData.address += ', ' + data.address.line2;
+        }
+      }
+      if (data.address.city) transformedData.city = data.address.city;
+      if (data.address.state) transformedData.state = data.address.state;
+      if (data.address.postalCode) transformedData.pincode = data.address.postalCode;
+    }
+
+    // Add metadata for additional fields
+    const metadata: any = {};
+    if (data.currentPlan) metadata.currentPlan = data.currentPlan;
+    if (data.feeStatus) metadata.feeStatus = data.feeStatus;
+    if (data.status) metadata.status = data.status;
+    
+    if (Object.keys(metadata).length > 0) {
+      transformedData.metadata = JSON.stringify(metadata);
+    }
+
+    console.log('📤 [StudentsService] Creating student with transformed data:', transformedData);
+    const response = await apiClient.post(this.baseURL, transformedData) as any;
+    return response.data.data.student || response.data.data;
   }
 
   /**
