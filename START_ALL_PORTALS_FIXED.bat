@@ -33,7 +33,7 @@ echo     Owner Portal window opened!
 echo.
 
 echo [3/3] Starting Admin Portal on Port 3002...
-start "Admin Portal (3002)" cmd /k "cd web-admin-new/frontend && npm run dev"
+start "Admin Portal (3002)" cmd /k "cd web-admin-new/frontend && set PORT=3002 && npm start"
 echo     Waiting for Admin Portal to initialize...
 timeout /t 10 /nobreak > nul
 echo     Admin Portal window opened!

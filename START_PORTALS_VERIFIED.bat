@@ -45,7 +45,7 @@ echo.
 timeout /t 10 /nobreak > nul
 
 echo [3/3] Starting Admin Portal (Port 3002)...
-start "StudySpot - Admin Portal (3002)" cmd /k "cd /d "%~dp0web-admin-new\frontend" && npm run dev"
+start "StudySpot - Admin Portal (3002)" cmd /k "cd /d "%~dp0web-admin-new\frontend" && set PORT=3002 && npm start"
 echo       Command window opened
 echo       Wait for: "Compiled successfully!"
 echo.

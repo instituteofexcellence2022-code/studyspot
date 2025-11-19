@@ -18,13 +18,13 @@ echo     Student Portal starting at http://localhost:3000
 echo.
 
 echo [2/3] Starting Owner Portal on Port 3001...
-start "Owner Portal (3001)" cmd /k "cd web-owner && npm run dev"
+start "Owner Portal (3001)" cmd /k "cd web-owner && set PORT=3001 && npm start"
 timeout /t 5 /nobreak > nul
 echo     Owner Portal starting at http://localhost:3001
 echo.
 
 echo [3/3] Starting Admin Portal on Port 3002...
-start "Admin Portal (3002)" cmd /k "cd web-admin-new && npm run dev"
+start "Admin Portal (3002)" cmd /k "cd web-admin-new/frontend && set PORT=3002 && npm start"
 timeout /t 5 /nobreak > nul
 echo     Admin Portal starting at http://localhost:3002
 echo.
