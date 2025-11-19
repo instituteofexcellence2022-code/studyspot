@@ -56,7 +56,7 @@ import studentsService, { Student as APIStudent, StudentsFilters } from '../../s
 interface Student {
   id: string;
   firstName: string;
-  lastName: string;
+  lastName?: string; // Optional - not required
   email: string;
   phone?: string;
   studentId: string;
@@ -1078,7 +1078,7 @@ const StudentsPageEnhanced: React.FC = () => {
         <DialogTitle>Confirm Delete</DialogTitle>
         <DialogContent>
           <Typography>
-            Are you sure you want to delete student "{studentToDelete?.firstName} {studentToDelete?.lastName}"?
+            Are you sure you want to delete student "{studentToDelete?.firstName} {studentToDelete?.lastName || ''}"?
           </Typography>
           <Alert severity="warning" sx={{ mt: 2 }}>
             This action cannot be undone!
