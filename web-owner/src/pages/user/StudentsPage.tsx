@@ -172,18 +172,21 @@ const StudentsPageEnhanced: React.FC = () => {
       
       if (data && data[0] && data[0].Status === 'Success' && data[0].PostOffice && data[0].PostOffice.length > 0) {
         const postOffice = data[0].PostOffice[0];
-        setCurrentStudent(prev => ({
-          ...prev,
-          city: postOffice.District || (prev as any).city,
-          state: postOffice.State || (prev as any).state,
-          district: postOffice.District || (prev as any).district,
-          // Also update address object if it exists
-          address: {
-            ...prev.address,
-            city: postOffice.District || prev.address?.city,
-            state: postOffice.State || prev.address?.state,
-          },
-        }));
+        setCurrentStudent(prev => {
+          const prevAny = prev as any;
+          return {
+            ...prev,
+            city: postOffice.District || prevAny.city,
+            state: postOffice.State || prevAny.state,
+            district: postOffice.District || prevAny.district,
+            // Also update address object if it exists
+            address: {
+              ...(prevAny.address || {}),
+              city: postOffice.District || prevAny.address?.city,
+              state: postOffice.State || prevAny.address?.state,
+            },
+          };
+        });
       }
     } catch (error) {
       console.error('PIN code lookup failed:', error);
