@@ -51,8 +51,33 @@ const corsOrigins = process.env.CORS_ORIGIN?.split(',').map(o => o.trim()) || [
   /\.netlify\.app$/,  // All Netlify domains
 ];
 
+// CORS origin validation function - handles both strings and regex patterns
+const originValidator = (origin: string | undefined, callback: (err: Error | null, allow: boolean) => void) => {
+  if (!origin) {
+    // Allow requests with no origin (e.g., mobile apps, Postman)
+    return callback(null, true);
+  }
+
+  // Check against explicit origins first
+  for (const allowedOrigin of corsOrigins) {
+    if (typeof allowedOrigin === 'string') {
+      if (origin === allowedOrigin) {
+        return callback(null, true);
+      }
+    } else if (allowedOrigin instanceof RegExp) {
+      if (allowedOrigin.test(origin)) {
+        return callback(null, true);
+      }
+    }
+  }
+
+  // Origin not allowed
+  console.warn('[CORS] Origin not allowed:', origin);
+  callback(null, false);
+};
+
 fastify.register(cors, {
-  origin: corsOrigins,
+  origin: originValidator,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'x-tenant-id', 'X-Requested-With'],
