@@ -1,305 +1,47 @@
-# ============================================
-# STUDYSPOT PLATFORM - .GITIGNORE
-# ============================================
-
-# ============================================
-# SECURITY - NEVER COMMIT THESE
-# ============================================
-.env
-.env.local
-.env.production
-.env.development
-*.pem
-*.key
-*.cert
-*.p12
-
-# Credentials
-*credentials*.json
-*secrets*.json
-config/production.js
-config/production.ts
-
-# ============================================
-# DEPENDENCIES
-# ============================================
+# Dependencies
 node_modules/
-bower_components/
-jspm_packages/
+.pnp
+.pnp.js
 
-# ============================================
-# BUILD OUTPUT
-# ============================================
+# Testing
+coverage/
+.nyc_output
+
+# Production
 dist/
 build/
-out/
-.next/
-.nuxt/
-*.tsbuildinfo
-
-# Backend builds
-backend/dist/
-api/dist/
-
-# Frontend builds
-web/build/
-web-admin/build/
-web-admin-new/frontend/build/
-web-admin-new/frontend/dist/
-web-owner/build/
-mobile/build/
-
-# ============================================
-# LOGS
-# ============================================
-logs/
 *.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
+logs/
+*.pid
+*.seed
+*.pid.lock
 
-# Backend logs
-backend/logs/
-api/logs/
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 
-# ============================================
-# DATABASE
-# ============================================
-*.db
-*.sqlite
-*.sqlite3
-data/
-*.sql.backup
-
-# PostgreSQL
-*.dump
-*.backup
-
-# ============================================
-# CACHE & TEMP
-# ============================================
-.cache/
-.temp/
-.tmp/
-*.tmp
+# IDE
+.vscode/
+.idea/
 *.swp
 *.swo
 *~
 
 # OS
 .DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
 Thumbs.db
-desktop.ini
 
-# ============================================
-# IDE & EDITORS
-# ============================================
-.vscode/
-.idea/
-*.sublime-project
-*.sublime-workspace
-*.code-workspace
+# Temporary files
+*.tmp
+*.temp
+.cache/
 
-# Visual Studio
-.vs/
-*.suo
-*.user
-*.userosscache
-*.sln.docstates
-
-# ============================================
-# TESTING
-# ============================================
-coverage/
-*.lcov
-.nyc_output/
-test-results/
-junit.xml
-
-# ============================================
-# MOBILE
-# ============================================
-# React Native
-mobile/.expo/
-mobile/.expo-shared/
-mobile/android/app/build/
-mobile/ios/build/
-mobile/ios/Pods/
-
-# Flutter
-studyspot_flutter/.dart_tool/
-studyspot_flutter/.flutter-plugins
-studyspot_flutter/.flutter-plugins-dependencies
-studyspot_flutter/.packages
-studyspot_flutter/build/
-
-# Android
-*.apk
-*.aab
-*.ap_
-*.dex
-local.properties
-.gradle/
-gradle.properties
-
-# iOS
-*.ipa
-*.xcworkspace
-!default.xcworkspace
-*.pbxuser
-!default.pbxuser
-*.mode1v3
-!default.mode1v3
-*.mode2v3
-!default.mode2v3
-*.perspectivev3
-!default.perspectivev3
-
-# ============================================
-# PRODUCTION FILES
-# ============================================
-# SSL certificates
-*.crt
-*.ca-bundle
-
-# Backups
-*.backup
-*.bak
-*.old
-
-# Archives
-*.zip
-*.tar.gz
-*.rar
-*.7z
-
-# ============================================
-# KUBERNETES & DOCKER
-# ============================================
-# Docker
-.dockerignore
-
-# Kubernetes secrets
-kubernetes/secrets/
-*.secret.yaml
-*-secret.yaml
-
-# ============================================
-# PACKAGE MANAGER
-# ============================================
-# npm
-package-lock.json.backup
-.npm/
-
-# Yarn
-.yarn/cache
-.yarn/unplugged
-.yarn/build-state.yml
-.yarn/install-state.gz
-.pnp.*
-
-# ============================================
-# MISC
-# ============================================
-# Environment detection
-.envrc
-
-# Lock files (optional - decide per project)
-# Uncomment if you want to ignore lock files
-# package-lock.json
-# yarn.lock
-# pnpm-lock.yaml
-
-# Generated files
-*.generated.*
-*.gen.*
-
-# Reports
-reports/
-*.report
-
-# Performance
-*.perf
-
-# ============================================
-# PROJECT SPECIFIC
-# ============================================
-# Temporary build scripts
-cleanup-*.bat
-fix-*.bat
-test-*.bat
-test-*.sh
-auto-fix-*.bat
-auto-fix-*.sh
+# Database
+*.sqlite
+*.db
 
 # Build artifacts
-*.apk.old
-*.aab.old
-
-# Local development
-StudySpotTemp/
-StudySpotFresh/
-
-# ============================================
-# ALLOW THESE SPECIFIC FILES
-# ============================================
-!.gitignore
-!.npmrc
-!.nvmrc
-!.editorconfig
-!.prettierrc
-!.eslintrc*
-!tsconfig.json
-!jest.config.js
-!babel.config.js
-!metro.config.js
-!vite.config.ts
-
-# Environment templates (these are safe)
-!.env.example
-!env.example
-!.env.template
-
-# ============================================
-# DOCUMENTATION - KEEP THESE
-# ============================================
-# All markdown files are important
-!*.md
-!README.md
-!CHANGELOG.md
-!CONTRIBUTING.md
-!LICENSE
-
-# Keep all documentation
-!docs/**/*
-
-# ============================================
-# MIGRATIONS - KEEP THESE
-# ============================================
-!migrations/*.sql
-!backend/migrations/*.sql
-!api/migrations/*.sql
-
-# ============================================
-# SCRIPTS - KEEP THESE
-# ============================================
-!scripts/**/*
-!backend/scripts/**/*
-
-# ============================================
-# CONFIG - KEEP TEMPLATES
-# ============================================
-!*.example
-!*.template
-!*.sample
-
-# ============================================
-# END OF .GITIGNORE
-# ============================================
+*.tsbuildinfo

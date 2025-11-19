@@ -1,110 +1,82 @@
 // ============================================
-// GLOBAL ERROR HANDLER
-// Centralized error handling
+// ERROR HANDLING MIDDLEWARE
+// Professional error handling for all services
 // ============================================
 
-import { FastifyError, FastifyRequest, FastifyReply } from 'fastify';
+import { FastifyRequest, FastifyReply } from 'fastify';
 import { logger } from '../utils/logger';
-import { ERROR_CODES, HTTP_STATUS } from '../config/constants';
+import { formatErrorResponse, AppError } from '../utils/errors';
+import { HTTP_STATUS } from '../config/constants';
 
 /**
- * Custom API Error class
+ * Global error handler
  */
-export class ApiError extends Error {
-  statusCode: number;
-  code: number;
-  details?: any;
-
-  constructor(message: string, statusCode: number = 500, code: number = ERROR_CODES.SERVER_ERROR, details?: any) {
-    super(message);
-    this.name = 'ApiError';
-    this.statusCode = statusCode;
-    this.code = code;
-    this.details = details;
-  }
-}
-
-/**
- * Global error handler for Fastify
- */
-export const errorHandler = (
-  error: FastifyError | ApiError,
+export async function errorHandler(
+  error: any,
   request: FastifyRequest,
   reply: FastifyReply
-) => {
+) {
   // Log error
-  logger.error('Request error', {
-    error: error.message,
-    stack: error.stack,
-    url: request.url,
+  logger.error('Request error:', {
     method: request.method,
+    url: request.url,
+    error: {
+      message: error.message,
+      stack: error.stack,
+      code: error.code,
+      statusCode: error.statusCode,
+    },
+    user: (request as any).user?.id || 'anonymous',
+    tenantId: (request as any).tenantId || 'none',
     ip: request.ip,
   });
 
-  // Handle custom API errors
-  if (error instanceof ApiError) {
-    return reply.status(error.statusCode).send({
-      success: false,
-      error: {
-        code: error.code,
-        message: error.message,
-        details: error.details,
-      },
-      timestamp: new Date().toISOString(),
-    });
-  }
+  // Format error response
+  const errorResponse = formatErrorResponse(error);
 
-  // Handle Fastify validation errors
-  if (error.validation) {
-    return reply.status(HTTP_STATUS.BAD_REQUEST).send({
-      success: false,
-      error: {
-        code: ERROR_CODES.VALIDATION_ERROR,
-        message: 'Validation failed',
-        details: error.validation,
-      },
-      timestamp: new Date().toISOString(),
-    });
-  }
+  // Set status code
+  const statusCode = error instanceof AppError 
+    ? error.statusCode 
+    : error.statusCode || HTTP_STATUS.INTERNAL_SERVER_ERROR;
 
-  // Handle database errors
-  if (error.message.includes('duplicate key')) {
-    return reply.status(HTTP_STATUS.CONFLICT).send({
-      success: false,
-      error: {
-        code: ERROR_CODES.DUPLICATE_ENTRY,
-        message: 'Resource already exists',
-      },
-      timestamp: new Date().toISOString(),
-    });
-  }
-
-  // Handle generic errors
-  const statusCode = error.statusCode || HTTP_STATUS.INTERNAL_SERVER_ERROR;
-
-  return reply.status(statusCode).send({
-    success: false,
-    error: {
-      code: ERROR_CODES.SERVER_ERROR,
-      message: process.env.NODE_ENV === 'production' 
-        ? 'Internal server error' 
-        : error.message,
-    },
-    timestamp: new Date().toISOString(),
-  });
-};
+  // Send error response
+  return reply.status(statusCode).send(errorResponse);
+}
 
 /**
- * Not found handler
+ * 404 Not Found handler
  */
-export const notFoundHandler = (request: FastifyRequest, reply: FastifyReply) => {
+export async function notFoundHandler(
+  request: FastifyRequest,
+  reply: FastifyReply
+) {
+  logger.warn('Route not found:', {
+    method: request.method,
+    url: request.url,
+    ip: request.ip,
+  });
+
   return reply.status(HTTP_STATUS.NOT_FOUND).send({
     success: false,
     error: {
-      code: ERROR_CODES.RESOURCE_NOT_FOUND,
+      code: 'NOT_FOUND',
       message: `Route ${request.method} ${request.url} not found`,
     },
     timestamp: new Date().toISOString(),
   });
-};
+}
 
+/**
+ * Async error wrapper
+ */
+export function asyncHandler(
+  fn: (request: FastifyRequest, reply: FastifyReply) => Promise<any>
+) {
+  return async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      return await fn(request, reply);
+    } catch (error) {
+      return errorHandler(error, request, reply);
+    }
+  };
+}
