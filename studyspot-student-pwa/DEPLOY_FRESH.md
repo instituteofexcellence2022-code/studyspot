@@ -75,3 +75,4 @@ Visit: http://localhost:3000
 
 **Note**: The `--legacy-peer-deps` flag is needed because of workspace dependencies with `studyspot-tenant-sdk`.
 
+

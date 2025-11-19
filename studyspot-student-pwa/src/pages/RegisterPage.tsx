@@ -26,10 +26,12 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { validateRegisterForm } from '../utils/validation';
+import { useLanguage } from '../contexts/LanguageContext';
 
 export default function RegisterPage() {
   const navigate = useNavigate();
   const { register, isLoading, error: authError, clearError } = useAuth();
+  const { t } = useLanguage();
   
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -80,7 +82,7 @@ export default function RegisterPage() {
       setSuccess(true);
       setTimeout(() => {
         navigate('/login', {
-          state: { message: 'Registration successful! Please login.' }
+          state: { message: t('auth.registrationSuccessfulMessage') }
         });
       }, 2000);
     } catch (error) {
@@ -127,10 +129,10 @@ export default function RegisterPage() {
               <RegisterIcon sx={{ fontSize: 32, color: 'white' }} />
             </Box>
             <Typography variant="h5" fontWeight="700" gutterBottom>
-              Create Account
+              {t('auth.createAccount')}
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Join StudySpot today
+              {t('auth.joinStudySpot')}
             </Typography>
           </Box>
 
@@ -143,7 +145,7 @@ export default function RegisterPage() {
 
           {success && (
             <Alert severity="success" sx={{ mb: 2, borderRadius: 2 }}>
-              ✓ Registration successful! Redirecting...
+              ✓ {t('auth.registrationSuccessful')}
             </Alert>
           )}
 
@@ -152,7 +154,7 @@ export default function RegisterPage() {
             <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
               <TextField
                 fullWidth
-                label="First Name"
+                label={t('profile.firstName')}
                 name="firstName"
                 value={formData.firstName}
                 onChange={handleChange}
@@ -170,7 +172,7 @@ export default function RegisterPage() {
 
               <TextField
                 fullWidth
-                label="Last Name"
+                label={t('profile.lastName')}
                 name="lastName"
                 value={formData.lastName}
                 onChange={handleChange}
@@ -188,7 +190,7 @@ export default function RegisterPage() {
 
             <TextField
               fullWidth
-              label="Email"
+              label={t('profile.email')}
               name="email"
               type="email"
               value={formData.email}
@@ -207,7 +209,7 @@ export default function RegisterPage() {
 
             <TextField
               fullWidth
-              label="Phone"
+              label={t('profile.phone')}
               name="phone"
               value={formData.phone}
               onChange={handleChange}
@@ -226,7 +228,7 @@ export default function RegisterPage() {
 
             <TextField
               fullWidth
-              label="Password"
+              label={t('auth.password')}
               name="password"
               type={showPassword ? 'text' : 'password'}
               value={formData.password}
@@ -256,7 +258,7 @@ export default function RegisterPage() {
 
             <TextField
               fullWidth
-              label="Confirm Password"
+              label={t('auth.confirmPassword')}
               name="confirmPassword"
               type={showConfirmPassword ? 'text' : 'password'}
               value={formData.confirmPassword}
@@ -297,7 +299,7 @@ export default function RegisterPage() {
                 textTransform: 'none',
               }}
             >
-              {isLoading ? <CircularProgress size={24} color="inherit" /> : 'Create Account'}
+              {isLoading ? <CircularProgress size={24} color="inherit" /> : t('auth.createAccount')}
             </Button>
 
             {/* Social Login Divider */}
@@ -356,7 +358,7 @@ export default function RegisterPage() {
 
             <Box sx={{ textAlign: 'center' }}>
               <Typography variant="body2" color="text.secondary">
-                Already have an account?{' '}
+                {t('auth.alreadyHaveAccount')}{' '}
                 <Link 
                   to="/login" 
                   style={{ 
@@ -365,7 +367,7 @@ export default function RegisterPage() {
                     fontWeight: 600 
                   }}
                 >
-                  Login
+                  {t('auth.login')}
                 </Link>
               </Typography>
             </Box>

@@ -85,3 +85,4 @@ curl -X POST https://studyspot-bookings.onrender.com/api/v1/bookings \
 - ✅ Booking payload format fixed (user_id, library_id, etc.)
 - ❓ Booking service deployment status: **UNKNOWN** - Need to check Render dashboard
 
+

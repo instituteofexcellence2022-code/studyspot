@@ -51,7 +51,6 @@ import {
   Select,
   FormControl,
   InputLabel,
-  CircularProgressWithLabel,
 } from '@mui/material';
 import {
   PlayArrow,
@@ -662,83 +661,125 @@ export default function StudyTimerPage({ setIsAuthenticated }: StudyTimerPagePro
 
   return (
     <MobileLayout setIsAuthenticated={setIsAuthenticated}>
-      <Box sx={{ bgcolor: 'background.default', minHeight: '100vh', pb: 4 }}>
-        <Container maxWidth="md" sx={{ py: 3 }}>
-          {/* Header */}
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-            <Typography variant="h4" fontWeight="bold">
+      <Box sx={{ bgcolor: 'background.default', minHeight: '100vh', pb: { xs: 2, sm: 4 } }}>
+        <Container maxWidth="md" sx={{ py: { xs: 1.5, sm: 2, md: 3 }, px: { xs: 1.5, sm: 2 } }}>
+          {/* Compact Header */}
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: { xs: 1.5, sm: 2 } }}>
+            <Typography variant="h5" fontWeight="bold" sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
               ⏱️ Study Timer
             </Typography>
-            <Stack direction="row" spacing={1}>
+            <Stack direction="row" spacing={0.5}>
               <Tooltip title="Add Task">
-                <IconButton onClick={() => setTaskDialogOpen(true)} color="primary">
-                  <Add />
+                <IconButton 
+                  onClick={() => setTaskDialogOpen(true)} 
+                  color="primary"
+                  size="small"
+                  sx={{ p: { xs: 0.75, sm: 1 } }}
+                >
+                  <Add fontSize="small" />
                 </IconButton>
               </Tooltip>
-              <IconButton onClick={() => setSettingsOpen(true)}>
-                <Settings />
+              <IconButton 
+                onClick={() => setSettingsOpen(true)}
+                size="small"
+                sx={{ p: { xs: 0.75, sm: 1 } }}
+              >
+                <Settings fontSize="small" />
               </IconButton>
             </Stack>
           </Box>
 
-          {/* View Tabs */}
-          <Card sx={{ mb: 3 }}>
-            <Tabs value={viewTab} onChange={(e, v) => setViewTab(v)} variant="scrollable" scrollButtons="auto">
-              <Tab icon={<Timer />} label="Timer" />
-              <Tab icon={<BarChart />} label="Statistics" />
-              <Tab icon={<History />} label="History" />
+          {/* View Tabs - Compact */}
+          <Card sx={{ mb: { xs: 2, sm: 2.5 }, borderRadius: { xs: 2, sm: 3 } }}>
+            <Tabs 
+              value={viewTab} 
+              onChange={(e, v) => setViewTab(v)} 
+              variant="scrollable" 
+              scrollButtons="auto"
+              sx={{ 
+                minHeight: { xs: 44, sm: 48 },
+                '& .MuiTab-root': {
+                  minHeight: { xs: 44, sm: 48 },
+                  fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                  px: { xs: 1, sm: 2 },
+                }
+              }}
+            >
+              <Tab icon={<Timer fontSize="small" />} label="Timer" iconPosition="start" />
+              <Tab icon={<BarChart fontSize="small" />} label="Stats" iconPosition="start" />
+              <Tab icon={<History fontSize="small" />} label="History" iconPosition="start" />
             </Tabs>
             <Divider />
 
             {/* Timer View */}
             {viewTab === 0 && (
-              <CardContent>
-                {/* Timer Mode Selection */}
+              <CardContent sx={{ p: { xs: 1.5, sm: 2, md: 3 } }}>
+                {/* Compact Timer Mode Selection */}
                 <ToggleButtonGroup
                   value={mode}
                   exclusive
                   onChange={(e, newMode) => newMode && handleModeChange(newMode)}
                   fullWidth
-                  sx={{ mb: 3 }}
+                  sx={{ 
+                    mb: { xs: 2, sm: 2.5 },
+                    '& .MuiToggleButton-root': {
+                      py: { xs: 0.75, sm: 1 },
+                      px: { xs: 0.5, sm: 1 },
+                      fontSize: { xs: '0.7rem', sm: '0.875rem' },
+                      '& .MuiSvgIcon-root': {
+                        fontSize: { xs: '1rem', sm: '1.25rem' },
+                        mr: { xs: 0.5, sm: 1 },
+                      }
+                    }
+                  }}
                 >
                   <ToggleButton value="pomodoro">
-                    <Timer sx={{ mr: 1 }} /> Pomodoro
+                    <Timer /> <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>Pomodoro</Box>
                   </ToggleButton>
                   <ToggleButton value="short-break">
-                    <Coffee sx={{ mr: 1 }} /> Short Break
+                    <Coffee /> <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>Short</Box>
                   </ToggleButton>
                   <ToggleButton value="long-break">
-                    <Coffee sx={{ mr: 1 }} /> Long Break
+                    <Coffee /> <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>Long</Box>
                   </ToggleButton>
                   <ToggleButton value="deep-work">
-                    <Psychology sx={{ mr: 1 }} /> Deep Work
+                    <Psychology /> <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>Deep</Box>
                   </ToggleButton>
                   <ToggleButton value="custom">
-                    <AutoAwesome sx={{ mr: 1 }} /> Custom
+                    <AutoAwesome /> <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>Custom</Box>
                   </ToggleButton>
                 </ToggleButtonGroup>
 
-                {/* Main Timer Display */}
-                <Card sx={{ mb: 3, background: getModeColor(), color: 'white' }}>
-                  <CardContent sx={{ p: 4, textAlign: 'center' }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, mb: 2 }}>
+                {/* Main Timer Display - Compact & Mobile Responsive */}
+                <Card sx={{ mb: { xs: 2, sm: 2.5 }, background: getModeColor(), color: 'white', borderRadius: { xs: 2, sm: 3 } }}>
+                  <CardContent sx={{ p: { xs: 2, sm: 3, md: 4 }, textAlign: 'center' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.75, mb: { xs: 1.5, sm: 2 } }}>
                       {getModeIcon()}
-                      <Typography variant="h6" sx={{ textTransform: 'capitalize' }}>
+                      <Typography variant="subtitle1" sx={{ textTransform: 'capitalize', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                         {mode.replace('-', ' ')}
                       </Typography>
                     </Box>
 
                     <CircularProgressWithLabel
                       value={progress}
-                      size={200}
+                      size={180}
                       thickness={4}
-                      sx={{ color: 'white', mb: 3 }}
+                      sx={{ 
+                        mb: { xs: 2, sm: 2.5 },
+                      }}
                     >
                       <Box>
-                        <Typography variant="h2" fontWeight="bold" sx={{ fontSize: { xs: '3rem', sm: '4rem' } }}>
+                        <Typography 
+                          variant="h2" 
+                          fontWeight="bold" 
+                          sx={{ 
+                            fontSize: { xs: '2.5rem', sm: '3.5rem', md: '4rem' },
+                            lineHeight: 1.2,
+                          }}
+                        >
                           {formatTime(timeLeft)}
                         </Typography>
-                        <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                        <Typography variant="caption" sx={{ opacity: 0.9, fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>
                           {Math.floor(progress)}% Complete
                         </Typography>
                       </Box>
@@ -748,9 +789,9 @@ export default function StudyTimerPage({ setIsAuthenticated }: StudyTimerPagePro
                       variant="determinate"
                       value={progress}
                       sx={{
-                        height: 8,
+                        height: { xs: 6, sm: 8 },
                         borderRadius: 4,
-                        mb: 3,
+                        mb: { xs: 2, sm: 2.5 },
                         bgcolor: 'rgba(255,255,255,0.3)',
                         '& .MuiLinearProgress-bar': {
                           bgcolor: 'white',
@@ -758,7 +799,13 @@ export default function StudyTimerPage({ setIsAuthenticated }: StudyTimerPagePro
                       }}
                     />
 
-                    <Stack direction="row" spacing={2} justifyContent="center">
+                    {/* Touch-Friendly Control Buttons */}
+                    <Stack 
+                      direction="row" 
+                      spacing={1.5} 
+                      justifyContent="center"
+                      sx={{ mb: { xs: 2, sm: 2.5 } }}
+                    >
                       <Button
                         variant="contained"
                         size="large"
@@ -767,7 +814,11 @@ export default function StudyTimerPage({ setIsAuthenticated }: StudyTimerPagePro
                         sx={{
                           bgcolor: 'white',
                           color: mode === 'pomodoro' ? '#667eea' : mode === 'short-break' ? '#10b981' : mode === 'long-break' ? '#f59e0b' : mode === 'deep-work' ? '#8b5cf6' : '#ef4444',
-                          px: 4,
+                          px: { xs: 3, sm: 4 },
+                          py: { xs: 1.25, sm: 1.5 },
+                          minWidth: { xs: 100, sm: 120 },
+                          fontSize: { xs: '0.875rem', sm: '1rem' },
+                          fontWeight: 'bold',
                           '&:hover': { bgcolor: '#f5f5f5' },
                         }}
                       >
@@ -781,6 +832,11 @@ export default function StudyTimerPage({ setIsAuthenticated }: StudyTimerPagePro
                         sx={{
                           borderColor: 'white',
                           color: 'white',
+                          borderWidth: 2,
+                          px: { xs: 2.5, sm: 3 },
+                          py: { xs: 1.25, sm: 1.5 },
+                          minWidth: { xs: 90, sm: 110 },
+                          fontSize: { xs: '0.875rem', sm: '1rem' },
                           '&:hover': { borderColor: '#f5f5f5', bgcolor: 'rgba(255,255,255,0.1)' },
                         }}
                       >
@@ -788,79 +844,107 @@ export default function StudyTimerPage({ setIsAuthenticated }: StudyTimerPagePro
                       </Button>
                     </Stack>
 
-                    {/* Quick Stats */}
-                    <Stack direction="row" spacing={3} justifyContent="center" sx={{ mt: 3 }}>
-                      <Box>
-                        <Typography variant="caption" sx={{ opacity: 0.8 }}>
-                          Sessions Today
+                    {/* Compact Quick Stats */}
+                    <Stack 
+                      direction="row" 
+                      spacing={{ xs: 2, sm: 3 }} 
+                      justifyContent="center"
+                      divider={<Divider orientation="vertical" flexItem sx={{ borderColor: 'rgba(255,255,255,0.3)' }} />}
+                    >
+                      <Box sx={{ textAlign: 'center' }}>
+                        <Typography variant="caption" sx={{ opacity: 0.8, fontSize: { xs: '0.65rem', sm: '0.75rem' }, display: 'block' }}>
+                          Sessions
                         </Typography>
-                        <Typography variant="h6" fontWeight="bold">
+                        <Typography variant="h6" fontWeight="bold" sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }}>
                           {sessionCount}
                         </Typography>
                       </Box>
-                      <Box>
-                        <Typography variant="caption" sx={{ opacity: 0.8 }}>
+                      <Box sx={{ textAlign: 'center' }}>
+                        <Typography variant="caption" sx={{ opacity: 0.8, fontSize: { xs: '0.65rem', sm: '0.75rem' }, display: 'block' }}>
                           Focus Time
                         </Typography>
-                        <Typography variant="h6" fontWeight="bold">
+                        <Typography variant="h6" fontWeight="bold" sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }}>
                           {Math.floor(totalFocusTime / 60)}h {totalFocusTime % 60}m
                         </Typography>
                       </Box>
-                      <Box>
-                        <Typography variant="caption" sx={{ opacity: 0.8 }}>
+                      <Box sx={{ textAlign: 'center' }}>
+                        <Typography variant="caption" sx={{ opacity: 0.8, fontSize: { xs: '0.65rem', sm: '0.75rem' }, display: 'block' }}>
                           Streak
                         </Typography>
-                        <Typography variant="h6" fontWeight="bold">
-                          🔥 {currentStreak} days
+                        <Typography variant="h6" fontWeight="bold" sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }}>
+                          🔥 {currentStreak}
                         </Typography>
                       </Box>
                     </Stack>
                   </CardContent>
                 </Card>
 
-                {/* Tasks Section */}
-                <Card sx={{ mb: 3 }}>
-                  <CardContent>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                      <Typography variant="h6" fontWeight="600">
+                {/* Compact Tasks Section */}
+                <Card sx={{ mb: { xs: 2, sm: 2.5 }, borderRadius: { xs: 2, sm: 3 } }}>
+                  <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: { xs: 1.5, sm: 2 } }}>
+                      <Typography variant="subtitle1" fontWeight="600" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                         📝 Study Tasks
                       </Typography>
                       <Button
                         size="small"
-                        startIcon={<Add />}
+                        startIcon={<Add fontSize="small" />}
                         onClick={() => setTaskDialogOpen(true)}
+                        sx={{ 
+                          fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                          py: { xs: 0.5, sm: 0.75 },
+                          px: { xs: 1, sm: 1.5 },
+                        }}
                       >
-                        Add Task
+                        Add
                       </Button>
                     </Box>
                     {tasks.length === 0 ? (
-                      <Alert severity="info">
-                        No tasks yet. Add tasks to track your progress during study sessions!
+                      <Alert severity="info" sx={{ py: { xs: 1, sm: 1.5 }, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
+                        No tasks yet. Add tasks to track your progress!
                       </Alert>
                     ) : (
-                      <List>
+                      <List dense sx={{ py: 0 }}>
                         {tasks.map((task) => (
                           <ListItem
                             key={task.id}
+                            sx={{ 
+                              px: { xs: 0.5, sm: 1 },
+                              py: { xs: 0.5, sm: 0.75 },
+                              borderRadius: 1,
+                              mb: 0.5,
+                              '&:hover': { bgcolor: 'action.hover' },
+                            }}
                             secondaryAction={
-                              <IconButton edge="end" onClick={() => handleDeleteTask(task.id)} size="small">
-                                <Delete />
+                              <IconButton 
+                                edge="end" 
+                                onClick={() => handleDeleteTask(task.id)} 
+                                size="small"
+                                sx={{ p: { xs: 0.5, sm: 0.75 } }}
+                              >
+                                <Delete fontSize="small" />
                               </IconButton>
                             }
                           >
                             <CheckCircle
+                              fontSize="small"
                               sx={{
-                                mr: 2,
+                                mr: { xs: 1, sm: 1.5 },
                                 color: task.completed ? 'success.main' : 'action.disabled',
                                 cursor: 'pointer',
+                                flexShrink: 0,
                               }}
                               onClick={() => handleToggleTask(task.id)}
                             />
                             <ListItemText
                               primary={task.text}
-                              sx={{
-                                textDecoration: task.completed ? 'line-through' : 'none',
-                                opacity: task.completed ? 0.6 : 1,
+                              primaryTypographyProps={{
+                                variant: 'body2',
+                                sx: {
+                                  fontSize: { xs: '0.8rem', sm: '0.875rem' },
+                                  textDecoration: task.completed ? 'line-through' : 'none',
+                                  opacity: task.completed ? 0.6 : 1,
+                                }
                               }}
                             />
                           </ListItem>
@@ -868,35 +952,73 @@ export default function StudyTimerPage({ setIsAuthenticated }: StudyTimerPagePro
                       </List>
                     )}
                     {tasks.length > 0 && (
-                      <Box sx={{ mt: 2 }}>
+                      <Box sx={{ mt: { xs: 1.5, sm: 2 } }}>
                         <LinearProgress
                           variant="determinate"
                           value={(tasks.filter(t => t.completed).length / tasks.length) * 100}
-                          sx={{ height: 8, borderRadius: 4 }}
+                          sx={{ height: { xs: 6, sm: 8 }, borderRadius: 4 }}
                         />
-                        <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-                          {tasks.filter(t => t.completed).length} of {tasks.length} tasks completed
+                        <Typography 
+                          variant="caption" 
+                          color="text.secondary" 
+                          sx={{ 
+                            mt: 0.75, 
+                            display: 'block',
+                            fontSize: { xs: '0.7rem', sm: '0.75rem' }
+                          }}
+                        >
+                          {tasks.filter(t => t.completed).length} of {tasks.length} completed
                         </Typography>
                       </Box>
                     )}
                   </CardContent>
                 </Card>
 
-                {/* Quick Actions */}
-                <Grid container spacing={2}>
+                {/* Compact Quick Actions */}
+                <Grid container spacing={1.5}>
                   <Grid item xs={6}>
-                    <Card variant="outlined" sx={{ textAlign: 'center', p: 2, cursor: 'pointer' }} onClick={() => setViewTab(1)}>
-                      <TrendingUp sx={{ fontSize: 40, color: 'primary.main', mb: 1 }} />
-                      <Typography variant="body2" fontWeight="600">
-                        View Statistics
+                    <Card 
+                      variant="outlined" 
+                      sx={{ 
+                        textAlign: 'center', 
+                        p: { xs: 1.5, sm: 2 }, 
+                        cursor: 'pointer',
+                        borderRadius: { xs: 2, sm: 3 },
+                        transition: 'all 0.2s',
+                        '&:hover': { 
+                          borderColor: 'primary.main',
+                          bgcolor: 'action.hover',
+                          transform: 'translateY(-2px)',
+                        }
+                      }} 
+                      onClick={() => setViewTab(1)}
+                    >
+                      <TrendingUp sx={{ fontSize: { xs: 32, sm: 40 }, color: 'primary.main', mb: 0.5 }} />
+                      <Typography variant="caption" fontWeight="600" sx={{ fontSize: { xs: '0.7rem', sm: '0.875rem' } }}>
+                        Statistics
                       </Typography>
                     </Card>
                   </Grid>
                   <Grid item xs={6}>
-                    <Card variant="outlined" sx={{ textAlign: 'center', p: 2, cursor: 'pointer' }} onClick={() => setViewTab(2)}>
-                      <History sx={{ fontSize: 40, color: 'primary.main', mb: 1 }} />
-                      <Typography variant="body2" fontWeight="600">
-                        View History
+                    <Card 
+                      variant="outlined" 
+                      sx={{ 
+                        textAlign: 'center', 
+                        p: { xs: 1.5, sm: 2 }, 
+                        cursor: 'pointer',
+                        borderRadius: { xs: 2, sm: 3 },
+                        transition: 'all 0.2s',
+                        '&:hover': { 
+                          borderColor: 'primary.main',
+                          bgcolor: 'action.hover',
+                          transform: 'translateY(-2px)',
+                        }
+                      }} 
+                      onClick={() => setViewTab(2)}
+                    >
+                      <History sx={{ fontSize: { xs: 32, sm: 40 }, color: 'primary.main', mb: 0.5 }} />
+                      <Typography variant="caption" fontWeight="600" sx={{ fontSize: { xs: '0.7rem', sm: '0.875rem' } }}>
+                        History
                       </Typography>
                     </Card>
                   </Grid>
@@ -904,78 +1026,78 @@ export default function StudyTimerPage({ setIsAuthenticated }: StudyTimerPagePro
               </CardContent>
             )}
 
-            {/* Statistics View */}
+            {/* Statistics View - Compact */}
             {viewTab === 1 && (
-              <CardContent>
-                {/* Stats Cards */}
-                <Grid container spacing={2} sx={{ mb: 3 }}>
+              <CardContent sx={{ p: { xs: 1.5, sm: 2, md: 3 } }}>
+                {/* Compact Stats Cards */}
+                <Grid container spacing={1.5} sx={{ mb: { xs: 2, sm: 2.5 } }}>
                   <Grid item xs={6} sm={3}>
-                    <Card sx={{ background: gradients.primary, color: 'white' }}>
-                      <CardContent sx={{ p: 2, textAlign: 'center' }}>
-                        <CheckCircle sx={{ fontSize: 32, mb: 1 }} />
-                        <Typography variant="h5" fontWeight="bold">
+                    <Card sx={{ background: gradients.primary, color: 'white', borderRadius: { xs: 2, sm: 3 } }}>
+                      <CardContent sx={{ p: { xs: 1.5, sm: 2 }, textAlign: 'center' }}>
+                        <CheckCircle sx={{ fontSize: { xs: 24, sm: 32 }, mb: { xs: 0.5, sm: 1 } }} />
+                        <Typography variant="h6" fontWeight="bold" sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
                           {sessionCount}
                         </Typography>
-                        <Typography variant="caption" sx={{ opacity: 0.9 }}>
-                          Sessions Today
+                        <Typography variant="caption" sx={{ opacity: 0.9, fontSize: { xs: '0.65rem', sm: '0.75rem' } }}>
+                          Sessions
                         </Typography>
                       </CardContent>
                     </Card>
                   </Grid>
                   <Grid item xs={6} sm={3}>
-                    <Card sx={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: 'white' }}>
-                      <CardContent sx={{ p: 2, textAlign: 'center' }}>
-                        <Timer sx={{ fontSize: 32, mb: 1 }} />
-                        <Typography variant="h5" fontWeight="bold">
+                    <Card sx={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: 'white', borderRadius: { xs: 2, sm: 3 } }}>
+                      <CardContent sx={{ p: { xs: 1.5, sm: 2 }, textAlign: 'center' }}>
+                        <Timer sx={{ fontSize: { xs: 24, sm: 32 }, mb: { xs: 0.5, sm: 1 } }} />
+                        <Typography variant="h6" fontWeight="bold" sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
                           {Math.floor(totalFocusTime / 60)}h
                         </Typography>
-                        <Typography variant="caption" sx={{ opacity: 0.9 }}>
+                        <Typography variant="caption" sx={{ opacity: 0.9, fontSize: { xs: '0.65rem', sm: '0.75rem' } }}>
                           Focus Time
                         </Typography>
                       </CardContent>
                     </Card>
                   </Grid>
                   <Grid item xs={6} sm={3}>
-                    <Card sx={{ background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', color: 'white' }}>
-                      <CardContent sx={{ p: 2, textAlign: 'center' }}>
-                        <LocalFireDepartment sx={{ fontSize: 32, mb: 1 }} />
-                        <Typography variant="h5" fontWeight="bold">
+                    <Card sx={{ background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', color: 'white', borderRadius: { xs: 2, sm: 3 } }}>
+                      <CardContent sx={{ p: { xs: 1.5, sm: 2 }, textAlign: 'center' }}>
+                        <LocalFireDepartment sx={{ fontSize: { xs: 24, sm: 32 }, mb: { xs: 0.5, sm: 1 } }} />
+                        <Typography variant="h6" fontWeight="bold" sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
                           {currentStreak}
                         </Typography>
-                        <Typography variant="caption" sx={{ opacity: 0.9 }}>
-                          Day Streak
+                        <Typography variant="caption" sx={{ opacity: 0.9, fontSize: { xs: '0.65rem', sm: '0.75rem' } }}>
+                          Streak
                         </Typography>
                       </CardContent>
                     </Card>
                   </Grid>
                   <Grid item xs={6} sm={3}>
-                    <Card sx={{ background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)', color: 'white' }}>
-                      <CardContent sx={{ p: 2, textAlign: 'center' }}>
-                        <EmojiEvents sx={{ fontSize: 32, mb: 1 }} />
-                        <Typography variant="h5" fontWeight="bold">
+                    <Card sx={{ background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)', color: 'white', borderRadius: { xs: 2, sm: 3 } }}>
+                      <CardContent sx={{ p: { xs: 1.5, sm: 2 }, textAlign: 'center' }}>
+                        <EmojiEvents sx={{ fontSize: { xs: 24, sm: 32 }, mb: { xs: 0.5, sm: 1 } }} />
+                        <Typography variant="h6" fontWeight="bold" sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
                           {longestStreak}
                         </Typography>
-                        <Typography variant="caption" sx={{ opacity: 0.9 }}>
-                          Best Streak
+                        <Typography variant="caption" sx={{ opacity: 0.9, fontSize: { xs: '0.65rem', sm: '0.75rem' } }}>
+                          Best
                         </Typography>
                       </CardContent>
                     </Card>
                   </Grid>
                 </Grid>
 
-                {/* Charts */}
-                <Grid container spacing={3}>
+                {/* Compact Charts */}
+                <Grid container spacing={1.5}>
                   <Grid item xs={12} md={6}>
-                    <Card>
-                      <CardContent>
-                        <Typography variant="h6" gutterBottom fontWeight="600">
+                    <Card sx={{ borderRadius: { xs: 2, sm: 3 } }}>
+                      <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
+                        <Typography variant="subtitle1" gutterBottom fontWeight="600" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' }, mb: { xs: 1, sm: 1.5 } }}>
                           Weekly Focus Time
                         </Typography>
-                        <ResponsiveContainer width="100%" height={250}>
+                        <ResponsiveContainer width="100%" height={200}>
                           <RechartsBarChart data={weeklyData}>
                             <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="day" />
-                            <YAxis label={{ value: 'Hours', angle: -90, position: 'insideLeft' }} />
+                            <XAxis dataKey="day" tick={{ fontSize: 10 }} />
+                            <YAxis label={{ value: 'Hours', angle: -90, position: 'insideLeft', style: { fontSize: 10 } }} tick={{ fontSize: 10 }} />
                             <RechartsTooltip />
                             <Bar dataKey="hours" radius={[8, 8, 0, 0]} fill="#2563eb" />
                           </RechartsBarChart>
@@ -985,12 +1107,12 @@ export default function StudyTimerPage({ setIsAuthenticated }: StudyTimerPagePro
                   </Grid>
 
                   <Grid item xs={12} md={6}>
-                    <Card>
-                      <CardContent>
-                        <Typography variant="h6" gutterBottom fontWeight="600">
+                    <Card sx={{ borderRadius: { xs: 2, sm: 3 } }}>
+                      <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
+                        <Typography variant="subtitle1" gutterBottom fontWeight="600" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' }, mb: { xs: 1, sm: 1.5 } }}>
                           Today's Distribution
                         </Typography>
-                        <ResponsiveContainer width="100%" height={250}>
+                        <ResponsiveContainer width="100%" height={200}>
                           <PieChart>
                             <Pie
                               data={distributionData}
@@ -998,7 +1120,7 @@ export default function StudyTimerPage({ setIsAuthenticated }: StudyTimerPagePro
                               cy="50%"
                               labelLine={false}
                               label={({ name, value }) => `${name}: ${value}m`}
-                              outerRadius={80}
+                              outerRadius={60}
                               fill="#8884d8"
                               dataKey="value"
                             >
@@ -1016,58 +1138,72 @@ export default function StudyTimerPage({ setIsAuthenticated }: StudyTimerPagePro
               </CardContent>
             )}
 
-            {/* History View */}
+            {/* History View - Compact */}
             {viewTab === 2 && (
-              <CardContent>
-                <Typography variant="h6" gutterBottom fontWeight="600">
+              <CardContent sx={{ p: { xs: 1.5, sm: 2, md: 3 } }}>
+                <Typography variant="subtitle1" gutterBottom fontWeight="600" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' }, mb: { xs: 1.5, sm: 2 } }}>
                   Session History
                 </Typography>
                 {sessionHistory.length === 0 ? (
-                  <Alert severity="info">
-                    No sessions yet. Start a timer to begin tracking your study sessions!
+                  <Alert severity="info" sx={{ py: { xs: 1, sm: 1.5 }, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
+                    No sessions yet. Start a timer to begin tracking!
                   </Alert>
                 ) : (
-                  <List>
+                  <List dense sx={{ py: 0 }}>
                     {sessionHistory.slice(0, 20).map((session) => (
                       <ListItem
                         key={session.id}
                         sx={{
                           bgcolor: 'action.hover',
-                          mb: 1,
-                          borderRadius: 2,
+                          mb: 0.75,
+                          borderRadius: { xs: 1.5, sm: 2 },
                           border: 1,
                           borderColor: 'divider',
+                          px: { xs: 1, sm: 1.5 },
+                          py: { xs: 0.75, sm: 1 },
                         }}
                       >
                         <ListItemText
                           primary={
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap' }}>
                               <Chip
                                 label={session.type.replace('-', ' ')}
                                 size="small"
+                                sx={{ 
+                                  fontSize: { xs: '0.65rem', sm: '0.75rem' },
+                                  height: { xs: 20, sm: 24 },
+                                }}
                                 color={
                                   session.type === 'pomodoro' ? 'primary' :
                                   session.type === 'deep-work' ? 'secondary' :
                                   'success'
                                 }
                               />
-                              <Typography variant="body1" fontWeight="600">
-                                {session.duration} minutes
+                              <Typography variant="body2" fontWeight="600" sx={{ fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>
+                                {session.duration} min
                               </Typography>
                             </Box>
                           }
-                          secondary={new Date(session.completedAt).toLocaleString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
+                          secondary={
+                            <Typography variant="caption" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>
+                              {new Date(session.completedAt).toLocaleString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
+                            </Typography>
+                          }
                         />
                         {session.tasksCompleted !== undefined && session.totalTasks !== undefined && session.totalTasks > 0 && (
                           <Chip
-                            label={`${session.tasksCompleted}/${session.totalTasks} tasks`}
+                            label={`${session.tasksCompleted}/${session.totalTasks}`}
                             size="small"
                             variant="outlined"
+                            sx={{ 
+                              fontSize: { xs: '0.65rem', sm: '0.75rem' },
+                              height: { xs: 20, sm: 24 },
+                            }}
                           />
                         )}
                       </ListItem>
@@ -1079,10 +1215,20 @@ export default function StudyTimerPage({ setIsAuthenticated }: StudyTimerPagePro
           </Card>
         </Container>
 
-        {/* Add Task Dialog */}
-        <Dialog open={taskDialogOpen} onClose={() => setTaskDialogOpen(false)} maxWidth="sm" fullWidth>
-          <DialogTitle>Add Study Task</DialogTitle>
-          <DialogContent>
+        {/* Add Task Dialog - Compact */}
+        <Dialog 
+          open={taskDialogOpen} 
+          onClose={() => setTaskDialogOpen(false)} 
+          maxWidth="sm" 
+          fullWidth
+          PaperProps={{
+            sx: { borderRadius: { xs: 2, sm: 3 }, m: { xs: 1, sm: 2 } }
+          }}
+        >
+          <DialogTitle sx={{ pb: { xs: 1, sm: 1.5 }, fontSize: { xs: '1rem', sm: '1.25rem' } }}>
+            Add Study Task
+          </DialogTitle>
+          <DialogContent sx={{ px: { xs: 2, sm: 3 }, py: { xs: 1, sm: 1.5 } }}>
             <TextField
               fullWidth
               label="Task Description"
@@ -1091,7 +1237,13 @@ export default function StudyTimerPage({ setIsAuthenticated }: StudyTimerPagePro
               placeholder="e.g., Complete Chapter 5, Review notes..."
               multiline
               rows={3}
-              sx={{ mt: 1 }}
+              size="small"
+              sx={{ 
+                mt: { xs: 0.5, sm: 1 },
+                '& .MuiInputBase-input': {
+                  fontSize: { xs: '0.875rem', sm: '1rem' },
+                }
+              }}
               onKeyPress={(e) => {
                 if (e.key === 'Enter' && e.ctrlKey) {
                   handleAddTask();
@@ -1099,22 +1251,44 @@ export default function StudyTimerPage({ setIsAuthenticated }: StudyTimerPagePro
               }}
             />
           </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setTaskDialogOpen(false)}>Cancel</Button>
-            <Button variant="contained" onClick={handleAddTask} disabled={!newTaskText.trim()}>
+          <DialogActions sx={{ px: { xs: 2, sm: 3 }, pb: { xs: 1.5, sm: 2 } }}>
+            <Button 
+              onClick={() => setTaskDialogOpen(false)}
+              size="small"
+              sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant="contained" 
+              onClick={handleAddTask} 
+              disabled={!newTaskText.trim()}
+              size="small"
+              sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
+            >
               Add Task
             </Button>
           </DialogActions>
         </Dialog>
 
-        {/* Settings Dialog */}
-        <Dialog open={settingsOpen} onClose={() => setSettingsOpen(false)} maxWidth="sm" fullWidth>
-          <DialogTitle>Timer Settings</DialogTitle>
-          <DialogContent>
-            <Typography variant="subtitle2" gutterBottom sx={{ mt: 2, mb: 1 }}>
+        {/* Settings Dialog - Compact */}
+        <Dialog 
+          open={settingsOpen} 
+          onClose={() => setSettingsOpen(false)} 
+          maxWidth="sm" 
+          fullWidth
+          PaperProps={{
+            sx: { borderRadius: { xs: 2, sm: 3 }, m: { xs: 1, sm: 2 }, maxHeight: { xs: '90vh', sm: 'auto' } }
+          }}
+        >
+          <DialogTitle sx={{ pb: { xs: 1, sm: 1.5 }, fontSize: { xs: '1rem', sm: '1.25rem' } }}>
+            Timer Settings
+          </DialogTitle>
+          <DialogContent sx={{ px: { xs: 2, sm: 3 }, py: { xs: 1, sm: 1.5 } }}>
+            <Typography variant="subtitle2" gutterBottom sx={{ mt: { xs: 1, sm: 2 }, mb: { xs: 1, sm: 1.5 }, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
               Timer Durations (minutes)
             </Typography>
-            <Grid container spacing={2}>
+            <Grid container spacing={1.5}>
               <Grid item xs={6}>
                 <TextField
                   fullWidth
@@ -1124,6 +1298,11 @@ export default function StudyTimerPage({ setIsAuthenticated }: StudyTimerPagePro
                   onChange={(e) => setSettings({ ...settings, pomodoro: parseInt(e.target.value) || 25 })}
                   inputProps={{ min: 1, max: 60 }}
                   size="small"
+                  sx={{
+                    '& .MuiInputBase-input': {
+                      fontSize: { xs: '0.875rem', sm: '1rem' },
+                    }
+                  }}
                 />
               </Grid>
               <Grid item xs={6}>
@@ -1135,6 +1314,11 @@ export default function StudyTimerPage({ setIsAuthenticated }: StudyTimerPagePro
                   onChange={(e) => setSettings({ ...settings, shortBreak: parseInt(e.target.value) || 5 })}
                   inputProps={{ min: 1, max: 15 }}
                   size="small"
+                  sx={{
+                    '& .MuiInputBase-input': {
+                      fontSize: { xs: '0.875rem', sm: '1rem' },
+                    }
+                  }}
                 />
               </Grid>
               <Grid item xs={6}>
@@ -1146,6 +1330,11 @@ export default function StudyTimerPage({ setIsAuthenticated }: StudyTimerPagePro
                   onChange={(e) => setSettings({ ...settings, longBreak: parseInt(e.target.value) || 15 })}
                   inputProps={{ min: 5, max: 30 }}
                   size="small"
+                  sx={{
+                    '& .MuiInputBase-input': {
+                      fontSize: { xs: '0.875rem', sm: '1rem' },
+                    }
+                  }}
                 />
               </Grid>
               <Grid item xs={6}>
@@ -1157,6 +1346,11 @@ export default function StudyTimerPage({ setIsAuthenticated }: StudyTimerPagePro
                   onChange={(e) => setSettings({ ...settings, deepWork: parseInt(e.target.value) || 90 })}
                   inputProps={{ min: 30, max: 120 }}
                   size="small"
+                  sx={{
+                    '& .MuiInputBase-input': {
+                      fontSize: { xs: '0.875rem', sm: '1rem' },
+                    }
+                  }}
                 />
               </Grid>
               <Grid item xs={6}>
@@ -1168,6 +1362,11 @@ export default function StudyTimerPage({ setIsAuthenticated }: StudyTimerPagePro
                   onChange={(e) => setSettings({ ...settings, custom: parseInt(e.target.value) || 30 })}
                   inputProps={{ min: 1, max: 180 }}
                   size="small"
+                  sx={{
+                    '& .MuiInputBase-input': {
+                      fontSize: { xs: '0.875rem', sm: '1rem' },
+                    }
+                  }}
                 />
               </Grid>
               <Grid item xs={6}>
@@ -1179,45 +1378,63 @@ export default function StudyTimerPage({ setIsAuthenticated }: StudyTimerPagePro
                   onChange={(e) => setSettings({ ...settings, sessionsUntilLongBreak: parseInt(e.target.value) || 4 })}
                   inputProps={{ min: 2, max: 8 }}
                   size="small"
+                  sx={{
+                    '& .MuiInputBase-input': {
+                      fontSize: { xs: '0.875rem', sm: '1rem' },
+                    }
+                  }}
                 />
               </Grid>
             </Grid>
 
-            <Divider sx={{ my: 3 }} />
+            <Divider sx={{ my: { xs: 2, sm: 2.5 } }} />
 
-            <Typography variant="subtitle2" gutterBottom>
+            <Typography variant="subtitle2" gutterBottom sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
               Preferences
             </Typography>
-            <Stack spacing={2} sx={{ mt: 1 }}>
+            <Stack spacing={1.5} sx={{ mt: { xs: 0.5, sm: 1 } }}>
               <FormControlLabel
                 control={
                   <Switch
                     checked={settings.autoStartBreaks}
                     onChange={(e) => setSettings({ ...settings, autoStartBreaks: e.target.checked })}
+                    size="small"
                   />
                 }
-                label="Auto-start breaks after focus sessions"
+                label={
+                  <Typography variant="body2" sx={{ fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>
+                    Auto-start breaks after focus sessions
+                  </Typography>
+                }
               />
               <FormControlLabel
                 control={
                   <Switch
                     checked={settings.autoStartPomodoros}
                     onChange={(e) => setSettings({ ...settings, autoStartPomodoros: e.target.checked })}
+                    size="small"
                   />
                 }
-                label="Auto-start pomodoro after breaks"
+                label={
+                  <Typography variant="body2" sx={{ fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>
+                    Auto-start pomodoro after breaks
+                  </Typography>
+                }
               />
               <FormControlLabel
                 control={
                   <Switch
                     checked={settings.soundEnabled}
                     onChange={(e) => setSettings({ ...settings, soundEnabled: e.target.checked })}
+                    size="small"
                   />
                 }
                 label={
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    {settings.soundEnabled ? <VolumeUp /> : <VolumeOff />}
-                    <span>Timer completion sound</span>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                    {settings.soundEnabled ? <VolumeUp fontSize="small" /> : <VolumeOff fontSize="small" />}
+                    <Typography variant="body2" sx={{ fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>
+                      Timer completion sound
+                    </Typography>
                   </Box>
                 }
               />
@@ -1226,12 +1443,15 @@ export default function StudyTimerPage({ setIsAuthenticated }: StudyTimerPagePro
                   <Switch
                     checked={settings.notificationsEnabled}
                     onChange={(e) => setSettings({ ...settings, notificationsEnabled: e.target.checked })}
+                    size="small"
                   />
                 }
                 label={
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    {settings.notificationsEnabled ? <Notifications /> : <NotificationsOff />}
-                    <span>Browser notifications</span>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                    {settings.notificationsEnabled ? <Notifications fontSize="small" /> : <NotificationsOff fontSize="small" />}
+                    <Typography variant="body2" sx={{ fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>
+                      Browser notifications
+                    </Typography>
                   </Box>
                 }
               />
@@ -1240,18 +1460,21 @@ export default function StudyTimerPage({ setIsAuthenticated }: StudyTimerPagePro
                   <Switch
                     checked={settings.focusMusicEnabled}
                     onChange={(e) => setSettings({ ...settings, focusMusicEnabled: e.target.checked })}
+                    size="small"
                   />
                 }
                 label={
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <MusicNote />
-                    <span>Focus music (ambient sounds)</span>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                    <MusicNote fontSize="small" />
+                    <Typography variant="body2" sx={{ fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>
+                      Focus music (ambient sounds)
+                    </Typography>
                   </Box>
                 }
               />
               {settings.focusMusicEnabled && (
-                <Box sx={{ pl: 4 }}>
-                  <Typography variant="body2" gutterBottom>
+                <Box sx={{ pl: { xs: 3, sm: 4 } }}>
+                  <Typography variant="body2" gutterBottom sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                     Volume: {settings.focusMusicVolume}%
                   </Typography>
                   <Slider
@@ -1260,13 +1483,20 @@ export default function StudyTimerPage({ setIsAuthenticated }: StudyTimerPagePro
                     min={0}
                     max={100}
                     valueLabelDisplay="auto"
+                    size="small"
                   />
                 </Box>
               )}
             </Stack>
           </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setSettingsOpen(false)}>Cancel</Button>
+          <DialogActions sx={{ px: { xs: 2, sm: 3 }, pb: { xs: 1.5, sm: 2 } }}>
+            <Button 
+              onClick={() => setSettingsOpen(false)}
+              size="small"
+              sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
+            >
+              Cancel
+            </Button>
             <Button
               variant="contained"
               onClick={() => {
@@ -1276,6 +1506,8 @@ export default function StudyTimerPage({ setIsAuthenticated }: StudyTimerPagePro
                 }
                 toast.success('Settings saved!');
               }}
+              size="small"
+              sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
             >
               Save
             </Button>
@@ -1286,7 +1518,7 @@ export default function StudyTimerPage({ setIsAuthenticated }: StudyTimerPagePro
   );
 }
 
-// Circular Progress with Label Component
+// Circular Progress with Label Component - Compact & Responsive
 function CircularProgressWithLabel({ value, size, thickness, sx, children }: any) {
   return (
     <Box sx={{ position: 'relative', display: 'inline-flex', ...sx }}>
@@ -1295,7 +1527,11 @@ function CircularProgressWithLabel({ value, size, thickness, sx, children }: any
         value={value}
         size={size}
         thickness={thickness}
-        sx={{ color: 'white' }}
+        sx={{ 
+          color: 'white',
+          width: { xs: '160px !important', sm: `${size}px !important` },
+          height: { xs: '160px !important', sm: `${size}px !important` },
+        }}
       />
       <Box
         sx={{

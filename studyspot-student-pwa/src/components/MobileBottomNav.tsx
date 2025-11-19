@@ -8,6 +8,7 @@ import {
   Person,
 } from '@mui/icons-material';
 import { gradients } from '../theme/mobileTheme';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface NavItem {
   label: string;
@@ -20,34 +21,35 @@ interface NavItem {
 export default function MobileBottomNav() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { t } = useLanguage();
 
   const navItems: NavItem[] = [
     { 
-      label: 'Home', 
+      label: t('nav.home'), 
       icon: Dashboard, 
       path: '/dashboard', 
       color: '#6366f1' 
     },
     { 
-      label: 'Libraries', 
+      label: t('nav.libraries'), 
       icon: LibraryBooks, 
       path: '/libraries', 
       color: '#8b5cf6' 
     },
     { 
-      label: 'Bookings', 
+      label: t('nav.bookings'), 
       icon: BookOnline, 
       path: '/bookings', 
       color: '#ec4899' 
     },
     { 
-      label: 'Rewards', 
+      label: t('nav.rewards'), 
       icon: EmojiEvents, 
       path: '/rewards', 
       color: '#f59e0b' 
     },
     { 
-      label: 'Profile', 
+      label: t('nav.profile'), 
       icon: Person, 
       path: '/profile', 
       color: '#10b981' 
@@ -81,7 +83,7 @@ export default function MobileBottomNav() {
           display: 'flex',
           justifyContent: 'space-around',
           alignItems: 'center',
-          height: 64,
+          height: 60,
           px: 1,
           position: 'relative',
         }}
@@ -102,7 +104,7 @@ export default function MobileBottomNav() {
                 justifyContent: 'center',
                 cursor: 'pointer',
                 position: 'relative',
-                py: 1,
+                py: 0.5,
                 transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                 '&:active': {
                   transform: 'scale(0.9)',
@@ -130,7 +132,7 @@ export default function MobileBottomNav() {
               <Box
                 sx={{
                   position: 'relative',
-                  mb: 0.5,
+                  mb: 0.25,
                   transition: 'transform 0.3s ease',
                   transform: active ? 'translateY(-2px)' : 'none',
                 }}
@@ -173,11 +175,13 @@ export default function MobileBottomNav() {
               <Box
                 component="span"
                 sx={{
-                  fontSize: '0.688rem',
+                  fontSize: '0.625rem',
                   fontWeight: active ? 700 : 500,
                   color: active ? item.color : 'text.secondary',
                   transition: 'all 0.3s ease',
                   letterSpacing: '-0.2px',
+                  lineHeight: 1,
+                  mt: 0.125,
                 }}
               >
                 {item.label}

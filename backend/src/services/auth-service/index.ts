@@ -9,6 +9,7 @@ import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import jwt from '@fastify/jwt';
 import rateLimit from '@fastify/rate-limit';
+import multipart from '@fastify/multipart';
 import bcrypt from 'bcrypt';
 import dotenv from 'dotenv';
 import { coreDb } from '../../config/database';
@@ -41,6 +42,12 @@ fastify.register(cors, {
 });
 
 fastify.register(helmet);
+
+fastify.register(multipart, {
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB max file size
+  },
+});
 
 fastify.register(jwt, {
   secret: process.env.JWT_SECRET || 'your-secret-key-change-in-production',
@@ -146,18 +153,41 @@ const extractExpiryTimestamp = (token: string): number | null => {
   }
 };
 
-const formatUserResponse = (user: any) => ({
-  id: user.id,
-  email: user.email,
-  firstName: user.first_name ?? user.firstName ?? null,
-  lastName: user.last_name ?? user.lastName ?? null,
-  role: user.role ?? null,
-  tenantId: resolveTenantId(user),
-  status: user.is_active === false ? 'inactive' : 'active',
-  createdAt: user.created_at ?? null,
-  updatedAt: user.updated_at ?? null,
-  phone: user.phone ?? user.phone_number ?? null,
-});
+const formatUserResponse = (user: any) => {
+  // Parse metadata if it's a string
+  let metadata = {};
+  try {
+    if (typeof user.metadata === 'string') {
+      metadata = JSON.parse(user.metadata);
+    } else if (user.metadata) {
+      metadata = user.metadata;
+    }
+  } catch (e) {
+    // Ignore parse errors
+  }
+
+  return {
+    id: user.id,
+    email: user.email,
+    firstName: user.first_name ?? user.firstName ?? null,
+    lastName: user.last_name ?? user.lastName ?? null,
+    role: user.role ?? null,
+    tenantId: resolveTenantId(user),
+    status: user.is_active === false ? 'inactive' : 'active',
+    createdAt: user.created_at ?? null,
+    updatedAt: user.updated_at ?? null,
+    phone: user.phone ?? user.phone_number ?? null,
+    profileImage: (metadata as any)?.profileImage ?? (metadata as any)?.avatar ?? null,
+    avatar: (metadata as any)?.avatar ?? (metadata as any)?.profileImage ?? null,
+    city: (metadata as any)?.city ?? null,
+    addressLine1: (metadata as any)?.addressLine1 ?? null,
+    addressLine2: (metadata as any)?.addressLine2 ?? null,
+    state: (metadata as any)?.state ?? null,
+    district: (metadata as any)?.district ?? null,
+    pincode: (metadata as any)?.pincode ?? null,
+    country: (metadata as any)?.country ?? null,
+  };
+};
 
 const buildAuthPayload = (user: any, tokens: { accessToken: string; refreshToken?: string }) => {
   let expiresAt = extractExpiryTimestamp(tokens.accessToken);
@@ -952,6 +982,1239 @@ fastify.get('/api/auth/profile', async (request, reply) => {
       error: {
         code: ERROR_CODES.UNAUTHORIZED,
         message: 'Invalid or expired token',
+      },
+    });
+  }
+});
+
+// Update user profile
+fastify.put('/api/users/profile', async (request, reply) => {
+  try {
+    const authHeader = request.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return reply.status(HTTP_STATUS.UNAUTHORIZED).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.UNAUTHORIZED,
+          message: 'No token provided',
+        },
+      });
+    }
+
+    const token = authHeader.substring(7);
+    const decoded = fastify.jwt.verify(token) as any;
+    const updates = request.body as any;
+
+    // Get current user
+    const currentUser = await coreDb.query(
+      'SELECT * FROM admin_users WHERE id = $1',
+      [decoded.userId]
+    );
+
+    if (!currentUser.rows.length) {
+      return reply.status(HTTP_STATUS.NOT_FOUND).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.NOT_FOUND,
+          message: 'User not found',
+        },
+      });
+    }
+
+    // Build update query
+    const updateFields: string[] = [];
+    const values: any[] = [];
+    let paramIndex = 1;
+
+    if (updates.firstName !== undefined) {
+      updateFields.push(`first_name = $${paramIndex++}`);
+      values.push(updates.firstName);
+    }
+    if (updates.lastName !== undefined) {
+      updateFields.push(`last_name = $${paramIndex++}`);
+      values.push(updates.lastName);
+    }
+    if (updates.email !== undefined) {
+      updateFields.push(`email = $${paramIndex++}`);
+      values.push(updates.email.toLowerCase());
+    }
+    if (updates.phone !== undefined) {
+      updateFields.push(`phone = $${paramIndex++}`);
+      values.push(updates.phone);
+    }
+    if (updates.city !== undefined) {
+      // Store city in a JSON field or separate column if exists
+      // For now, we'll store it in a metadata JSONB field if available
+      updateFields.push(`metadata = COALESCE(metadata, '{}'::jsonb) || $${paramIndex++}::jsonb`);
+      values.push(JSON.stringify({ city: updates.city }));
+    }
+    if (updates.addressLine1 !== undefined || updates.addressLine2 !== undefined || updates.state !== undefined || updates.district !== undefined || updates.pincode !== undefined || updates.country !== undefined) {
+      // Store address fields in metadata
+      const addressData: any = {};
+      if (updates.addressLine1 !== undefined) addressData.addressLine1 = updates.addressLine1;
+      if (updates.addressLine2 !== undefined) addressData.addressLine2 = updates.addressLine2;
+      if (updates.state !== undefined) addressData.state = updates.state;
+      if (updates.district !== undefined) addressData.district = updates.district;
+      if (updates.pincode !== undefined) addressData.pincode = updates.pincode;
+      if (updates.country !== undefined) addressData.country = updates.country;
+      
+      updateFields.push(`metadata = COALESCE(metadata, '{}'::jsonb) || $${paramIndex++}::jsonb`);
+      values.push(JSON.stringify(addressData));
+    }
+    if (updates.profileImage !== undefined || updates.avatar !== undefined) {
+      const imageUrl = updates.profileImage || updates.avatar;
+      updateFields.push(`metadata = COALESCE(metadata, '{}'::jsonb) || $${paramIndex++}::jsonb`);
+      values.push(JSON.stringify({ profileImage: imageUrl, avatar: imageUrl }));
+    }
+
+    if (updateFields.length === 0) {
+      return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.VALIDATION_ERROR,
+          message: 'No valid fields to update',
+        },
+      });
+    }
+
+    // Add updated_at
+    updateFields.push(`updated_at = NOW()`);
+    values.push(decoded.userId);
+
+    const updateQuery = `
+      UPDATE admin_users 
+      SET ${updateFields.join(', ')}
+      WHERE id = $${paramIndex}
+      RETURNING *
+    `;
+
+    const result = await coreDb.query(updateQuery, values);
+
+    logger.info(`✅ Profile updated for user: ${decoded.userId}`);
+
+    return {
+      success: true,
+      data: {
+        user: formatUserResponse(result.rows[0]),
+      },
+      message: 'Profile updated successfully',
+    };
+  } catch (error: any) {
+    logger.error('Update profile error:', error);
+    return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
+      success: false,
+      error: {
+        code: ERROR_CODES.SERVER_ERROR,
+        message: 'Failed to update profile',
+        details: error.message,
+      },
+    });
+  }
+});
+
+// Upload profile picture
+fastify.post('/api/users/profile/picture', async (request, reply) => {
+  try {
+    const authHeader = request.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return reply.status(HTTP_STATUS.UNAUTHORIZED).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.UNAUTHORIZED,
+          message: 'No token provided',
+        },
+      });
+    }
+
+    const token = authHeader.substring(7);
+    const decoded = fastify.jwt.verify(token) as any;
+
+    // Check if multipart/form-data
+    const isMultipart = request.headers['content-type']?.includes('multipart/form-data');
+    
+    let imageData: string | null = null;
+
+    if (isMultipart) {
+      // Handle file upload (FormData)
+      const data = await request.file();
+      if (data) {
+        // Read file buffer and convert to base64
+        const buffer = await data.toBuffer();
+        const base64 = buffer.toString('base64');
+        imageData = `data:${data.mimetype};base64,${base64}`;
+      }
+    } else {
+      // Handle JSON with base64 image
+      const body = request.body as any;
+      imageData = body.profileImage || body.avatar || body.image;
+    }
+
+    if (!imageData) {
+      return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.VALIDATION_ERROR,
+          message: 'No image provided',
+        },
+      });
+    }
+
+    // Update user profile with image
+    const result = await coreDb.query(
+      `UPDATE admin_users 
+       SET metadata = COALESCE(metadata, '{}'::jsonb) || $1::jsonb,
+           updated_at = NOW()
+       WHERE id = $2
+       RETURNING *`,
+      [
+        JSON.stringify({ profileImage: imageData, avatar: imageData }),
+        decoded.userId
+      ]
+    );
+
+    if (!result.rows.length) {
+      return reply.status(HTTP_STATUS.NOT_FOUND).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.NOT_FOUND,
+          message: 'User not found',
+        },
+      });
+    }
+
+    logger.info(`✅ Profile picture updated for user: ${decoded.userId}`);
+
+    return {
+      success: true,
+      data: {
+        profileImage: imageData,
+        avatar: imageData,
+        user: formatUserResponse(result.rows[0]),
+      },
+      message: 'Profile picture updated successfully',
+    };
+  } catch (error: any) {
+    logger.error('Upload profile picture error:', error);
+    return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
+      success: false,
+      error: {
+        code: ERROR_CODES.SERVER_ERROR,
+        message: 'Failed to upload profile picture',
+        details: error.message,
+      },
+    });
+  }
+});
+
+// Get KYC data
+fastify.get('/api/users/kyc', async (request, reply) => {
+  try {
+    const authHeader = request.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return reply.status(HTTP_STATUS.UNAUTHORIZED).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.UNAUTHORIZED,
+          message: 'No token provided',
+        },
+      });
+    }
+
+    const token = authHeader.substring(7);
+    const decoded = fastify.jwt.verify(token) as any;
+
+    // Get user KYC data from metadata
+    const result = await coreDb.query(
+      'SELECT metadata FROM admin_users WHERE id = $1',
+      [decoded.userId]
+    );
+
+    if (!result.rows.length) {
+      return reply.status(HTTP_STATUS.NOT_FOUND).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.NOT_FOUND,
+          message: 'User not found',
+        },
+      });
+    }
+
+    const metadata = result.rows[0].metadata || {};
+    const kycData = metadata.kyc || null;
+
+    return {
+      success: true,
+      data: kycData,
+      message: 'KYC data retrieved successfully',
+    };
+  } catch (error: any) {
+    logger.error('Get KYC error:', error);
+    return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
+      success: false,
+      error: {
+        code: ERROR_CODES.SERVER_ERROR,
+        message: 'Failed to retrieve KYC data',
+        details: error.message,
+      },
+    });
+  }
+});
+
+// Submit/Update KYC
+fastify.post('/api/users/kyc', async (request, reply) => {
+  try {
+    const authHeader = request.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return reply.status(HTTP_STATUS.UNAUTHORIZED).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.UNAUTHORIZED,
+          message: 'No token provided',
+        },
+      });
+    }
+
+    const token = authHeader.substring(7);
+    const decoded = fastify.jwt.verify(token) as any;
+    const kycData = request.body as any;
+
+    // Validate required fields
+    if (!kycData.aadhaarNumber || !kycData.fullName || !kycData.dateOfBirth || !kycData.gender || !kycData.address || !kycData.pincode) {
+      return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.VALIDATION_ERROR,
+          message: 'All KYC fields are required',
+        },
+      });
+    }
+
+    // Validate Aadhaar number (12 digits)
+    if (!/^\d{12}$/.test(kycData.aadhaarNumber.replace(/\s/g, ''))) {
+      return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.VALIDATION_ERROR,
+          message: 'Invalid Aadhaar number. Must be 12 digits.',
+        },
+      });
+    }
+
+    // Validate PIN code (6 digits)
+    if (!/^\d{6}$/.test(kycData.pincode.replace(/\s/g, ''))) {
+      return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.VALIDATION_ERROR,
+          message: 'Invalid PIN code. Must be 6 digits.',
+        },
+      });
+    }
+
+    // Get current metadata
+    const userResult = await coreDb.query(
+      'SELECT metadata FROM admin_users WHERE id = $1',
+      [decoded.userId]
+    );
+
+    if (!userResult.rows.length) {
+      return reply.status(HTTP_STATUS.NOT_FOUND).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.NOT_FOUND,
+          message: 'User not found',
+        },
+      });
+    }
+
+    const currentMetadata = userResult.rows[0].metadata || {};
+    const existingKyc = currentMetadata.kyc || {};
+
+    // Prepare KYC data
+    const newKycData = {
+      aadhaarNumber: kycData.aadhaarNumber.replace(/\s/g, ''),
+      fullName: kycData.fullName.trim(),
+      dateOfBirth: kycData.dateOfBirth,
+      gender: kycData.gender,
+      address: kycData.address.trim(),
+      pincode: kycData.pincode.replace(/\s/g, ''),
+      status: existingKyc.status === 'verified' ? 'verified' : 'pending', // Keep verified status if already verified
+      submittedAt: existingKyc.submittedAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    // Update metadata with KYC data
+    const updatedMetadata = {
+      ...currentMetadata,
+      kyc: newKycData,
+    };
+
+    const result = await coreDb.query(
+      `UPDATE admin_users 
+       SET metadata = $1::jsonb,
+           updated_at = NOW()
+       WHERE id = $2
+       RETURNING *`,
+      [JSON.stringify(updatedMetadata), decoded.userId]
+    );
+
+    logger.info(`✅ KYC submitted for user: ${decoded.userId}`);
+
+    return {
+      success: true,
+      data: {
+        kyc: newKycData,
+      },
+      message: 'KYC submitted successfully. Verification will be completed within 24-48 hours.',
+    };
+  } catch (error: any) {
+    logger.error('Submit KYC error:', error);
+    return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
+      success: false,
+      error: {
+        code: ERROR_CODES.SERVER_ERROR,
+        message: 'Failed to submit KYC',
+        details: error.message,
+      },
+    });
+  }
+});
+
+// Update KYC (same as POST but for updates)
+fastify.put('/api/users/kyc', async (request, reply) => {
+  try {
+    const authHeader = request.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return reply.status(HTTP_STATUS.UNAUTHORIZED).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.UNAUTHORIZED,
+          message: 'No token provided',
+        },
+      });
+    }
+
+    const token = authHeader.substring(7);
+    const decoded = fastify.jwt.verify(token) as any;
+    const kycData = request.body as any;
+
+    // Get current user and KYC
+    const userResult = await coreDb.query(
+      'SELECT metadata FROM admin_users WHERE id = $1',
+      [decoded.userId]
+    );
+
+    if (!userResult.rows.length) {
+      return reply.status(HTTP_STATUS.NOT_FOUND).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.NOT_FOUND,
+          message: 'User not found',
+        },
+      });
+    }
+
+    const currentMetadata = userResult.rows[0].metadata || {};
+    const existingKyc = currentMetadata.kyc || {};
+
+    // Don't allow updates if already verified
+    if (existingKyc.status === 'verified') {
+      return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.VALIDATION_ERROR,
+          message: 'Cannot update verified KYC. Please contact support.',
+        },
+      });
+    }
+
+    // Validate required fields
+    if (!kycData.aadhaarNumber || !kycData.fullName || !kycData.dateOfBirth || !kycData.gender || !kycData.address || !kycData.pincode) {
+      return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.VALIDATION_ERROR,
+          message: 'All KYC fields are required',
+        },
+      });
+    }
+
+    // Validate Aadhaar number (12 digits)
+    if (!/^\d{12}$/.test(kycData.aadhaarNumber.replace(/\s/g, ''))) {
+      return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.VALIDATION_ERROR,
+          message: 'Invalid Aadhaar number. Must be 12 digits.',
+        },
+      });
+    }
+
+    // Validate PIN code (6 digits)
+    if (!/^\d{6}$/.test(kycData.pincode.replace(/\s/g, ''))) {
+      return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.VALIDATION_ERROR,
+          message: 'Invalid PIN code. Must be 6 digits.',
+        },
+      });
+    }
+
+    // Prepare updated KYC data
+    const updatedKycData = {
+      ...existingKyc,
+      aadhaarNumber: kycData.aadhaarNumber.replace(/\s/g, ''),
+      fullName: kycData.fullName.trim(),
+      dateOfBirth: kycData.dateOfBirth,
+      gender: kycData.gender,
+      address: kycData.address.trim(),
+      pincode: kycData.pincode.replace(/\s/g, ''),
+      status: 'pending', // Reset to pending when updated
+      updatedAt: new Date().toISOString(),
+    };
+
+    // Update metadata with KYC data
+    const updatedMetadata = {
+      ...currentMetadata,
+      kyc: updatedKycData,
+    };
+
+    const result = await coreDb.query(
+      `UPDATE admin_users 
+       SET metadata = $1::jsonb,
+           updated_at = NOW()
+       WHERE id = $2
+       RETURNING *`,
+      [JSON.stringify(updatedMetadata), decoded.userId]
+    );
+
+    logger.info(`✅ KYC updated for user: ${decoded.userId}`);
+
+    return {
+      success: true,
+      data: {
+        kyc: updatedKycData,
+      },
+      message: 'KYC updated successfully. Verification will be completed within 24-48 hours.',
+    };
+  } catch (error: any) {
+    logger.error('Update KYC error:', error);
+    return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
+      success: false,
+      error: {
+        code: ERROR_CODES.SERVER_ERROR,
+        message: 'Failed to update KYC',
+        details: error.message,
+      },
+    });
+  }
+});
+
+// Send OTP for Aadhaar KYC (Cashfree integration)
+fastify.post('/api/users/kyc/send-otp', async (request, reply) => {
+  try {
+    const authHeader = request.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return reply.status(HTTP_STATUS.UNAUTHORIZED).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.UNAUTHORIZED,
+          message: 'No token provided',
+        },
+      });
+    }
+
+    const token = authHeader.substring(7);
+    const decoded = fastify.jwt.verify(token) as any;
+    const { aadhaarNumber } = request.body as { aadhaarNumber: string };
+
+    if (!aadhaarNumber || !/^\d{12}$/.test(aadhaarNumber.replace(/\s/g, ''))) {
+      return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.VALIDATION_ERROR,
+          message: 'Invalid Aadhaar number. Must be 12 digits.',
+        },
+      });
+    }
+
+    // Call Cashfree Aadhaar OTP API
+    const cashfreeApiKey = process.env.CASHFREE_API_KEY;
+    const cashfreeApiSecret = process.env.CASHFREE_API_SECRET;
+    const cashfreeEnv = process.env.CASHFREE_ENV || 'sandbox'; // 'sandbox' or 'production'
+
+    if (!cashfreeApiKey || !cashfreeApiSecret) {
+      logger.error('Cashfree credentials not configured');
+      return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.SERVER_ERROR,
+          message: 'KYC service not configured',
+        },
+      });
+    }
+
+    const cashfreeBaseUrl = cashfreeEnv === 'production' 
+      ? 'https://api.cashfree.com'
+      : 'https://sandbox.cashfree.com';
+
+    // Send OTP request to Cashfree
+    const otpResponse = await fetch(`${cashfreeBaseUrl}/pg/kyc/aadhaar/otp`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-version': '2023-08-01',
+        'x-client-id': cashfreeApiKey,
+        'x-client-secret': cashfreeApiSecret,
+      },
+      body: JSON.stringify({
+        aadhaar_number: aadhaarNumber.replace(/\s/g, ''),
+      }),
+    });
+
+    const otpData = await otpResponse.json();
+
+    if (!otpResponse.ok || otpData.status !== 'SUCCESS') {
+      logger.error('Cashfree OTP send failed:', otpData);
+      return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.VALIDATION_ERROR,
+          message: otpData.message || 'Failed to send OTP. Please check your Aadhaar number.',
+        },
+      });
+    }
+
+    // Store reference_id for OTP verification
+    const referenceId = otpData.reference_id;
+
+    // Store reference_id in user metadata temporarily
+    const userResult = await coreDb.query(
+      'SELECT metadata FROM admin_users WHERE id = $1',
+      [decoded.userId]
+    );
+
+    if (!userResult.rows.length) {
+      return reply.status(HTTP_STATUS.NOT_FOUND).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.NOT_FOUND,
+          message: 'User not found',
+        },
+      });
+    }
+
+    const currentMetadata = userResult.rows[0].metadata || {};
+    const updatedMetadata = {
+      ...currentMetadata,
+      kyc: {
+        ...(currentMetadata.kyc || {}),
+        aadhaarNumber: aadhaarNumber.replace(/\s/g, ''),
+        referenceId,
+        otpSentAt: new Date().toISOString(),
+      },
+    };
+
+    await coreDb.query(
+      `UPDATE admin_users 
+       SET metadata = $1::jsonb
+       WHERE id = $2`,
+      [JSON.stringify(updatedMetadata), decoded.userId]
+    );
+
+    logger.info(`✅ OTP sent for Aadhaar KYC: ${decoded.userId}`);
+
+    return {
+      success: true,
+      data: {
+        referenceId,
+        message: 'OTP sent successfully',
+      },
+      message: 'OTP sent to your Aadhaar-linked mobile number',
+    };
+  } catch (error: any) {
+    logger.error('Send OTP error:', error);
+    return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
+      success: false,
+      error: {
+        code: ERROR_CODES.SERVER_ERROR,
+        message: 'Failed to send OTP',
+        details: error.message,
+      },
+    });
+  }
+});
+
+// Verify OTP for Aadhaar KYC (Cashfree integration)
+fastify.post('/api/users/kyc/verify-otp', async (request, reply) => {
+  try {
+    const authHeader = request.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return reply.status(HTTP_STATUS.UNAUTHORIZED).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.UNAUTHORIZED,
+          message: 'No token provided',
+        },
+      });
+    }
+
+    const token = authHeader.substring(7);
+    const decoded = fastify.jwt.verify(token) as any;
+    const { aadhaarNumber, otp } = request.body as { aadhaarNumber: string; otp: string };
+
+    if (!aadhaarNumber || !/^\d{12}$/.test(aadhaarNumber.replace(/\s/g, ''))) {
+      return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.VALIDATION_ERROR,
+          message: 'Invalid Aadhaar number',
+        },
+      });
+    }
+
+    if (!otp || !/^\d{6}$/.test(otp.replace(/\s/g, ''))) {
+      return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.VALIDATION_ERROR,
+          message: 'Invalid OTP. Must be 6 digits.',
+        },
+      });
+    }
+
+    // Get reference_id from user metadata
+    const userResult = await coreDb.query(
+      'SELECT metadata FROM admin_users WHERE id = $1',
+      [decoded.userId]
+    );
+
+    if (!userResult.rows.length) {
+      return reply.status(HTTP_STATUS.NOT_FOUND).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.NOT_FOUND,
+          message: 'User not found',
+        },
+      });
+    }
+
+    const currentMetadata = userResult.rows[0].metadata || {};
+    const kycData = currentMetadata.kyc || {};
+    const referenceId = kycData.referenceId;
+
+    if (!referenceId) {
+      return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.VALIDATION_ERROR,
+          message: 'OTP not sent. Please send OTP first.',
+        },
+      });
+    }
+
+    // Call Cashfree Aadhaar OTP verification API
+    const cashfreeApiKey = process.env.CASHFREE_API_KEY;
+    const cashfreeApiSecret = process.env.CASHFREE_API_SECRET;
+    const cashfreeEnv = process.env.CASHFREE_ENV || 'sandbox';
+
+    if (!cashfreeApiKey || !cashfreeApiSecret) {
+      logger.error('Cashfree credentials not configured');
+      return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.SERVER_ERROR,
+          message: 'KYC service not configured',
+        },
+      });
+    }
+
+    const cashfreeBaseUrl = cashfreeEnv === 'production' 
+      ? 'https://api.cashfree.com'
+      : 'https://sandbox.cashfree.com';
+
+    // Verify OTP with Cashfree
+    const verifyResponse = await fetch(`${cashfreeBaseUrl}/pg/kyc/aadhaar/verify`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-version': '2023-08-01',
+        'x-client-id': cashfreeApiKey,
+        'x-client-secret': cashfreeApiSecret,
+      },
+      body: JSON.stringify({
+        reference_id: referenceId,
+        otp: otp.replace(/\s/g, ''),
+      }),
+    });
+
+    const verifyData = await verifyResponse.json();
+
+    if (!verifyResponse.ok || verifyData.status !== 'SUCCESS') {
+      logger.error('Cashfree OTP verification failed:', verifyData);
+      return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.VALIDATION_ERROR,
+          message: verifyData.message || 'Invalid OTP. Please try again.',
+        },
+      });
+    }
+
+    // Extract verified data from Cashfree response
+    const verifiedInfo = verifyData.data || {};
+    
+    // Extract all available details from Cashfree response
+    const verifiedKycData = {
+      aadhaarNumber: aadhaarNumber.replace(/\s/g, ''),
+      fullName: verifiedInfo.name || verifiedInfo.full_name || verifiedInfo.fullName || '',
+      firstName: verifiedInfo.first_name || verifiedInfo.firstName || '',
+      lastName: verifiedInfo.last_name || verifiedInfo.lastName || '',
+      dateOfBirth: verifiedInfo.date_of_birth || verifiedInfo.dob || verifiedInfo.dateOfBirth || '',
+      gender: verifiedInfo.gender || '',
+      address: verifiedInfo.address || verifiedInfo.full_address || verifiedInfo.fullAddress || '',
+      pincode: verifiedInfo.pincode || verifiedInfo.pin_code || verifiedInfo.pincode || '',
+      state: verifiedInfo.state || '',
+      district: verifiedInfo.district || '',
+      city: verifiedInfo.city || '',
+      country: verifiedInfo.country || 'India',
+      photo: verifiedInfo.photo || verifiedInfo.image || verifiedInfo.face_image || verifiedInfo.profile_image || '',
+      mobile: verifiedInfo.mobile || verifiedInfo.mobile_number || verifiedInfo.phone || '',
+      email: verifiedInfo.email || verifiedInfo.email_id || '',
+      fatherName: verifiedInfo.father_name || verifiedInfo.fatherName || '',
+      motherName: verifiedInfo.mother_name || verifiedInfo.motherName || '',
+      spouseName: verifiedInfo.spouse_name || verifiedInfo.spouseName || '',
+      rawData: verifiedInfo, // Store complete raw response for reference
+      status: 'verified',
+      verifiedAt: new Date().toISOString(),
+      referenceId,
+    };
+
+    // Update user metadata with verified KYC data
+    const updatedMetadata = {
+      ...currentMetadata,
+      kyc: verifiedKycData,
+    };
+
+    await coreDb.query(
+      `UPDATE admin_users 
+       SET metadata = $1::jsonb,
+           updated_at = NOW()
+       WHERE id = $2
+       RETURNING *`,
+      [JSON.stringify(updatedMetadata), decoded.userId]
+    );
+
+    logger.info(`✅ Aadhaar KYC verified for user: ${decoded.userId}`);
+
+    return {
+      success: true,
+      data: verifiedKycData,
+      message: 'Aadhaar KYC verified successfully',
+    };
+  } catch (error: any) {
+    logger.error('Verify OTP error:', error);
+    return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
+      success: false,
+      error: {
+        code: ERROR_CODES.SERVER_ERROR,
+        message: 'Failed to verify OTP',
+        details: error.message,
+      },
+    });
+  }
+});
+
+// Send OTP for email verification
+fastify.post('/api/users/verify/send-email-otp', async (request, reply) => {
+  try {
+    const authHeader = request.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return reply.status(HTTP_STATUS.UNAUTHORIZED).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.UNAUTHORIZED,
+          message: 'No token provided',
+        },
+      });
+    }
+
+    const token = authHeader.substring(7);
+    const decoded = fastify.jwt.verify(token) as any;
+
+    // Get user email
+    const result = await coreDb.query(
+      'SELECT email FROM admin_users WHERE id = $1',
+      [decoded.userId]
+    );
+
+    if (!result.rows.length || !result.rows[0].email) {
+      return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.VALIDATION_ERROR,
+          message: 'Email not found. Please update your email first.',
+        },
+      });
+    }
+
+    const email = result.rows[0].email;
+
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Store OTP in metadata (expires in 10 minutes)
+    const metadata = result.rows[0].metadata || {};
+    const updatedMetadata = {
+      ...metadata,
+      emailVerification: {
+        otp,
+        expiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(), // 10 minutes
+      },
+    };
+
+    await coreDb.query(
+      `UPDATE admin_users 
+       SET metadata = $1::jsonb
+       WHERE id = $2`,
+      [JSON.stringify(updatedMetadata), decoded.userId]
+    );
+
+    // TODO: Send email with OTP using email service (e.g., SendGrid, AWS SES, etc.)
+    // For now, we'll log it (in production, use proper email service)
+    logger.info(`Email OTP for ${email}: ${otp}`);
+
+    return {
+      success: true,
+      data: {
+        message: 'OTP sent to your email',
+      },
+      message: 'OTP sent to your email address',
+    };
+  } catch (error: any) {
+    logger.error('Send email OTP error:', error);
+    return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
+      success: false,
+      error: {
+        code: ERROR_CODES.SERVER_ERROR,
+        message: 'Failed to send email OTP',
+        details: error.message,
+      },
+    });
+  }
+});
+
+// Verify email OTP
+fastify.post('/api/users/verify/verify-email-otp', async (request, reply) => {
+  try {
+    const authHeader = request.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return reply.status(HTTP_STATUS.UNAUTHORIZED).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.UNAUTHORIZED,
+          message: 'No token provided',
+        },
+      });
+    }
+
+    const token = authHeader.substring(7);
+    const decoded = fastify.jwt.verify(token) as any;
+    const { otp } = request.body as { otp: string };
+
+    if (!otp || !/^\d{6}$/.test(otp.replace(/\s/g, ''))) {
+      return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.VALIDATION_ERROR,
+          message: 'Invalid OTP. Must be 6 digits.',
+        },
+      });
+    }
+
+    // Get user and verification data
+    const result = await coreDb.query(
+      'SELECT metadata FROM admin_users WHERE id = $1',
+      [decoded.userId]
+    );
+
+    if (!result.rows.length) {
+      return reply.status(HTTP_STATUS.NOT_FOUND).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.NOT_FOUND,
+          message: 'User not found',
+        },
+      });
+    }
+
+    const metadata = result.rows[0].metadata || {};
+    const emailVerification = metadata.emailVerification || {};
+
+    // Check if OTP exists and is not expired
+    if (!emailVerification.otp) {
+      return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.VALIDATION_ERROR,
+          message: 'OTP not sent. Please request a new OTP.',
+        },
+      });
+    }
+
+    if (new Date(emailVerification.expiresAt) < new Date()) {
+      return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.VALIDATION_ERROR,
+          message: 'OTP expired. Please request a new OTP.',
+        },
+      });
+    }
+
+    // Verify OTP
+    if (emailVerification.otp !== otp.replace(/\s/g, '')) {
+      return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.VALIDATION_ERROR,
+          message: 'Invalid OTP. Please try again.',
+        },
+      });
+    }
+
+    // Mark email as verified
+    const updatedMetadata = {
+      ...metadata,
+      emailVerified: true,
+      emailVerifiedAt: new Date().toISOString(),
+      emailVerification: undefined, // Remove OTP data
+    };
+
+    await coreDb.query(
+      `UPDATE admin_users 
+       SET metadata = $1::jsonb,
+           updated_at = NOW()
+       WHERE id = $2
+       RETURNING *`,
+      [JSON.stringify(updatedMetadata), decoded.userId]
+    );
+
+    logger.info(`✅ Email verified for user: ${decoded.userId}`);
+
+    return {
+      success: true,
+      data: {
+        verified: true,
+      },
+      message: 'Email verified successfully',
+    };
+  } catch (error: any) {
+    logger.error('Verify email OTP error:', error);
+    return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
+      success: false,
+      error: {
+        code: ERROR_CODES.SERVER_ERROR,
+        message: 'Failed to verify email OTP',
+        details: error.message,
+      },
+    });
+  }
+});
+
+// Send OTP for phone verification
+fastify.post('/api/users/verify/send-phone-otp', async (request, reply) => {
+  try {
+    const authHeader = request.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return reply.status(HTTP_STATUS.UNAUTHORIZED).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.UNAUTHORIZED,
+          message: 'No token provided',
+        },
+      });
+    }
+
+    const token = authHeader.substring(7);
+    const decoded = fastify.jwt.verify(token) as any;
+
+    // Get user phone
+    const result = await coreDb.query(
+      'SELECT phone, metadata FROM admin_users WHERE id = $1',
+      [decoded.userId]
+    );
+
+    if (!result.rows.length || !result.rows[0].phone) {
+      return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.VALIDATION_ERROR,
+          message: 'Phone number not found. Please update your phone number first.',
+        },
+      });
+    }
+
+    const phone = result.rows[0].phone;
+
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Store OTP in metadata (expires in 10 minutes)
+    const metadata = result.rows[0].metadata || {};
+    const updatedMetadata = {
+      ...metadata,
+      phoneVerification: {
+        otp,
+        expiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(), // 10 minutes
+      },
+    };
+
+    await coreDb.query(
+      `UPDATE admin_users 
+       SET metadata = $1::jsonb
+       WHERE id = $2`,
+      [JSON.stringify(updatedMetadata), decoded.userId]
+    );
+
+    // TODO: Send SMS with OTP using SMS service (e.g., Twilio, AWS SNS, etc.)
+    // For now, we'll log it (in production, use proper SMS service)
+    logger.info(`Phone OTP for ${phone}: ${otp}`);
+
+    return {
+      success: true,
+      data: {
+        message: 'OTP sent to your phone',
+      },
+      message: 'OTP sent to your phone number',
+    };
+  } catch (error: any) {
+    logger.error('Send phone OTP error:', error);
+    return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
+      success: false,
+      error: {
+        code: ERROR_CODES.SERVER_ERROR,
+        message: 'Failed to send phone OTP',
+        details: error.message,
+      },
+    });
+  }
+});
+
+// Verify phone OTP
+fastify.post('/api/users/verify/verify-phone-otp', async (request, reply) => {
+  try {
+    const authHeader = request.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return reply.status(HTTP_STATUS.UNAUTHORIZED).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.UNAUTHORIZED,
+          message: 'No token provided',
+        },
+      });
+    }
+
+    const token = authHeader.substring(7);
+    const decoded = fastify.jwt.verify(token) as any;
+    const { otp } = request.body as { otp: string };
+
+    if (!otp || !/^\d{6}$/.test(otp.replace(/\s/g, ''))) {
+      return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.VALIDATION_ERROR,
+          message: 'Invalid OTP. Must be 6 digits.',
+        },
+      });
+    }
+
+    // Get user and verification data
+    const result = await coreDb.query(
+      'SELECT metadata FROM admin_users WHERE id = $1',
+      [decoded.userId]
+    );
+
+    if (!result.rows.length) {
+      return reply.status(HTTP_STATUS.NOT_FOUND).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.NOT_FOUND,
+          message: 'User not found',
+        },
+      });
+    }
+
+    const metadata = result.rows[0].metadata || {};
+    const phoneVerification = metadata.phoneVerification || {};
+
+    // Check if OTP exists and is not expired
+    if (!phoneVerification.otp) {
+      return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.VALIDATION_ERROR,
+          message: 'OTP not sent. Please request a new OTP.',
+        },
+      });
+    }
+
+    if (new Date(phoneVerification.expiresAt) < new Date()) {
+      return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.VALIDATION_ERROR,
+          message: 'OTP expired. Please request a new OTP.',
+        },
+      });
+    }
+
+    // Verify OTP
+    if (phoneVerification.otp !== otp.replace(/\s/g, '')) {
+      return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.VALIDATION_ERROR,
+          message: 'Invalid OTP. Please try again.',
+        },
+      });
+    }
+
+    // Mark phone as verified
+    const updatedMetadata = {
+      ...metadata,
+      phoneVerified: true,
+      phoneVerifiedAt: new Date().toISOString(),
+      phoneVerification: undefined, // Remove OTP data
+    };
+
+    await coreDb.query(
+      `UPDATE admin_users 
+       SET metadata = $1::jsonb,
+           updated_at = NOW()
+       WHERE id = $2
+       RETURNING *`,
+      [JSON.stringify(updatedMetadata), decoded.userId]
+    );
+
+    logger.info(`✅ Phone verified for user: ${decoded.userId}`);
+
+    return {
+      success: true,
+      data: {
+        verified: true,
+      },
+      message: 'Phone verified successfully',
+    };
+  } catch (error: any) {
+    logger.error('Verify phone OTP error:', error);
+    return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
+      success: false,
+      error: {
+        code: ERROR_CODES.SERVER_ERROR,
+        message: 'Failed to verify phone OTP',
+        details: error.message,
       },
     });
   }

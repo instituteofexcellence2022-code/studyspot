@@ -18,6 +18,7 @@ import { SectionHeader, ListItem, EmptyState, LoadingState, BadgeChip } from '..
 import { CompactCard } from '../components/MobileCard';
 import { gradients } from '../theme/mobileTheme';
 import api from '../services/api';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface BookingsMobileProps {
   setIsAuthenticated: (value: boolean) => void;
@@ -25,6 +26,7 @@ interface BookingsMobileProps {
 
 export default function BookingsMobile({ setIsAuthenticated }: BookingsMobileProps) {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState(0);
   const [bookings, setBookings] = useState<any[]>([]);
@@ -131,7 +133,7 @@ export default function BookingsMobile({ setIsAuthenticated }: BookingsMobilePro
   if (loading) {
     return (
       <MobileLayout setIsAuthenticated={setIsAuthenticated}>
-        <LoadingState message="Loading your bookings..." />
+        <LoadingState message={t('bookings.loading')} />
       </MobileLayout>
     );
   }
@@ -141,8 +143,8 @@ export default function BookingsMobile({ setIsAuthenticated }: BookingsMobilePro
       <Box sx={{ animation: 'fadeIn 0.4s ease-in' }}>
         {/* Header */}
         <SectionHeader
-          title="My Bookings 📅"
-          subtitle="Manage your study sessions"
+          title={t('bookings.title')}
+          subtitle={t('bookings.subtitle')}
         />
 
         {/* Tabs */}
@@ -178,9 +180,9 @@ export default function BookingsMobile({ setIsAuthenticated }: BookingsMobilePro
               },
             }}
           >
-            <Tab label={`Upcoming (${upcomingCount})`} />
-            <Tab label={`Completed (${completedCount})`} />
-            <Tab label={`Other (${otherCount})`} />
+            <Tab label={`${t('bookings.upcoming')} (${upcomingCount})`} />
+            <Tab label={`${t('status.completed')} (${completedCount})`} />
+            <Tab label={`${t('bookings.other')} (${otherCount})`} />
           </Tabs>
         </Box>
 
@@ -262,7 +264,7 @@ export default function BookingsMobile({ setIsAuthenticated }: BookingsMobilePro
                     >
                       <Box>
                         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
-                          Date
+                          {t('bookings.date')}
                         </Typography>
                         <Typography variant="body2" fontWeight={600}>
                           <CalendarMonth sx={{ fontSize: 14, verticalAlign: 'middle', mr: 0.5 }} />
@@ -272,16 +274,16 @@ export default function BookingsMobile({ setIsAuthenticated }: BookingsMobilePro
                       
                       <Box>
                         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
-                          Seat
+                          {t('bookings.seat')}
                         </Typography>
                         <Typography variant="body2" fontWeight={600}>
-                          Seat {booking.seatNumber}
+                          {t('bookings.seat')} {booking.seatNumber}
                         </Typography>
                       </Box>
                       
                       <Box>
                         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
-                          Time
+                          {t('bookings.time')}
                         </Typography>
                         <Typography variant="body2" fontWeight={600}>
                           <AccessTime sx={{ fontSize: 14, verticalAlign: 'middle', mr: 0.5 }} />
@@ -291,7 +293,7 @@ export default function BookingsMobile({ setIsAuthenticated }: BookingsMobilePro
                       
                       <Box>
                         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
-                          Amount
+                          {t('bookings.amount')}
                         </Typography>
                         <Typography variant="body2" fontWeight={700} color="primary.main">
                           ₹{booking.totalAmount}
@@ -309,7 +311,7 @@ export default function BookingsMobile({ setIsAuthenticated }: BookingsMobilePro
                           fullWidth
                           sx={{ borderRadius: 1.5, fontWeight: 600 }}
                         >
-                          QR Code
+                          {t('bookings.qrCode')}
                         </Button>
                         <Button
                           variant="contained"
@@ -322,7 +324,7 @@ export default function BookingsMobile({ setIsAuthenticated }: BookingsMobilePro
                             fontWeight: 600,
                           }}
                         >
-                          Receipt
+                          {t('bookings.receipt')}
                         </Button>
                       </Box>
                     )}
@@ -334,7 +336,7 @@ export default function BookingsMobile({ setIsAuthenticated }: BookingsMobilePro
                         fullWidth
                         sx={{ borderRadius: 1.5, fontWeight: 600 }}
                       >
-                        Leave a Review
+                        {t('bookings.leaveReview')}
                       </Button>
                     )}
                   </Box>
@@ -345,8 +347,8 @@ export default function BookingsMobile({ setIsAuthenticated }: BookingsMobilePro
         ) : (
           <EmptyState
             icon={<BookOnline />}
-            title="No Bookings Found"
-            description="You don't have any bookings in this category."
+            title={t('bookings.noBookings')}
+            description={t('bookings.noBookingsInCategory')}
             action={
               <Button
                 variant="contained"
@@ -358,7 +360,7 @@ export default function BookingsMobile({ setIsAuthenticated }: BookingsMobilePro
                   px: 3,
                 }}
               >
-                Browse Libraries
+                {t('bookings.browseLibraries')}
               </Button>
             }
           />

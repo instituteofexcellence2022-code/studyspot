@@ -86,3 +86,4 @@ npm install --legacy-peer-deps --workspace=studyspot-student-pwa
 
 But this might not resolve the workspace dependency for `studyspot-tenant-sdk`.
 
+

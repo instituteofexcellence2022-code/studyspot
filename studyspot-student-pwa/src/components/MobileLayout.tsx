@@ -49,6 +49,7 @@ import {
 import MobileBottomNav from './MobileBottomNav';
 import { gradients } from '../theme/mobileTheme';
 import { authService } from '../services/auth.service';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface MobileLayoutProps {
   children: ReactNode;
@@ -62,50 +63,51 @@ export default function MobileLayout({ children, setIsAuthenticated }: MobileLay
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   const user = authService.getUser() ?? {};
+  const { t } = useLanguage();
 
   const menuSections = [
     {
-      title: 'Main',
+      title: t('nav.main'),
       items: [
-        { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard', color: '#6366f1' },
-        { text: 'Libraries', icon: <LibraryIcon />, path: '/libraries', color: '#8b5cf6' },
-        { text: 'My Bookings', icon: <BookingIcon />, path: '/bookings', color: '#ec4899' },
-        { text: 'Favorites', icon: <FavoriteIcon />, path: '/favorites', color: '#f43f5e' },
+        { text: t('nav.dashboard'), icon: <DashboardIcon />, path: '/dashboard', color: '#6366f1' },
+        { text: t('nav.libraries'), icon: <LibraryIcon />, path: '/libraries', color: '#8b5cf6' },
+        { text: t('nav.myBookings'), icon: <BookingIcon />, path: '/bookings', color: '#ec4899' },
+        { text: t('nav.favorites'), icon: <FavoriteIcon />, path: '/favorites', color: '#f43f5e' },
       ],
     },
     {
-      title: 'Study Tools',
+      title: t('nav.studyTools'),
       items: [
-        { text: 'Attendance', icon: <AttendanceIcon />, path: '/attendance', color: '#14b8a6' },
-        { text: 'Study Timer', icon: <TimerIcon />, path: '/study-timer', color: '#3b82f6' },
-        { text: 'Tasks & Goals', icon: <TaskIcon />, path: '/tasks-goals', color: '#06b6d4' },
-        { text: 'Analytics', icon: <AnalyticsIcon />, path: '/analytics', color: '#8b5cf6' },
+        { text: t('nav.attendance'), icon: <AttendanceIcon />, path: '/attendance', color: '#14b8a6' },
+        { text: t('nav.studyTimer'), icon: <TimerIcon />, path: '/study-timer', color: '#3b82f6' },
+        { text: t('nav.tasksGoals'), icon: <TaskIcon />, path: '/tasks-goals', color: '#06b6d4' },
+        { text: t('nav.analytics'), icon: <AnalyticsIcon />, path: '/analytics', color: '#8b5cf6' },
       ],
     },
     {
-      title: 'Community & Rewards',
+      title: t('nav.communityRewards'),
       items: [
-        { text: 'Community', icon: <CommunityIcon />, path: '/community', color: '#a855f7' },
-        { text: 'Rewards', icon: <RewardsIcon />, path: '/rewards', color: '#f59e0b' },
-        { text: 'Refer & Earn', icon: <ReferralIcon />, path: '/referral', badge: '₹500', color: '#10b981' },
+        { text: t('nav.community'), icon: <CommunityIcon />, path: '/community', color: '#a855f7' },
+        { text: t('nav.rewards'), icon: <RewardsIcon />, path: '/rewards', color: '#f59e0b' },
+        { text: t('nav.referEarn'), icon: <ReferralIcon />, path: '/referral', badge: '₹500', color: '#10b981' },
       ],
     },
     {
-      title: 'Account',
+      title: t('nav.account'),
       items: [
-        { text: 'Profile', icon: <PersonIcon />, path: '/profile', color: '#6366f1' },
-        { text: 'Payments', icon: <PaymentIcon />, path: '/payments', color: '#10b981' },
-        { text: 'My Reviews', icon: <ReviewIcon />, path: '/reviews', color: '#f59e0b' },
-        { text: 'Manage Bookings', icon: <ManageIcon />, path: '/manage-bookings', color: '#ec4899' },
+        { text: t('nav.profile'), icon: <PersonIcon />, path: '/profile', color: '#6366f1' },
+        { text: t('nav.payments'), icon: <PaymentIcon />, path: '/payments', color: '#10b981' },
+        { text: t('nav.myReviews'), icon: <ReviewIcon />, path: '/reviews', color: '#f59e0b' },
+        { text: t('nav.manageBookings'), icon: <ManageIcon />, path: '/manage-bookings', color: '#ec4899' },
       ],
     },
     {
-      title: 'More',
+      title: t('nav.more'),
       items: [
-        { text: 'Announcements', icon: <AnnouncementIcon />, path: '/announcements', badge: 3, color: '#ef4444' },
-        { text: 'Resources', icon: <ResourceIcon />, path: '/resources', color: '#3b82f6' },
-        { text: 'Help & Support', icon: <SupportIcon />, path: '/support', color: '#8b5cf6' },
-        { text: 'Report Issue', icon: <IssueIcon />, path: '/issues', color: '#f43f5e' },
+        { text: t('nav.announcements'), icon: <AnnouncementIcon />, path: '/announcements', badge: 3, color: '#ef4444' },
+        { text: t('nav.resources'), icon: <ResourceIcon />, path: '/resources', color: '#3b82f6' },
+        { text: t('nav.support'), icon: <SupportIcon />, path: '/support', color: '#8b5cf6' },
+        { text: t('nav.issues'), icon: <IssueIcon />, path: '/issues', color: '#f43f5e' },
       ],
     },
   ];
@@ -489,8 +491,8 @@ export default function MobileLayout({ children, setIsAuthenticated }: MobileLay
             <ListItemIcon sx={{ minWidth: 36, color: 'inherit' }}>
               <LogoutIcon />
             </ListItemIcon>
-            <ListItemText 
-              primary="Logout"
+            <ListItemText
+              primary={t('nav.logout')}
               primaryTypographyProps={{
                 fontWeight: 700,
                 fontSize: '0.875rem',

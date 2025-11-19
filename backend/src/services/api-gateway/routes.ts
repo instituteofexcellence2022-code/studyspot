@@ -143,6 +143,19 @@ export function registerRoutes(fastify: FastifyInstance) {
     return reply.code(result.statusCode).send(result.data);
   });
 
+  // Route for /api/users/* (profile endpoints in auth-service)
+  fastify.all('/api/users/*', async (request, reply) => {
+    const result = await proxyToService(
+      'Auth',
+      SERVICES.AUTH,
+      request.url,
+      request.method,
+      request.headers,
+      request.body
+    );
+    return reply.code(result.statusCode).send(result.data);
+  });
+
   // ============================================
   // TENANT SERVICE ROUTES
   // ============================================

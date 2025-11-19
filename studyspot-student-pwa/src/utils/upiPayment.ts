@@ -104,3 +104,4 @@ export function generateUPIQRString(params: UPIPaymentParams): string {
   return `${encodedUpiId}?pn=${encodedMerchantName}&am=${encodedAmount}&cu=INR&tn=${encodedNote}&tr=${transactionId}`;
 }
 
+

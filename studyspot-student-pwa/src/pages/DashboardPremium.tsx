@@ -34,6 +34,7 @@ import MobileLayout from '../components/MobileLayout';
 import { advancedGradients, glassEffects } from '../theme/premiumTheme';
 import api from '../services/api';
 import { authService } from '../services/auth.service';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface DashboardPremiumProps {
   setIsAuthenticated: (value: boolean) => void;
@@ -60,8 +61,13 @@ export default function DashboardPremium({ setIsAuthenticated }: DashboardPremiu
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
 
   const user = authService.getUser() ?? {};
+  const { t, language } = useLanguage();
   const currentHour = new Date().getHours();
-  const greeting = currentHour < 12 ? 'Good Morning' : currentHour < 17 ? 'Good Afternoon' : 'Good Evening';
+  const greeting = currentHour < 12 
+    ? (language === 'hi' ? 'सुप्रभात' : 'Good Morning')
+    : currentHour < 17 
+    ? (language === 'hi' ? 'नमस्कार' : 'Good Afternoon')
+    : (language === 'hi' ? 'सुसंध्या' : 'Good Evening');
 
   useEffect(() => {
     fetchDashboardData();
@@ -227,7 +233,7 @@ export default function DashboardPremium({ setIsAuthenticated }: DashboardPremiu
             >
               <GetApp sx={{ fontSize: 20, color: 'white', flexShrink: 0 }} />
               <Typography variant="caption" fontWeight={700} color="white" sx={{ flex: 1, fontSize: '0.813rem' }}>
-                Install app for offline access
+                {language === 'hi' ? 'ऑफ़लाइन एक्सेस के लिए ऐप इंस्टॉल करें' : 'Install app for offline access'}
               </Typography>
               <Button 
                 size="small" 
@@ -244,7 +250,7 @@ export default function DashboardPremium({ setIsAuthenticated }: DashboardPremiu
                   '&:hover': { bgcolor: alpha('#ffffff', 0.9) }
                 }}
               >
-                Install
+                {language === 'hi' ? 'इंस्टॉल' : 'Install'}
               </Button>
               <IconButton 
                 size="small" 
@@ -265,10 +271,10 @@ export default function DashboardPremium({ setIsAuthenticated }: DashboardPremiu
         {/* Compact Stats Grid - 4 columns */}
         <Grid container spacing={1.25} sx={{ mb: 2 }}>
           {[
-            { icon: BookOnline, value: stats.totalBookings, label: 'Bookings', color: '#6366f1', trend: '+12%', up: true },
-            { icon: Schedule, value: stats.upcomingBookings, label: 'Upcoming', color: '#10b981', badge: 'Soon' },
-            { icon: TrendingUp, value: `${stats.hoursBooked}h`, label: 'Hours', color: '#f59e0b', trend: '+8%', up: true },
-            { icon: Stars, value: stats.points, label: 'Points', color: '#ec4899', trend: '+15%', up: true },
+            { icon: BookOnline, value: stats.totalBookings, label: t('nav.bookings'), color: '#6366f1', trend: '+12%', up: true },
+            { icon: Schedule, value: stats.upcomingBookings, label: t('dashboard.upcoming'), color: '#10b981', badge: language === 'hi' ? 'जल्दी' : 'Soon' },
+            { icon: TrendingUp, value: `${stats.hoursBooked}h`, label: t('time.hours'), color: '#f59e0b', trend: '+8%', up: true },
+            { icon: Stars, value: stats.points, label: language === 'hi' ? 'अंक' : 'Points', color: '#ec4899', trend: '+15%', up: true },
           ].map((stat, index) => {
             const Icon = stat.icon;
             return (
@@ -324,14 +330,14 @@ export default function DashboardPremium({ setIsAuthenticated }: DashboardPremiu
         {/* Quick Actions - Compact 4 column grid */}
         <Box sx={{ mb: 2 }}>
           <Typography variant="body1" fontWeight={700} sx={{ mb: 1, fontSize: '0.938rem' }}>
-            Quick Actions
+            {t('dashboard.quickActions')}
           </Typography>
           <Grid container spacing={1}>
             {[
-              { icon: LibraryBooks, label: 'Browse', path: '/libraries', gradient: advancedGradients.purple },
-              { icon: QrCodeScanner, label: 'Scan QR', path: '/qr-scanner', gradient: advancedGradients.success },
-              { icon: Timer, label: 'Timer', path: '/study-timer', gradient: advancedGradients.sky },
-              { icon: EmojiEvents, label: 'Rewards', path: '/rewards', gradient: advancedGradients.warning },
+              { icon: LibraryBooks, label: t('dashboard.browse'), path: '/libraries', gradient: advancedGradients.purple },
+              { icon: QrCodeScanner, label: t('dashboard.scanQR'), path: '/qr-scanner', gradient: advancedGradients.success },
+              { icon: Timer, label: t('dashboard.timer'), path: '/study-timer', gradient: advancedGradients.sky },
+              { icon: EmojiEvents, label: t('nav.rewards'), path: '/rewards', gradient: advancedGradients.warning },
             ].map((action, index) => {
               const Icon = action.icon;
               return (
@@ -353,10 +359,10 @@ export default function DashboardPremium({ setIsAuthenticated }: DashboardPremiu
           <Box sx={{ mb: 2 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
               <Typography variant="body1" fontWeight={700} sx={{ fontSize: '0.938rem' }}>
-                Upcoming Sessions
+                {t('dashboard.upcoming')} {t('dashboard.sessions')}
               </Typography>
               <Button size="small" endIcon={<ArrowForward sx={{ fontSize: 14 }} />} onClick={() => navigate('/bookings')} sx={{ fontSize: '0.75rem', fontWeight: 700, minWidth: 'auto', px: 1 }}>
-                All
+                {t('dashboard.all')}
               </Button>
             </Box>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
@@ -392,7 +398,7 @@ export default function DashboardPremium({ setIsAuthenticated }: DashboardPremiu
         {/* Recent Activity - Compact */}
         <Box sx={{ mb: 2 }}>
           <Typography variant="body1" fontWeight={700} sx={{ mb: 1, fontSize: '0.938rem' }}>
-            Recent Activity
+            {language === 'hi' ? 'हाल की गतिविधि' : 'Recent Activity'}
           </Typography>
           <Box sx={{ bgcolor: 'white', borderRadius: 1.5, boxShadow: '0 1px 6px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
             {recentActivity.map((activity, index) => (

@@ -4,6 +4,8 @@ import { useState } from 'react';
 
 // Auth Provider
 import { AuthProvider } from './contexts/AuthContext';
+// Language Provider
+import { LanguageProvider } from './contexts/LanguageContext';
 
 // Protected Route
 import ProtectedRoute from './components/ProtectedRoute';
@@ -53,10 +55,11 @@ function App() {
   const theme = premiumTheme;
 
   return (
-    <AuthProvider>
-      <ThemeProvider theme={theme}>
-        <CssBaseline />
-        <Router>
+    <LanguageProvider>
+      <AuthProvider>
+        <ThemeProvider theme={theme}>
+          <CssBaseline />
+          <Router>
           <Routes>
             {/* Public Routes */}
             <Route path="/login" element={<LoginPage />} />
@@ -171,7 +174,7 @@ function App() {
               path="/support"
               element={
                 <ProtectedRoute>
-                  <SupportPage />
+                  <SupportPage setIsAuthenticated={setIsAuthenticated} />
                 </ProtectedRoute>
               }
             />
@@ -269,7 +272,8 @@ function App() {
           style={{ top: '70px' }}
         />
       </ThemeProvider>
-    </AuthProvider>
+      </AuthProvider>
+    </LanguageProvider>
   );
 }
 

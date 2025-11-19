@@ -35,6 +35,7 @@ import MobileLayout from '../components/MobileLayout';
 import { advancedGradients, glassEffects, advancedAnimations } from '../theme/premiumTheme';
 import api from '../services/api';
 import { useSocket } from '../hooks/useSocket';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface LibrariesPremiumProps {
   setIsAuthenticated: (value: boolean) => void;
@@ -42,6 +43,7 @@ interface LibrariesPremiumProps {
 
 export default function LibrariesPremium({ setIsAuthenticated }: LibrariesPremiumProps) {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [libraries, setLibraries] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -248,12 +250,12 @@ export default function LibrariesPremium({ setIsAuthenticated }: LibrariesPremiu
                     letterSpacing: '-0.03em',
                   }}
                 >
-                  Libraries
+                  {t('nav.libraries')}
                 </Typography>
                 <AutoAwesome sx={{ fontSize: 28, color: '#f59e0b' }} />
               </Box>
               <Typography variant="body2" color="text.secondary" fontWeight={600}>
-                {filteredLibraries.length} amazing places to study
+                {filteredLibraries.length} {t('libraries.placesToStudy')}
               </Typography>
             </Box>
 
@@ -283,7 +285,7 @@ export default function LibrariesPremium({ setIsAuthenticated }: LibrariesPremiu
                   }}
                 />
                 <Typography variant="caption" fontWeight={700} sx={{ color: '#10b981' }}>
-                  Live
+                  {t('libraries.live')}
                 </Typography>
               </Box>
             )}
@@ -293,7 +295,7 @@ export default function LibrariesPremium({ setIsAuthenticated }: LibrariesPremiu
           <Box sx={{ display: 'flex', gap: 1.5, mb: 2 }}>
             <TextField
               fullWidth
-              placeholder="Search libraries or cities..."
+              placeholder={t('libraries.search')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               size="small"
@@ -347,11 +349,11 @@ export default function LibrariesPremium({ setIsAuthenticated }: LibrariesPremiu
           {/* Filter chips */}
           <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
             {[
-              { label: 'All', value: 'all', icon: '🎯' },
-              { label: 'Featured', value: 'featured', icon: '⭐' },
-              { label: 'Top Rated', value: 'top-rated', icon: '🏆' },
-              { label: 'Available', value: 'available', icon: '✅' },
-              { label: 'Favorites', value: 'favorites', icon: '❤️' },
+              { label: t('libraries.filterAll'), value: 'all', icon: '🎯' },
+              { label: t('libraries.filterFeatured'), value: 'featured', icon: '⭐' },
+              { label: t('libraries.filterTopRated'), value: 'top-rated', icon: '🏆' },
+              { label: t('libraries.available'), value: 'available', icon: '✅' },
+              { label: t('nav.favorites'), value: 'favorites', icon: '❤️' },
             ].map((filter) => (
               <Chip
                 key={filter.value}
@@ -453,7 +455,7 @@ export default function LibrariesPremium({ setIsAuthenticated }: LibrariesPremiu
                     {library.featured && (
                       <Chip
                         icon={<LocalFireDepartment sx={{ fontSize: 16 }} />}
-                        label="Featured"
+                        label={t('libraries.filterFeatured')}
                         size="small"
                         sx={{
                           position: 'absolute',
@@ -518,7 +520,7 @@ export default function LibrariesPremium({ setIsAuthenticated }: LibrariesPremiu
                       <Box sx={{ flex: 1 }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 0.5 }}>
                           <Typography variant="caption" fontWeight={800} color="white">
-                            {availability.icon} {library.availableSeats} / {library.totalSeats} Available
+                            {availability.icon} {library.availableSeats} / {library.totalSeats} {t('libraries.available')}
                           </Typography>
                           <Chip
                             label={availability.text}
@@ -668,7 +670,7 @@ export default function LibrariesPremium({ setIsAuthenticated }: LibrariesPremiu
                           fontSize: '0.875rem',
                         }}
                       >
-                        <span>View Details</span>
+                        <span>{t('libraries.viewDetails')}</span>
                         <ArrowForward sx={{ fontSize: 18 }} />
                       </Box>
                     </Box>
@@ -703,10 +705,10 @@ export default function LibrariesPremium({ setIsAuthenticated }: LibrariesPremiu
               🔍
             </Box>
             <Typography variant="h5" fontWeight={800} sx={{ mb: 1 }}>
-              No libraries found
+              {t('libraries.noLibrariesFound')}
             </Typography>
             <Typography variant="body2" color="text.secondary" fontWeight={500}>
-              Try adjusting your search or filters
+              {t('libraries.tryAdjusting')}
             </Typography>
           </Box>
         )}

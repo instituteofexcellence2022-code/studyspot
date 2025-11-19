@@ -26,6 +26,7 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { validateLoginForm } from '../utils/validation';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface LocationState {
   from?: { pathname: string };
@@ -36,6 +37,7 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { login, isLoading, error: authError, clearError } = useAuth();
+  const { t } = useLanguage();
   
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
@@ -119,10 +121,10 @@ export default function LoginPage() {
               <LoginIcon sx={{ fontSize: 32, color: 'white' }} />
             </Box>
             <Typography variant="h5" fontWeight="700" gutterBottom>
-              Welcome Back
+              {t('auth.welcomeBack')}
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Sign in to StudySpot
+              {t('auth.signInToStudySpot')}
             </Typography>
           </Box>
 
@@ -156,7 +158,7 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} noValidate>
             <TextField
               fullWidth
-              label="Email"
+              label={t('profile.email')}
               name="email"
               type="email"
               value={formData.email}
@@ -177,7 +179,7 @@ export default function LoginPage() {
 
             <TextField
               fullWidth
-              label="Password"
+              label={t('auth.password')}
               name="password"
               type={showPassword ? 'text' : 'password'}
               value={formData.password}
@@ -215,7 +217,7 @@ export default function LoginPage() {
                   sx={{ color: '#667eea', '&.Mui-checked': { color: '#667eea' } }}
                 />
               }
-              label={<Typography variant="body2">Remember me</Typography>}
+              label={<Typography variant="body2">{t('auth.rememberMe')}</Typography>}
               sx={{ mb: 1, mt: 0.5 }}
             />
 
@@ -235,7 +237,7 @@ export default function LoginPage() {
                 },
               }}
             >
-              {isLoading ? <CircularProgress size={24} color="inherit" /> : 'Login'}
+              {isLoading ? <CircularProgress size={24} color="inherit" /> : t('auth.login')}
             </Button>
 
             {/* Social Login Divider */}
@@ -309,7 +311,7 @@ export default function LoginPage() {
 
             <Box sx={{ textAlign: 'center' }}>
               <Typography variant="body2" color="text.secondary">
-                Don't have an account?{' '}
+                {t('auth.dontHaveAccount')}{' '}
                 <Link 
                   to="/register" 
                   style={{ 
@@ -318,7 +320,7 @@ export default function LoginPage() {
                     fontWeight: 600 
                   }}
                 >
-                  Register
+                  {t('auth.createAccount')}
                 </Link>
               </Typography>
             </Box>
