@@ -34,6 +34,9 @@ import {
   Alert,
   Snackbar,
   Tooltip,
+  Autocomplete,
+  Divider,
+  alpha,
 } from '@mui/material';
 import { GridLegacy as Grid } from '@mui/material';
 import {
@@ -44,6 +47,8 @@ import {
   Search as SearchIcon,
   FileDownload as ExportIcon,
   FilterList as FilterIcon,
+  CheckCircle,
+  LocationOn,
 } from '@mui/icons-material';
 import studentsService, { Student as APIStudent, StudentsFilters } from '../../services/studentsService';
 
@@ -77,12 +82,28 @@ const StudentsPageEnhanced: React.FC = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
-  const [currentStudent, setCurrentStudent] = useState<Partial<Student & { studentId?: string; district?: string; city?: string; state?: string }>>({
+  const [currentStudent, setCurrentStudent] = useState<Partial<Student & { 
+    studentId?: string; 
+    district?: string; 
+    city?: string; 
+    state?: string;
+    pincode?: string;
+    addressLine1?: string;
+    addressLine2?: string;
+    country?: string;
+  }>>({
     firstName: '',
     lastName: '',
     email: '',
     phone: '',
     studentId: '',
+    pincode: '',
+    addressLine1: '',
+    addressLine2: '',
+    district: '',
+    city: '',
+    state: '',
+    country: 'India',
     currentPlan: 'Monthly Premium',
     feeStatus: 'pending',
     status: 'active',
@@ -99,6 +120,7 @@ const StudentsPageEnhanced: React.FC = () => {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [loading, setLoading] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
+  const [fetchingPincode, setFetchingPincode] = useState(false);
   
   // Form validation errors
   const [errors, setErrors] = useState<Partial<Record<keyof Student, string>>>({});
@@ -171,33 +193,60 @@ const StudentsPageEnhanced: React.FC = () => {
   };
 
   // PIN code lookup for address auto-fill
-  const lookupPinCode = async (pincode: string) => {
-    if (!pincode || pincode.length !== 6 || !/^\d{6}$/.test(pincode)) return;
-    
-    try {
-      const response = await fetch(`https://api.postalpincode.in/pincode/${pincode}`);
-      const data = await response.json();
-      
-      if (data && data[0] && data[0].Status === 'Success' && data[0].PostOffice && data[0].PostOffice.length > 0) {
-        const postOffice = data[0].PostOffice[0];
-        setCurrentStudent(prev => {
-          const prevAny = prev as any;
-          return {
-            ...prev,
-            city: postOffice.District || prevAny.city,
-            state: postOffice.State || prevAny.state,
-            district: postOffice.District || prevAny.district,
-            // Also update address object if it exists
-            address: {
-              ...(prevAny.address || {}),
-              city: postOffice.District || prevAny.address?.city,
-              state: postOffice.State || prevAny.address?.state,
-            },
-          };
+  const handlePincodeChange = async (pincode: string) => {
+    const numericPincode = pincode.replace(/\D/g, '').slice(0, 6);
+    setCurrentStudent(prev => ({ ...prev, pincode: numericPincode }));
+
+    // Only fetch if PIN code is 6 digits
+    if (numericPincode.length === 6) {
+      setFetchingPincode(true);
+      try {
+        const response = await fetch(`https://api.postalpincode.in/pincode/${numericPincode}`, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+          },
         });
+
+        if (response.ok) {
+          const data = await response.json();
+          
+          if (data && data[0] && data[0].Status === 'Success' && data[0].PostOffice && data[0].PostOffice.length > 0) {
+            const postOffice = data[0].PostOffice[0];
+            const prevAny = currentStudent as any;
+            
+            setCurrentStudent(prev => {
+              const prevAny = prev as any;
+              return {
+                ...prev,
+                district: postOffice.District || prevAny.district,
+                city: postOffice.District || prevAny.city,
+                state: postOffice.State || prevAny.state,
+                pincode: numericPincode,
+                // Also update address object
+                address: {
+                  ...(prevAny.address || {}),
+                  city: postOffice.District || prevAny.address?.city,
+                  state: postOffice.State || prevAny.address?.state,
+                  postalCode: numericPincode,
+                },
+              };
+            });
+
+            setSnackbar({ 
+              open: true, 
+              message: `Address auto-filled: ${postOffice.District}, ${postOffice.State}`, 
+              severity: 'success' 
+            });
+          } else {
+            console.log('PIN code not found in database');
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching PIN code data:', error);
+      } finally {
+        setFetchingPincode(false);
       }
-    } catch (error) {
-      console.error('PIN code lookup failed:', error);
     }
   };
 
@@ -821,6 +870,174 @@ const StudentsPageEnhanced: React.FC = () => {
                 <MenuItem value="active">Active (Default)</MenuItem>
                 <MenuItem value="inactive">Inactive</MenuItem>
               </TextField>
+            </Grid>
+
+            {/* Address Section */}
+            <Grid item xs={12}>
+              <Divider sx={{ my: 2 }}>
+                <Chip label="Address (Optional)" size="small" />
+              </Divider>
+            </Grid>
+
+            {/* PIN Code - Enter First for Auto-fill */}
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="PIN Code (Enter first to auto-fill)"
+                value={(currentStudent as any).pincode || ''}
+                onChange={(e) => handlePincodeChange(e.target.value)}
+                placeholder="110001"
+                inputProps={{ maxLength: 6 }}
+                InputProps={{
+                  startAdornment: <LocationOn sx={{ fontSize: 18, color: 'text.secondary', mr: 1 }} />,
+                  endAdornment: fetchingPincode ? (
+                    <CircularProgress size={16} sx={{ mr: 1 }} />
+                  ) : (currentStudent as any).pincode?.length === 6 ? (
+                    <CheckCircle sx={{ fontSize: 18, color: '#10b981', mr: 1 }} />
+                  ) : null,
+                }}
+                helperText={
+                  fetchingPincode 
+                    ? 'Loading address...'
+                    : (currentStudent as any).pincode?.length === 6 && !fetchingPincode
+                    ? 'City, State & District auto-filled'
+                    : 'Enter 6-digit PIN code to auto-fill address'
+                }
+              />
+            </Grid>
+
+            {/* District */}
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="District"
+                value={(currentStudent as any).district || ''}
+                onChange={(e) => setCurrentStudent({ ...currentStudent, district: e.target.value })}
+                placeholder="District"
+                InputProps={{
+                  startAdornment: <LocationOn sx={{ fontSize: 18, color: 'text.secondary', mr: 1 }} />,
+                  endAdornment: (currentStudent as any).district && !fetchingPincode ? (
+                    <CheckCircle sx={{ fontSize: 16, color: '#10b981', mr: 1 }} />
+                  ) : null,
+                }}
+              />
+            </Grid>
+
+            {/* City with Autocomplete */}
+            <Grid item xs={12} sm={6}>
+              <Autocomplete
+                freeSolo
+                options={[
+                  'Mumbai', 'Delhi', 'Bangalore', 'Hyderabad', 'Chennai', 'Kolkata', 
+                  'Pune', 'Ahmedabad', 'Jaipur', 'Surat', 'Lucknow', 'Kanpur',
+                  'Nagpur', 'Indore', 'Thane', 'Bhopal', 'Visakhapatnam', 'Patna',
+                  'Vadodara', 'Ghaziabad', 'Ludhiana', 'Agra', 'Nashik', 'Faridabad'
+                ]}
+                value={(currentStudent as any).city || ''}
+                onChange={(event, newValue) => {
+                  setCurrentStudent({ ...currentStudent, city: newValue || '' });
+                }}
+                onInputChange={(event, newInputValue) => {
+                  setCurrentStudent({ ...currentStudent, city: newInputValue });
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="City"
+                    placeholder="City"
+                    InputProps={{
+                      ...params.InputProps,
+                      startAdornment: <LocationOn sx={{ fontSize: 18, color: 'text.secondary', mr: 1 }} />,
+                      endAdornment: (currentStudent as any).city && !fetchingPincode ? (
+                        <CheckCircle sx={{ fontSize: 16, color: '#10b981', mr: 1 }} />
+                      ) : params.InputProps.endAdornment,
+                    }}
+                  />
+                )}
+              />
+            </Grid>
+
+            {/* State with Autocomplete */}
+            <Grid item xs={12} sm={6}>
+              <Autocomplete
+                freeSolo
+                options={[
+                  'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
+                  'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka',
+                  'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram',
+                  'Nagaland', 'Odisha', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu',
+                  'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal',
+                  'Andaman and Nicobar Islands', 'Chandigarh', 'Dadra and Nagar Haveli',
+                  'Daman and Diu', 'Delhi', 'Jammu and Kashmir', 'Ladakh', 'Lakshadweep', 'Puducherry'
+                ]}
+                value={(currentStudent as any).state || ''}
+                onChange={(event, newValue) => {
+                  setCurrentStudent({ ...currentStudent, state: newValue || '' });
+                }}
+                onInputChange={(event, newInputValue) => {
+                  setCurrentStudent({ ...currentStudent, state: newInputValue });
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="State"
+                    placeholder="State"
+                    InputProps={{
+                      ...params.InputProps,
+                      startAdornment: <LocationOn sx={{ fontSize: 18, color: 'text.secondary', mr: 1 }} />,
+                      endAdornment: (currentStudent as any).state && !fetchingPincode ? (
+                        <CheckCircle sx={{ fontSize: 16, color: '#10b981', mr: 1 }} />
+                      ) : params.InputProps.endAdornment,
+                    }}
+                  />
+                )}
+              />
+            </Grid>
+
+            {/* Address Line 1 */}
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Address Line 1"
+                value={(currentStudent as any).addressLine1 || currentStudent.address?.line1 || ''}
+                onChange={(e) => setCurrentStudent({ 
+                  ...currentStudent, 
+                  addressLine1: e.target.value,
+                  address: { ...currentStudent.address, line1: e.target.value }
+                })}
+                placeholder="House/Flat No., Building Name, Street"
+              />
+            </Grid>
+
+            {/* Address Line 2 */}
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Address Line 2 (Optional)"
+                value={(currentStudent as any).addressLine2 || currentStudent.address?.line2 || ''}
+                onChange={(e) => setCurrentStudent({ 
+                  ...currentStudent, 
+                  addressLine2: e.target.value,
+                  address: { ...currentStudent.address, line2: e.target.value }
+                })}
+                placeholder="Area, Landmark (Optional)"
+              />
+            </Grid>
+
+            {/* Country */}
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Country"
+                value={(currentStudent as any).country || currentStudent.address?.country || 'India'}
+                onChange={(e) => setCurrentStudent({ 
+                  ...currentStudent, 
+                  country: e.target.value,
+                  address: { ...currentStudent.address, country: e.target.value }
+                })}
+                disabled
+                helperText="Currently only India is supported"
+              />
             </Grid>
           </Grid>
         </DialogContent>
