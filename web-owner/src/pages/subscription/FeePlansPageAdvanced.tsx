@@ -19,7 +19,7 @@ import {
   Info as InfoIcon,
 } from '@mui/icons-material';
 import FeePlanFormDialog from '../../components/fees/FeePlanFormDialog';
-import { feePlanService } from '../../services/api/feePlan.service';
+import FeePlanService from '../../services/api/feePlan.service';
 import { toast } from 'react-toastify';
 
 interface FeePlan {
@@ -100,6 +100,7 @@ function TabPanel(props: TabPanelProps) {
 
 const FeePlansPageAdvanced: React.FC = () => {
   const theme = useTheme();
+  const feePlanService = new FeePlanService();
   
   // State management
   const [plans, setPlans] = useState<FeePlan[]>([]);
@@ -333,29 +334,17 @@ const FeePlansPageAdvanced: React.FC = () => {
     if (!selectedPlan) return;
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:3001';
-      
-      const response = await fetch(`${apiUrl}/api/fee-plans/${selectedPlan.id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to delete fee plan');
-      }
+      await feePlanService.deleteFeePlan(selectedPlan.id);
       
       // Reload plans from API
       await loadFeePlans();
       
+      toast.success('Fee plan deleted successfully');
       setSnackbar({ open: true, message: '✅ Plan deleted successfully!', severity: 'success' });
       setDeleteDialogOpen(false);
     } catch (error: any) {
-      console.error('Error deleting fee plan:', error);
+      console.error('❌ [FeePlansPage] Error deleting fee plan:', error);
+      toast.error(error.message || 'Failed to delete fee plan');
       setSnackbar({ 
         open: true, 
         message: error.message || 'Failed to delete fee plan. Please try again.', 
@@ -366,16 +355,35 @@ const FeePlansPageAdvanced: React.FC = () => {
     }
   };
 
-  const handleDuplicatePlan = (plan: FeePlan) => {
-    const duplicated: FeePlan = {
-      ...plan,
-      id: Date.now().toString(),
-      name: `${plan.name} (Copy)`,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    setPlans(prev => [...prev, duplicated]);
-    setSnackbar({ open: true, message: '✅ Plan duplicated successfully!', severity: 'success' });
+  const handleDuplicatePlan = async (plan: FeePlan) => {
+    try {
+      setLoading(true);
+      // Create a new plan based on the duplicated one
+      const duplicatedPlan = {
+        ...plan,
+        id: undefined, // Remove ID to create new
+        name: `${plan.name} (Copy)`,
+      };
+      delete (duplicatedPlan as any).id;
+      delete (duplicatedPlan as any).createdAt;
+      delete (duplicatedPlan as any).updatedAt;
+      
+      await feePlanService.createFeePlan(duplicatedPlan);
+      await loadFeePlans();
+      
+      toast.success('Fee plan duplicated successfully');
+      setSnackbar({ open: true, message: '✅ Plan duplicated successfully!', severity: 'success' });
+    } catch (error: any) {
+      console.error('❌ [FeePlansPage] Error duplicating fee plan:', error);
+      toast.error(error.message || 'Failed to duplicate fee plan');
+      setSnackbar({ 
+        open: true, 
+        message: error.message || 'Failed to duplicate fee plan. Please try again.', 
+        severity: 'error' 
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Calculate final price with all adjustments
