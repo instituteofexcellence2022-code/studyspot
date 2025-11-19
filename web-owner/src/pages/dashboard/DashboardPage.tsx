@@ -4,7 +4,7 @@ import {
   Box, Card, CardContent, Typography, Avatar, Paper, Button,
   Chip, Divider, List, ListItem, ListItemText, ListItemAvatar,
   TextField, MenuItem, IconButton, Tooltip, LinearProgress,
-  Dialog, DialogTitle, DialogContent, DialogActions,
+  Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress,
 } from '@mui/material';
 import { GridLegacy as Grid } from '@mui/material';
 import {
@@ -17,13 +17,15 @@ import { useAppSelector } from '../../hooks/redux';
 import { ROUTES } from '../../constants';
 import { useSocket } from '../../hooks/useSocket';
 import { toast } from 'react-toastify';
+import { dashboardService } from '../../services/dashboardService';
 
 const DashboardPageEnhanced: React.FC = () => {
   const { user } = useAppSelector((state) => state.auth);
   const navigate = useNavigate();
   const [dateRange, setDateRange] = useState('today');
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [alertDialog, setAlertDialog] = useState({ open: false, alert: null as any });
+  const [dashboardStats, setDashboardStats] = useState<any>(null);
 
   // Auto-refresh simulation
   const [lastRefresh, setLastRefresh] = useState(new Date());
@@ -32,14 +34,34 @@ const DashboardPageEnhanced: React.FC = () => {
   // 🔴 NEW: Real-time WebSocket connection
   const { socket, connected } = useSocket('library_owner');
 
+  // Fetch dashboard stats
+  useEffect(() => {
+    fetchDashboardStats();
+  }, [dateRange]);
+
+  // Auto-refresh dashboard data
   useEffect(() => {
     if (autoRefresh) {
       const interval = setInterval(() => {
+        fetchDashboardStats();
         setLastRefresh(new Date());
       }, 30000); // Refresh every 30 seconds
       return () => clearInterval(interval);
     }
-  }, [autoRefresh]);
+  }, [autoRefresh, dateRange]);
+
+  const fetchDashboardStats = async () => {
+    try {
+      setLoading(true);
+      const stats = await dashboardService.getDashboardStats(dateRange);
+      setDashboardStats(stats);
+    } catch (error: any) {
+      console.error('Failed to fetch dashboard stats:', error);
+      toast.error('Failed to load dashboard data');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // 🔴 NEW: Real-time event listeners for dashboard updates
   useEffect(() => {
@@ -86,75 +108,75 @@ const DashboardPageEnhanced: React.FC = () => {
     };
   }, [socket, connected]);
 
-  // Enhanced stats with trends and navigation
-  const stats = [
+  // Enhanced stats with trends and navigation - Dynamic from backend
+  const stats = dashboardStats ? [
     {
       title: 'Total Libraries',
-      value: '12',
-      trend: '+2 this month',
+      value: dashboardStats.totalLibraries.toString(),
+      trend: `${dashboardStats.totalLibraries} active`,
       icon: <LibraryBooks />,
       color: '#1976d2',
       subtitle: 'Active branches',
-      change: '+16.7%',
+      change: '+0%',
       positive: true,
       route: ROUTES.LIBRARIES,
       action: 'View All Libraries',
     },
     {
       title: 'Total Seats',
-      value: '500',
-      trend: '350 available',
+      value: dashboardStats.totalSeats.toString(),
+      trend: `${dashboardStats.availableSeats} available`,
       icon: <EventSeat />,
       color: '#2e7d32',
-      subtitle: 'Occupancy: 70%',
-      change: '+5.3%',
+      subtitle: `Occupancy: ${dashboardStats.totalSeats > 0 ? Math.round(((dashboardStats.totalSeats - dashboardStats.availableSeats) / dashboardStats.totalSeats) * 100) : 0}%`,
+      change: '+0%',
       positive: true,
       route: ROUTES.SEATS,
       action: 'Manage Seats',
     },
     {
       title: 'Active Students',
-      value: '234',
-      trend: '+18 today',
+      value: dashboardStats.activeStudents.toString(),
+      trend: `${dashboardStats.activeStudents} enrolled`,
       icon: <People />,
       color: '#d32f2f',
-      subtitle: '180 currently active',
-      change: '+8.3%',
+      subtitle: 'Currently active',
+      change: '+0%',
       positive: true,
       route: ROUTES.STUDENTS,
       action: 'View Students',
     },
     {
       title: "Today's Attendance",
-      value: '85',
+      value: dashboardStats.todayAttendance.toString(),
       trend: 'Check-ins so far',
       icon: <CalendarToday />,
       color: '#9c27b0',
-      subtitle: 'Peak: 11:00 AM',
-      change: '+12.5%',
+      subtitle: 'Today',
+      change: '+0%',
       positive: true,
       route: ROUTES.ATTENDANCE,
       action: 'View Attendance',
     },
     {
       title: 'Total Revenue',
-      value: '₹12,450',
+      value: `₹${dashboardStats.totalRevenue.toLocaleString('en-IN')}`,
       trend: 'This month',
       icon: <TrendingUp />,
       color: '#009688',
-      subtitle: 'Target: ₹15,000',
-      change: '+23.1%',
+      subtitle: 'Total revenue',
+      change: '+0%',
       positive: true,
       route: ROUTES.PAYMENTS,
       action: 'View Payments',
     },
     {
       title: 'Active Fee Plans',
-      value: '4',
-      trend: 'Most popular: Monthly',
+      value: dashboardStats.activeFeePlans.toString(),
+      trend: 'Active plans',
       icon: <AttachMoney />,
       color: '#ed6c02',
-      subtitle: '120 subscriptions',
+      subtitle: 'Fee plans',
       change: '0%',
       positive: true,
       route: ROUTES.FEE_PLANS,
@@ -162,29 +184,29 @@ const DashboardPageEnhanced: React.FC = () => {
     },
     {
       title: 'Total Staff',
-      value: '15',
+      value: dashboardStats.totalStaff.toString(),
       trend: 'All active',
       icon: <Group />,
       color: '#ff9800',
-      subtitle: '5 managers',
-      change: '+1',
+      subtitle: 'Staff members',
+      change: '+0',
       positive: true,
       route: ROUTES.STAFF,
       action: 'Manage Staff',
     },
     {
       title: 'Pending Payments',
-      value: '₹2,500',
+      value: `₹${dashboardStats.pendingPayments.toLocaleString('en-IN')}`,
       trend: 'Follow-up needed',
       icon: <AttachMoney />,
       color: '#f44336',
-      subtitle: 'Overdue: ₹1,000',
-      change: '-15.2%',
+      subtitle: 'Pending amount',
+      change: '-0%',
       positive: false,
       route: ROUTES.PAYMENTS,
       action: 'Follow Up',
     },
-  ];
+  ] : [];
 
   // Quick actions
   const quickActions = [
@@ -218,8 +240,8 @@ const DashboardPageEnhanced: React.FC = () => {
     },
   ];
 
-  // Recent activity with actions
-  const recentActivity = [
+  // Recent activity with actions - Dynamic from backend
+  const recentActivity = dashboardStats?.recentActivity || [
     { 
       type: 'payment', 
       message: 'Rajesh Kumar paid ₹5000 for Monthly Premium', 
@@ -400,7 +422,18 @@ const DashboardPageEnhanced: React.FC = () => {
       </Box>
 
       {/* Loading Progress */}
-      {loading && <LinearProgress sx={{ mb: 2 }} />}
+      {loading && (
+        <Box sx={{ textAlign: 'center', py: 4 }}>
+          <CircularProgress />
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+            Loading dashboard data...
+          </Typography>
+        </Box>
+      )}
+
+      {/* Show content only when data is loaded */}
+      {!loading && dashboardStats && (
+        <>
 
       {/* Alerts with Actions */}
       {alerts.length > 0 && (
