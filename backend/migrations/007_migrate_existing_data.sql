@@ -1,27 +1,20 @@
 -- ============================================
 -- MIGRATE EXISTING DATA
 -- Update existing records to match new structure
+-- Note: Most data migration is now in 005_redesign_multi_tenant_saas.sql
+-- This file only handles linking tenants to owners
 -- ============================================
 
--- Step 1: Set user_type for existing admin_users
--- Platform admins (no tenant_id)
-UPDATE admin_users 
-SET user_type = 'platform_admin'
-WHERE tenant_id IS NULL 
-AND user_type IS NULL;
-
--- Library owners (have tenant_id)
-UPDATE admin_users 
-SET user_type = 'library_owner'
-WHERE tenant_id IS NOT NULL 
-AND user_type IS NULL;
-
--- Step 2: Update role for library owners
--- Ensure library owners have correct role
-UPDATE admin_users 
-SET role = 'library_owner'
-WHERE user_type = 'library_owner'
-AND role != 'library_owner';
+-- Step 1: Link tenants to their owners (if not already done in migration 005)
+UPDATE tenants t
+SET owner_id = (
+  SELECT id FROM admin_users 
+  WHERE tenant_id = t.id 
+  AND user_type = 'library_owner' 
+  ORDER BY created_at ASC
+  LIMIT 1
+)
+WHERE owner_id IS NULL;
 
 -- Step 3: Link tenants to their owners
 UPDATE tenants t
