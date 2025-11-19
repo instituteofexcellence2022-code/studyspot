@@ -88,52 +88,106 @@ CREATE INDEX idx_platform_staff_is_active ON platform_staff(is_active);
 -- ============================================
 
 -- Migrate library owners
--- Check if metadata column exists, if not use empty jsonb
+-- Identify library owners: users with tenant_id (not platform admins)
+-- Check if metadata and user_type columns exist
 DO $$
 BEGIN
+    -- Check which columns exist
     IF EXISTS (
         SELECT 1 FROM information_schema.columns 
-        WHERE table_name = 'admin_users' AND column_name = 'metadata'
+        WHERE table_name = 'admin_users' AND column_name = 'user_type'
     ) THEN
-        INSERT INTO library_owners (id, tenant_id, email, password_hash, first_name, last_name, phone, is_active, last_login_at, last_login_ip, metadata, created_at, updated_at)
-        SELECT 
-            id,
-            tenant_id,
-            email,
-            password_hash,
-            first_name,
-            last_name,
-            phone,
-            is_active,
-            last_login_at,
-            last_login_ip,
-            COALESCE(metadata, '{}'::jsonb),
-            created_at,
-            updated_at
-        FROM admin_users
-        WHERE (user_type = 'library_owner' OR (tenant_id IS NOT NULL AND user_type IS NULL))
-        AND tenant_id IS NOT NULL
-        ON CONFLICT (id) DO NOTHING;
+        -- user_type column exists - use it
+        IF EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_name = 'admin_users' AND column_name = 'metadata'
+        ) THEN
+            INSERT INTO library_owners (id, tenant_id, email, password_hash, first_name, last_name, phone, is_active, last_login_at, last_login_ip, metadata, created_at, updated_at)
+            SELECT 
+                id,
+                tenant_id,
+                email,
+                password_hash,
+                first_name,
+                last_name,
+                phone,
+                is_active,
+                last_login_at,
+                last_login_ip,
+                COALESCE(metadata, '{}'::jsonb),
+                created_at,
+                updated_at
+            FROM admin_users
+            WHERE (user_type = 'library_owner' OR (tenant_id IS NOT NULL AND user_type IS NULL))
+            AND tenant_id IS NOT NULL
+            ON CONFLICT (id) DO NOTHING;
+        ELSE
+            INSERT INTO library_owners (id, tenant_id, email, password_hash, first_name, last_name, phone, is_active, last_login_at, last_login_ip, metadata, created_at, updated_at)
+            SELECT 
+                id,
+                tenant_id,
+                email,
+                password_hash,
+                first_name,
+                last_name,
+                phone,
+                is_active,
+                last_login_at,
+                last_login_ip,
+                '{}'::jsonb as metadata,
+                created_at,
+                updated_at
+            FROM admin_users
+            WHERE (user_type = 'library_owner' OR (tenant_id IS NOT NULL AND user_type IS NULL))
+            AND tenant_id IS NOT NULL
+            ON CONFLICT (id) DO NOTHING;
+        END IF;
     ELSE
-        INSERT INTO library_owners (id, tenant_id, email, password_hash, first_name, last_name, phone, is_active, last_login_at, last_login_ip, metadata, created_at, updated_at)
-        SELECT 
-            id,
-            tenant_id,
-            email,
-            password_hash,
-            first_name,
-            last_name,
-            phone,
-            is_active,
-            last_login_at,
-            last_login_ip,
-            '{}'::jsonb as metadata,
-            created_at,
-            updated_at
-        FROM admin_users
-        WHERE (user_type = 'library_owner' OR (tenant_id IS NOT NULL AND user_type IS NULL))
-        AND tenant_id IS NOT NULL
-        ON CONFLICT (id) DO NOTHING;
+        -- user_type column doesn't exist - identify by tenant_id and role
+        IF EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_name = 'admin_users' AND column_name = 'metadata'
+        ) THEN
+            INSERT INTO library_owners (id, tenant_id, email, password_hash, first_name, last_name, phone, is_active, last_login_at, last_login_ip, metadata, created_at, updated_at)
+            SELECT 
+                id,
+                tenant_id,
+                email,
+                password_hash,
+                first_name,
+                last_name,
+                phone,
+                is_active,
+                last_login_at,
+                last_login_ip,
+                COALESCE(metadata, '{}'::jsonb),
+                created_at,
+                updated_at
+            FROM admin_users
+            WHERE tenant_id IS NOT NULL
+            AND role NOT IN ('super_admin', 'admin', 'support', 'analyst', 'sales', 'finance')
+            ON CONFLICT (id) DO NOTHING;
+        ELSE
+            INSERT INTO library_owners (id, tenant_id, email, password_hash, first_name, last_name, phone, is_active, last_login_at, last_login_ip, metadata, created_at, updated_at)
+            SELECT 
+                id,
+                tenant_id,
+                email,
+                password_hash,
+                first_name,
+                last_name,
+                phone,
+                is_active,
+                last_login_at,
+                last_login_ip,
+                '{}'::jsonb as metadata,
+                created_at,
+                updated_at
+            FROM admin_users
+            WHERE tenant_id IS NOT NULL
+            AND role NOT IN ('super_admin', 'admin', 'support', 'analyst', 'sales', 'finance')
+            ON CONFLICT (id) DO NOTHING;
+        END IF;
     END IF;
 END $$;
 
@@ -160,7 +214,9 @@ BEGIN
             updated_at
         FROM admin_users
         WHERE role = 'super_admin' 
-        AND (user_type = 'platform_admin' OR user_type IS NULL OR tenant_id IS NULL)
+        AND (tenant_id IS NULL OR 
+             (EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'admin_users' AND column_name = 'user_type') 
+              AND (user_type = 'platform_admin' OR user_type IS NULL)))
         ON CONFLICT (id) DO NOTHING;
     ELSE
         INSERT INTO platform_admins (id, email, password_hash, first_name, last_name, phone, is_active, last_login_at, last_login_ip, metadata, created_at, updated_at)
@@ -179,7 +235,7 @@ BEGIN
             updated_at
         FROM admin_users
         WHERE role = 'super_admin' 
-        AND (user_type = 'platform_admin' OR user_type IS NULL OR tenant_id IS NULL)
+        AND tenant_id IS NULL
         ON CONFLICT (id) DO NOTHING;
     END IF;
 END $$;
@@ -210,8 +266,7 @@ BEGIN
             updated_at
         FROM admin_users
         WHERE role IN ('admin', 'support', 'analyst', 'sales', 'finance') 
-        AND (user_type = 'platform_admin' OR user_type IS NULL OR tenant_id IS NULL)
-        AND role != 'super_admin'
+        AND tenant_id IS NULL
         ON CONFLICT (id) DO NOTHING;
     ELSE
         INSERT INTO platform_staff (id, email, password_hash, first_name, last_name, phone, role, department, permissions, is_active, last_login_at, last_login_ip, metadata, created_at, updated_at)
@@ -233,8 +288,7 @@ BEGIN
             updated_at
         FROM admin_users
         WHERE role IN ('admin', 'support', 'analyst', 'sales', 'finance') 
-        AND (user_type = 'platform_admin' OR user_type IS NULL OR tenant_id IS NULL)
-        AND role != 'super_admin'
+        AND tenant_id IS NULL
         ON CONFLICT (id) DO NOTHING;
     END IF;
 END $$;
