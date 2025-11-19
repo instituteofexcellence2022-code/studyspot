@@ -8,10 +8,8 @@ import {
   Link,
   InputAdornment,
   IconButton,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
+  Alert,
+  Collapse,
 } from '@mui/material';
 import { GridLegacy as Grid } from '@mui/material';
 import {
@@ -21,6 +19,13 @@ import {
   Lock,
   Person,
   Phone,
+  Info,
+  ExpandMore,
+  ExpandLess,
+  CheckCircle,
+  Error as ErrorIcon,
+  Refresh,
+  CloudOff,
 } from '@mui/icons-material';
 import { useForm, Controller } from 'react-hook-form';
 
@@ -29,6 +34,7 @@ import { register, clearError } from '../../store/slices/authSlice';
 import { showSnackbar } from '../../store/slices/uiSlice';
 import { ROUTES, USER_ROLES } from '../../constants';
 import { RegisterRequest } from '../../types';
+import { healthService, HealthStatus } from '../../services/healthService';
 
 interface RegisterFormData extends RegisterRequest {
   confirmPassword: string;
@@ -41,11 +47,49 @@ const RegisterPage: React.FC = () => {
   
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showApiInfo, setShowApiInfo] = useState(false);
+  const [healthStatus, setHealthStatus] = useState<HealthStatus | null>(null);
+  const [isCheckingHealth, setIsCheckingHealth] = useState(false);
 
   // Clear any previous errors when component mounts
   useEffect(() => {
     dispatch(clearError());
+    // Check backend health on mount
+    checkBackendHealth();
   }, [dispatch]);
+
+  // Check backend health
+  const checkBackendHealth = async () => {
+    setIsCheckingHealth(true);
+    try {
+      // Show a message that we're checking (especially for Render services)
+      const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+      if (apiUrl.includes('render.com') || apiUrl.includes('onrender.com')) {
+        setHealthStatus({
+          isHealthy: false,
+          isConnected: false,
+          status: 'checking',
+          message: 'Checking backend... Render services may take 30-60 seconds to wake up on first request.',
+          timestamp: Date.now(),
+        });
+      }
+      
+      const status = await healthService.checkHealth(true);
+      setHealthStatus(status);
+    } catch (error) {
+      console.error('Health check failed:', error);
+      setHealthStatus({
+        isHealthy: false,
+        isConnected: false,
+        status: 'unknown',
+        message: 'Failed to check backend health',
+        timestamp: Date.now(),
+        error: 'Health check error',
+      });
+    } finally {
+      setIsCheckingHealth(false);
+    }
+  };
 
   const {
     control,
@@ -60,7 +104,7 @@ const RegisterPage: React.FC = () => {
       firstName: '',
       lastName: '',
       phone: '',
-      role: USER_ROLES.LIBRARY_STAFF,
+      role: USER_ROLES.LIBRARY_OWNER, // All registrations are library owners by default
     },
   });
 
@@ -68,8 +112,26 @@ const RegisterPage: React.FC = () => {
 
   const onSubmit = async (data: RegisterFormData) => {
     try {
+      // Check backend health before registration (but don't block if health check fails)
+      // The health check might fail due to timeout, but the actual API might work
+      try {
+        const health = await healthService.quickCheck();
+        if (!health) {
+          console.warn('[RegisterPage] Health check failed, but proceeding with registration attempt');
+          // Don't block registration - let it try and show actual error if it fails
+        }
+      } catch (healthError) {
+        console.warn('[RegisterPage] Health check error (non-blocking):', healthError);
+        // Continue with registration attempt
+      }
+
       const { confirmPassword, ...registerData } = data;
-      console.log('🔄 Attempting registration:', { ...registerData, password: '***' });
+      const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+      console.log('🔄 Attempting registration:', { 
+        ...registerData, 
+        password: '***',
+        apiUrl,
+      });
       
       const result = await dispatch(register(registerData)).unwrap();
       
@@ -81,6 +143,12 @@ const RegisterPage: React.FC = () => {
       navigate(ROUTES.LOGIN);
     } catch (error: any) {
       console.error('❌ Registration failed:', error);
+      console.error('❌ Error details:', {
+        message: error?.message,
+        code: error?.code,
+        response: error?.response,
+        stack: error?.stack,
+      });
       
       // Extract error message from various possible structures
       let errorMessage = 'Registration failed. Please try again.';
@@ -93,14 +161,27 @@ const RegisterPage: React.FC = () => {
         errorMessage = error.error;
       } else if (error?.data?.message) {
         errorMessage = error.data.message;
+      } else if (error?.payload) {
+        // Redux thunk rejection payload
+        errorMessage = typeof error.payload === 'string' ? error.payload : error.payload?.message || errorMessage;
       }
       
       console.log('📢 Showing error:', errorMessage);
+      
+      // Show detailed error with API URL for debugging
+      const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+      const detailedMessage = errorMessage.includes('network') || errorMessage.includes('Unable to reach')
+        ? `${errorMessage}\n\nAPI URL: ${apiUrl}\n\nPlease ensure:\n1. Backend is running\n2. API URL is correct\n3. CORS is configured`
+        : errorMessage;
       
       dispatch(showSnackbar({
         message: `❌ ${errorMessage}`,
         severity: 'error',
       }));
+      
+      // Also log to console for debugging
+      console.error('Registration failed. API URL:', apiUrl);
+      console.error('Full error:', error);
     }
   };
 
@@ -115,11 +196,92 @@ const RegisterPage: React.FC = () => {
   return (
     <Box sx={{ maxWidth: 600, mx: 'auto' }}>
       <Typography variant="h5" component="h1" gutterBottom align="center">
-        Create Account
+        Create Library Owner Account
       </Typography>
       <Typography variant="body2" color="text.secondary" align="center" sx={{ mb: 3 }}>
-        Sign up to get started with 🎓 STUDYSPOT
+        Sign up to manage your library with 🎓 STUDYSPOT
       </Typography>
+
+      {/* Backend Health Status */}
+      <Box sx={{ mb: 2 }}>
+        {healthStatus && (
+          <Alert 
+            severity={
+              healthStatus.isHealthy 
+                ? 'success' 
+                : healthStatus.status === 'checking' 
+                  ? 'info' 
+                  : 'error'
+            }
+            icon={
+              healthStatus.isHealthy 
+                ? <CheckCircle /> 
+                : healthStatus.status === 'checking'
+                  ? <Refresh />
+                  : <ErrorIcon />
+            }
+            action={
+              <IconButton
+                size="small"
+                onClick={checkBackendHealth}
+                disabled={isCheckingHealth}
+                sx={{ ml: 1 }}
+              >
+                <Refresh fontSize="small" />
+              </IconButton>
+            }
+            sx={{ mb: 1 }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+              <Box>
+                <Typography variant="body2" fontWeight={600}>
+                  {healthStatus.isHealthy ? 'Backend Connected' : 'Backend Unavailable'}
+                </Typography>
+                <Typography variant="caption" color="text.secondary" component="div">
+                  {healthStatus.message}
+                  {healthStatus.latency && ` (${healthStatus.latency}ms)`}
+                  {!healthStatus.isHealthy && (
+                    <Box sx={{ mt: 0.5, fontSize: '0.7rem' }}>
+                      <Typography variant="caption" component="div">
+                        API URL: {process.env.REACT_APP_API_URL || 'http://localhost:3001'}
+                      </Typography>
+                      <Typography variant="caption" component="div" sx={{ mt: 0.25 }}>
+                        Troubleshooting: Check if backend is running, verify API URL in .env file, or restart the dev server.
+                      </Typography>
+                    </Box>
+                  )}
+                </Typography>
+              </Box>
+            </Box>
+          </Alert>
+        )}
+        
+        {/* API Configuration Info */}
+        <Button
+          size="small"
+          startIcon={<Info />}
+          endIcon={showApiInfo ? <ExpandLess /> : <ExpandMore />}
+          onClick={() => setShowApiInfo(!showApiInfo)}
+          sx={{ textTransform: 'none', fontSize: '0.75rem' }}
+        >
+          API Configuration
+        </Button>
+        <Collapse in={showApiInfo}>
+          <Alert severity="info" sx={{ mt: 1 }}>
+            <Typography variant="caption" component="div">
+              <strong>API URL:</strong> {process.env.REACT_APP_API_URL || 'http://localhost:3001'}
+            </Typography>
+            <Typography variant="caption" component="div" sx={{ mt: 0.5 }}>
+              If you see network errors, ensure the backend is running and accessible at this URL.
+            </Typography>
+            {healthStatus && (
+              <Typography variant="caption" component="div" sx={{ mt: 0.5, fontStyle: 'italic' }}>
+                Last checked: {new Date(healthStatus.timestamp).toLocaleTimeString()}
+              </Typography>
+            )}
+          </Alert>
+        </Collapse>
+      </Box>
 
       {/* Error messages are now shown via GlobalSnackbar instead */}
 
@@ -162,19 +324,19 @@ const RegisterPage: React.FC = () => {
               name="lastName"
               control={control}
               rules={{
-                required: 'Last name is required',
-                minLength: {
-                  value: 2,
-                  message: 'Last name must be at least 2 characters',
+                validate: (value) => {
+                  if (value && value.trim().length > 0 && value.trim().length < 2) {
+                    return 'Last name must be at least 2 characters';
+                  }
+                  return true;
                 },
               }}
               render={({ field }) => (
                 <TextField
                   {...field}
-                  required
                   fullWidth
                   id="lastName"
-                  label="Last Name"
+                  label="Last Name (Optional)"
                   autoComplete="family-name"
                   error={!!errors.lastName}
                   helperText={errors.lastName?.message}
@@ -237,33 +399,6 @@ const RegisterPage: React.FC = () => {
                 />
               )}
             />
-          </Grid>
-          <Grid item xs={12}>
-            <Controller
-              name="role"
-              control={control}
-              render={({ field }) => (
-                <FormControl fullWidth>
-                  <InputLabel id="role-label">Your Role</InputLabel>
-                  <Select
-                    {...field}
-                    labelId="role-label"
-                    id="role"
-                    label="Your Role"
-                    error={!!errors.role}
-                  >
-                    <MenuItem value={USER_ROLES.LIBRARY_STAFF}>Library Staff (Front Desk, Operations)</MenuItem>
-                    <MenuItem value={USER_ROLES.LIBRARY_OWNER}>Library Owner (Full Access)</MenuItem>
-                    <MenuItem value={USER_ROLES.BRANCH_MANAGER}>Branch Manager</MenuItem>
-                    <MenuItem value={USER_ROLES.FINANCE_MANAGER}>Finance Manager</MenuItem>
-                    <MenuItem value={USER_ROLES.FACILITY_MANAGER}>Facility Manager</MenuItem>
-                  </Select>
-                </FormControl>
-              )}
-            />
-            <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-              📝 Students should download the mobile app. This portal is for library staff and management only.
-            </Typography>
           </Grid>
           <Grid item xs={12}>
             <Controller
@@ -367,25 +502,6 @@ const RegisterPage: React.FC = () => {
           <Link component={RouterLink} to={ROUTES.LOGIN} variant="body2">
             Already have an account? Sign In
           </Link>
-        </Box>
-
-        {/* Diagnostic Info */}
-        <Box sx={{ mt: 2, p: 2, bgcolor: 'info.main', color: 'white', borderRadius: 1, fontSize: '0.75rem' }}>
-          <Typography variant="caption" sx={{ display: 'block', fontWeight: 'bold', mb: 1 }}>
-            🔍 DIAGNOSTIC INFO:
-          </Typography>
-          <Typography variant="caption" sx={{ display: 'block', fontFamily: 'monospace' }}>
-            API URL: {process.env.REACT_APP_API_URL || 'http://localhost:3001'}
-          </Typography>
-          <Typography variant="caption" sx={{ display: 'block', fontFamily: 'monospace' }}>
-            ENV VAR: {process.env.REACT_APP_API_URL || 'NOT SET'}
-          </Typography>
-          <Typography variant="caption" sx={{ display: 'block', fontFamily: 'monospace' }}>
-            NODE_ENV: {process.env.NODE_ENV}
-          </Typography>
-          <Typography variant="caption" sx={{ display: 'block', fontFamily: 'monospace', mt: 1, color: 'yellow' }}>
-            ⚠️ If API URL is NOT http://localhost:3001, restart the server!
-          </Typography>
         </Box>
       </Box>
     </Box>

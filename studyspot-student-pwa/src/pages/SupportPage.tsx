@@ -322,9 +322,9 @@ export default function SupportPage({ setIsAuthenticated }: { setIsAuthenticated
               }}
             >
               <Box
-                component="a"
-                href={`https://wa.me/${libraryContact.whatsapp?.replace(/[^0-9]/g, '')}`}
-                target="_blank"
+              component="a"
+              href={`https://wa.me/${libraryContact.whatsapp?.replace(/[^0-9]/g, '')}`}
+              target="_blank"
                 sx={{ textDecoration: 'none', color: 'inherit', display: 'block', width: '100%' }}
               >
               <CardContent sx={{ textAlign: 'center', py: { xs: 1.5, sm: 2.5 }, px: { xs: 1, sm: 1.5 } }}>
@@ -730,9 +730,9 @@ export default function SupportPage({ setIsAuthenticated }: { setIsAuthenticated
               {t('support.videoTutorials')}
             </Typography>
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: { xs: 1, sm: 2 } }}>
-              {videos.map((video) => (
+            {videos.map((video) => (
                 <Box key={video.id} sx={{ flex: { xs: '1 1 100%', sm: '1 1 calc(50% - 8px)', md: '1 1 calc(25% - 12px)' }, minWidth: { xs: '100%', sm: 'calc(50% - 8px)', md: 'calc(25% - 12px)' } }}>
-                  <Card 
+                <Card 
                     sx={{ 
                       cursor: 'pointer', 
                       '&:hover': { boxShadow: 6, transform: 'translateY(-4px)' },
@@ -741,14 +741,14 @@ export default function SupportPage({ setIsAuthenticated }: { setIsAuthenticated
                       transition: 'all 0.2s ease',
                       overflow: 'hidden',
                     }}
-                    onClick={() => {
-                      setSelectedVideo(video);
-                      setVideoDialog(true);
-                    }}
-                  >
-                    <Box sx={{ position: 'relative' }}>
-                      <Box
-                        sx={{
+                  onClick={() => {
+                    setSelectedVideo(video);
+                    setVideoDialog(true);
+                  }}
+                >
+                  <Box sx={{ position: 'relative' }}>
+                    <Box
+                      sx={{
                           width: '100%',
                           height: { xs: 120, sm: 200 },
                           bgcolor: alpha('#667eea', 0.1),
@@ -758,10 +758,10 @@ export default function SupportPage({ setIsAuthenticated }: { setIsAuthenticated
                         }}
                       >
                         <PlayCircleOutline sx={{ fontSize: { xs: 40, sm: 64 }, color: '#667eea', opacity: 0.8 }} />
-                      </Box>
-                      <Chip
-                        label={video.duration}
-                        size="small"
+                    </Box>
+                    <Chip
+                      label={video.duration}
+                      size="small"
                         sx={{ 
                           position: 'absolute', 
                           bottom: { xs: 6, sm: 8 }, 
@@ -771,16 +771,16 @@ export default function SupportPage({ setIsAuthenticated }: { setIsAuthenticated
                           fontSize: { xs: '0.65rem', sm: '0.75rem' },
                           height: { xs: 20, sm: 24 },
                         }}
-                      />
-                    </Box>
+                    />
+                  </Box>
                     <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
                       <Typography variant="body1" fontWeight={600} sx={{ fontSize: { xs: '0.813rem', sm: '1rem' }, lineHeight: 1.3 }}>
-                        {video.title}
-                      </Typography>
-                    </CardContent>
-                  </Card>
+                      {video.title}
+                    </Typography>
+                  </CardContent>
+                </Card>
                 </Box>
-              ))}
+            ))}
             </Box>
           </Box>
         )}

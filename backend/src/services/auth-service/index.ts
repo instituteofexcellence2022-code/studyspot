@@ -30,15 +30,23 @@ const PORT = parseInt(process.env.AUTH_SERVICE_PORT || '3001');
 fastify.register(cors, {
   origin: process.env.CORS_ORIGIN?.split(',') || [
     'http://localhost:3000',  // Owner Portal
-    'http://localhost:3001',  // Student PWA  
+    'http://localhost:3001',  // Student PWA / Owner Portal (Vite)
     'http://localhost:3002',  // Legacy
     'http://localhost:5173',  // Vite dev server
+    'http://127.0.0.1:3000',   // Owner Portal (alternative)
+    'http://127.0.0.1:3001',   // Owner Portal (alternative)
+    'http://127.0.0.1:5173',   // Vite dev server (alternative)
     'https://main.studyspot-student.pages.dev',  // Cloudflare Student PWA
     'https://studyspot-student.pages.dev',  // Cloudflare root domain
     /\.pages\.dev$/,  // All Cloudflare Pages domains
     /\.vercel\.app$/,  // All Vercel domains
+    /\.netlify\.app$/,  // All Netlify domains
+    /localhost:\d+$/,  // Any localhost port
+    /127\.0\.0\.1:\d+$/,  // Any 127.0.0.1 port
   ],
   credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-tenant-id'],
 });
 
 fastify.register(helmet);
@@ -669,12 +677,12 @@ fastify.post('/api/auth/register', async (request, reply) => {
     console.log('[REGISTER] Step 0b: Parsed request body successfully');
 
     // Validate input
-    if (!firstName || !lastName || !email || !password) {
+    if (!firstName || !email || !password) {
       return reply.status(HTTP_STATUS.BAD_REQUEST).send({
         success: false,
         error: {
           code: ERROR_CODES.REQUIRED_FIELD_MISSING,
-          message: 'First name, last name, email, and password are required',
+          message: 'First name, email, and password are required',
         },
       });
     }
@@ -724,19 +732,20 @@ fastify.post('/api/auth/register', async (request, reply) => {
     const passwordHash = await bcrypt.hash(password, 10);
     console.log('[REGISTER] Step 2: Password hashed successfully');
 
-    // Determine user role (default to student if not specified)
-    const userRole = role || 'student';
+    // Determine user role (default to library_owner for web owner portal registrations)
+    const userRole = role || 'library_owner';
 
     // Create user (without transaction for pooler compatibility)
     console.log('[REGISTER] Step 3: Inserting user into database...');
     let result;
     try {
       // Use simple query instead of transaction (pooler doesn't support transactions)
+      // lastName is optional, use null if not provided
       result = await coreDb.query(
         `INSERT INTO admin_users (email, password_hash, first_name, last_name, role, is_active, created_at, updated_at)
          VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
          RETURNING id, email, first_name, last_name, role, is_active, created_at, updated_at`,
-        [email.toLowerCase(), passwordHash, firstName, lastName, userRole, true]
+        [email.toLowerCase(), passwordHash, firstName, lastName || null, userRole, true]
       );
       console.log('[REGISTER] Step 4: User inserted successfully');
     } catch (insertError: any) {
@@ -1573,7 +1582,7 @@ fastify.post('/api/users/kyc/send-otp', async (request, reply) => {
       }),
     });
 
-    const otpData = await otpResponse.json();
+    const otpData = await otpResponse.json() as { status?: string; message?: string; reference_id?: string };
 
     if (!otpResponse.ok || otpData.status !== 'SUCCESS') {
       logger.error('Cashfree OTP send failed:', otpData);
@@ -1588,6 +1597,16 @@ fastify.post('/api/users/kyc/send-otp', async (request, reply) => {
 
     // Store reference_id for OTP verification
     const referenceId = otpData.reference_id;
+    if (!referenceId) {
+      logger.error('Cashfree OTP response missing reference_id:', otpData);
+      return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.VALIDATION_ERROR,
+          message: 'Failed to get reference ID from OTP service',
+        },
+      });
+    }
 
     // Store reference_id in user metadata temporarily
     const userResult = await coreDb.query(
@@ -1749,7 +1768,7 @@ fastify.post('/api/users/kyc/verify-otp', async (request, reply) => {
       }),
     });
 
-    const verifyData = await verifyResponse.json();
+    const verifyData = await verifyResponse.json() as { status?: string; message?: string; data?: any };
 
     if (!verifyResponse.ok || verifyData.status !== 'SUCCESS') {
       logger.error('Cashfree OTP verification failed:', verifyData);

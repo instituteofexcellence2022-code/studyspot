@@ -36,9 +36,13 @@ export const login = createAsyncThunk(
           refreshToken: response.data.token // Using token as refresh token for simplicity
         };
       }
-      throw new Error('Login failed');
+      throw new Error(response.message || 'Login failed');
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Login failed');
+      const errorMessage = error?.response?.data?.message || 
+                          error?.message || 
+                          error?.error ||
+                          'Login failed. Please check your credentials.';
+      return rejectWithValue(errorMessage);
     }
   }
 );
@@ -47,19 +51,64 @@ export const register = createAsyncThunk(
   'auth/register',
   async (userData: RegisterRequest, { rejectWithValue }) => {
     try {
-      const response = await authService.register(userData.email, userData.password, `${userData.firstName} ${userData.lastName}`, userData.role);
+      console.log('[authSlice] Register thunk called with:', {
+        email: userData.email,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        hasPhone: !!userData.phone,
+        role: userData.role || 'library_owner',
+      });
+      
+      // Use registerDetailed to properly handle firstName, lastName, phone, and role
+      const response = await (authService as any).registerDetailed({
+        email: userData.email,
+        password: userData.password,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        phone: userData.phone,
+        role: userData.role || 'library_owner',
+      });
+      
+      console.log('[authSlice] Register response:', {
+        success: response.success,
+        hasData: !!response.data,
+        hasUser: !!response.data?.user,
+        hasToken: !!response.data?.token,
+      });
+      
       if (response.success && response.data) {
-        localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, response.data.token);
-        localStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(response.data.user));
+        const token = response.data.token;
+        const user = response.data.user;
+        
+        if (!token || !user) {
+          console.error('[authSlice] Missing token or user in response:', response);
+          throw new Error('Invalid registration response: missing token or user data');
+        }
+        
+        localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, token);
+        localStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(user));
+        
         return {
-          user: response.data.user,
-          token: response.data.token,
-          refreshToken: response.data.token
+          user,
+          token,
+          refreshToken: token // Using token as refresh token for now
         };
       }
-      throw new Error('Registration failed');
+      
+      throw new Error(response.message || 'Registration failed: Invalid response format');
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Registration failed');
+      console.error('[authSlice] Register error:', error);
+      
+      // Extract error message from various possible structures
+      const errorMessage = 
+        error?.response?.data?.error?.message ||
+        error?.response?.data?.message || 
+        error?.message || 
+        error?.error ||
+        'Registration failed. Please try again.';
+      
+      console.error('[authSlice] Rejecting with error message:', errorMessage);
+      return rejectWithValue(errorMessage);
     }
   }
 );

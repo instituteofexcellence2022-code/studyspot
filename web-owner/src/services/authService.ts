@@ -36,17 +36,24 @@ class AuthService {
     tokens: { accessToken: string; refreshToken?: string; expiresAt?: number | null };
   }) {
     this.token = response.tokens.accessToken;
+    
+    // Handle SDK format (roles array) vs backend format (single role)
+    const userRole = response.user.role || 
+                    (Array.isArray(response.user.roles) && response.user.roles.length > 0 
+                      ? response.user.roles[0] 
+                      : 'library_owner');
+    
     this.user = {
       id: response.user.id,
       email: response.user.email,
-      firstName: response.user.firstName || 'User',
-      lastName: response.user.lastName || '',
-      role: (response.user.role || 'library_owner') as UserRole,
-      tenantId: response.user.tenantId || 'default',
+      firstName: response.user.firstName || response.user.first_name || 'User',
+      lastName: response.user.lastName || response.user.last_name || '',
+      role: userRole as UserRole,
+      tenantId: response.user.tenantId || response.user.tenant_id || 'default',
       status: (response.user.status || 'active') as UserStatus,
-      createdAt: response.user.createdAt || new Date().toISOString(),
-      updatedAt: response.user.updatedAt || new Date().toISOString(),
-      phone: response.user.phone || undefined,
+      createdAt: response.user.createdAt || response.user.created_at || new Date().toISOString(),
+      updatedAt: response.user.updatedAt || response.user.updated_at || new Date().toISOString(),
+      phone: response.user.phone || response.user.phone_number || undefined,
     };
 
     tokenStorage.write({
@@ -64,16 +71,45 @@ class AuthService {
       return await mockAuthService.login(email, password);
     }
 
-    const response = await authClient.login({ email, password });
-    this.persistAuthResponse(response);
-    return {
-      success: true,
-      message: 'Login successful',
-      data: {
-        user: this.user!,
-        token: response.tokens.accessToken,
-      },
-    };
+    try {
+      // SDK's authClient.login() returns { user, tokens } directly
+      const response = await authClient.login({ email, password });
+      
+      // SDK returns LoginResponse with user and tokens at root level
+      if (response?.user && response?.tokens) {
+        // Convert SDK format to our internal format for persistence
+        this.persistAuthResponse({
+          user: response.user as any,
+          tokens: {
+            accessToken: response.tokens.accessToken,
+            refreshToken: response.tokens.refreshToken,
+            expiresAt: response.tokens.expiresAt,
+          },
+        });
+        
+        return {
+          success: true,
+          message: 'Login successful',
+          data: {
+            user: this.user!,
+            token: response.tokens.accessToken,
+          },
+        };
+      }
+      
+      throw new Error('Invalid response format from login endpoint');
+    } catch (error: any) {
+      console.error('Login error:', error);
+      
+      // Extract error message
+      const errorMessage = error?.response?.data?.message || 
+                          error?.response?.data?.error?.message ||
+                          error?.message || 
+                          error?.error ||
+                          'Login failed. Please check your credentials.';
+      
+      throw new Error(errorMessage);
+    }
   }
 
   async register(email: string, password: string, name: string, role?: string): Promise<AuthResponse> {
@@ -120,27 +156,212 @@ class AuthService {
       return await mockAuthService.registerDetailed(userData);
     }
 
-    // Call actual registration endpoint
-    const response = await apiService.post<any>('/api/auth/register', {
-      firstName: userData.firstName,
-      lastName: userData.lastName,
-      email: userData.email,
-      password: userData.password,
-      phone: userData.phone,
-      role: userData.role || 'library_owner',
-    });
+    try {
+      const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+      const requestPayload = {
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        email: userData.email,
+        password: userData.password,
+        phone: userData.phone,
+        role: userData.role || 'library_owner',
+      };
 
-    const authData = response?.data || response;
-    this.persistAuthResponse(authData);
-    
-    return {
-      success: true,
-      message: 'Registration successful',
-      data: {
-        user: this.user!,
-        token: authData.tokens.accessToken,
-      },
-    };
+      console.log('[AuthService] ===== REGISTRATION START =====');
+      console.log('[AuthService] Request payload:', { ...requestPayload, password: '***' });
+      console.log('[AuthService] API URL:', apiUrl);
+      console.log('[AuthService] Endpoint:', `${apiUrl}/api/auth/register`);
+
+      // Call actual registration endpoint
+      let response: any;
+      try {
+        response = await apiService.post<any>('/api/auth/register', requestPayload);
+        console.log('[AuthService] ✅ API call successful');
+      } catch (apiError: any) {
+        console.error('[AuthService] ❌ API call failed:', {
+          message: apiError?.message,
+          code: apiError?.code,
+          status: apiError?.response?.status,
+          statusText: apiError?.response?.statusText,
+          responseData: apiError?.response?.data,
+          isNetworkError: !apiError?.response,
+        });
+        throw apiError;
+      }
+
+      console.log('[AuthService] Raw response received:', JSON.stringify(response, null, 2));
+      console.log('[AuthService] Response type:', typeof response);
+      console.log('[AuthService] Response structure analysis:', {
+        isObject: typeof response === 'object',
+        hasSuccess: !!response?.success,
+        successValue: response?.success,
+        hasData: !!response?.data,
+        dataType: typeof response?.data,
+        hasUser: !!response?.data?.user,
+        hasToken: !!response?.data?.token,
+        hasTokens: !!response?.data?.tokens,
+        userKeys: response?.data?.user ? Object.keys(response.data.user) : [],
+        tokensKeys: response?.data?.tokens ? Object.keys(response.data.tokens) : [],
+        fullResponseKeys: response ? Object.keys(response) : [],
+      });
+
+      // Backend returns: { success: true, data: { user, token, tokens: { accessToken, refreshToken, expiresAt } }, message }
+      // apiService.post returns response.data (the full axios response.data)
+      
+      // Step 1: Check if response has success flag
+      if (!response || typeof response !== 'object') {
+        console.error('[AuthService] ❌ Response is not an object:', response);
+        throw new Error('Invalid response: Expected object but got ' + typeof response);
+      }
+
+      // Step 2: Check success flag
+      if (response.success !== true) {
+        console.error('[AuthService] ❌ Response success is not true:', response.success);
+        const errorMsg = response.error?.message || response.message || 'Registration failed';
+        throw new Error(errorMsg);
+      }
+
+      // Step 3: Check if data exists
+      if (!response.data) {
+        console.error('[AuthService] ❌ Response.data is missing');
+        throw new Error('Invalid response: Missing data field');
+      }
+
+      const payload = response.data;
+      console.log('[AuthService] Payload structure:', {
+        hasUser: !!payload.user,
+        hasToken: !!payload.token,
+        hasTokens: !!payload.tokens,
+        userType: typeof payload.user,
+        tokenType: typeof payload.token,
+        tokensType: typeof payload.tokens,
+      });
+
+      // Step 4: Extract user and tokens
+      let user: any;
+      let accessToken: string;
+      let refreshToken: string | undefined;
+      let expiresAt: number | undefined;
+
+      // Try to get user
+      if (payload.user) {
+        user = payload.user;
+        console.log('[AuthService] ✅ User found in payload');
+      } else {
+        console.error('[AuthService] ❌ User not found in payload');
+        throw new Error('Invalid response: Missing user in data');
+      }
+
+      // Try to get tokens (prefer tokens object, fallback to token string)
+      if (payload.tokens) {
+        accessToken = payload.tokens.accessToken || payload.tokens.token || payload.token;
+        refreshToken = payload.tokens.refreshToken;
+        expiresAt = payload.tokens.expiresAt;
+        console.log('[AuthService] ✅ Tokens object found');
+      } else if (payload.token) {
+        accessToken = payload.token;
+        refreshToken = payload.refreshToken;
+        expiresAt = payload.expiresAt;
+        console.log('[AuthService] ✅ Token string found (fallback)');
+      } else {
+        console.error('[AuthService] ❌ No token or tokens found in payload');
+        throw new Error('Invalid response: Missing token or tokens in data');
+      }
+
+      if (!accessToken) {
+        console.error('[AuthService] ❌ Access token is empty');
+        throw new Error('Invalid response: Access token is missing or empty');
+      }
+
+      console.log('[AuthService] ✅ All required data extracted successfully');
+
+      // Step 5: Persist auth response
+      try {
+        this.persistAuthResponse({
+          user,
+          tokens: {
+            accessToken,
+            refreshToken,
+            expiresAt,
+          },
+        });
+        console.log('[AuthService] ✅ Auth response persisted');
+      } catch (persistError: any) {
+        console.error('[AuthService] ❌ Failed to persist auth response:', persistError);
+        throw new Error('Failed to save authentication data: ' + persistError.message);
+      }
+
+      // Step 6: Return success response
+      const result = {
+        success: true,
+        message: response.message || 'Registration successful',
+        data: {
+          user: this.user!,
+          token: accessToken,
+        },
+      };
+
+      console.log('[AuthService] ✅ Registration completed successfully');
+      console.log('[AuthService] ===== REGISTRATION END =====');
+      
+      return result;
+    } catch (error: any) {
+      console.error('[AuthService] Registration error:', error);
+      console.error('[AuthService] Error details:', {
+        message: error?.message,
+        code: error?.code,
+        response: error?.response?.data,
+        status: error?.response?.status,
+        isNetworkError: !error?.response,
+        isTimeout: error?.code === 'ECONNABORTED' || error?.code === 'ETIMEDOUT',
+        isConnectionRefused: error?.code === 'ECONNREFUSED',
+      });
+      
+      // Handle network errors
+      if (!error?.response) {
+        // Network error (no response from server)
+        if (error?.code === 'ECONNABORTED' || error?.code === 'ETIMEDOUT') {
+          throw new Error('Request timeout. The server is taking too long to respond. Please check your connection and try again.');
+        }
+        if (error?.code === 'ECONNREFUSED') {
+          throw new Error('Cannot connect to server. Please ensure the backend is running and the API URL is correct.');
+        }
+        if (error?.message?.includes('Network Error') || error?.message?.includes('network')) {
+          throw new Error('Network error. Unable to reach the server. Please check your internet connection and try again.');
+        }
+        throw new Error('Unable to connect to the server. Please check your connection and try again.');
+      }
+      
+      // Handle HTTP errors
+      const status = error?.response?.status;
+      if (status === 400) {
+        const errorMessage = error?.response?.data?.error?.message || 
+                           error?.response?.data?.message || 
+                           'Invalid registration data. Please check your input.';
+        throw new Error(errorMessage);
+      }
+      if (status === 401) {
+        throw new Error('Authentication failed. Please try again.');
+      }
+      if (status === 403) {
+        throw new Error('Registration is not allowed. Please contact support.');
+      }
+      if (status === 409) {
+        throw new Error('An account with this email already exists. Please use a different email or try logging in.');
+      }
+      if (status >= 500) {
+        throw new Error('Server error. Please try again later or contact support if the problem persists.');
+      }
+      
+      // Extract error message from response
+      const errorMessage = error?.response?.data?.error?.message || 
+                          error?.response?.data?.message || 
+                          error?.message || 
+                          error?.error ||
+                          'Registration failed. Please try again.';
+      
+      throw new Error(errorMessage);
+    }
   }
 
   async logout(): Promise<void> {
