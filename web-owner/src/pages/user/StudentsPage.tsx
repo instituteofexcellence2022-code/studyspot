@@ -69,7 +69,7 @@ const StudentsPageEnhanced: React.FC = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
-  const [currentStudent, setCurrentStudent] = useState<Partial<Student & { studentId?: string; district?: string }>>({
+  const [currentStudent, setCurrentStudent] = useState<Partial<Student & { studentId?: string; district?: string; city?: string; state?: string }>>({
     firstName: '',
     lastName: '',
     email: '',
@@ -174,9 +174,15 @@ const StudentsPageEnhanced: React.FC = () => {
         const postOffice = data[0].PostOffice[0];
         setCurrentStudent(prev => ({
           ...prev,
-          city: postOffice.District || prev.city,
-          state: postOffice.State || prev.state,
-          district: postOffice.District || prev.district,
+          city: postOffice.District || (prev as any).city,
+          state: postOffice.State || (prev as any).state,
+          district: postOffice.District || (prev as any).district,
+          // Also update address object if it exists
+          address: {
+            ...prev.address,
+            city: postOffice.District || prev.address?.city,
+            state: postOffice.State || prev.address?.state,
+          },
         }));
       }
     } catch (error) {
