@@ -11,12 +11,43 @@
 -- Distinguish between platform admins and library owners
 -- ============================================
 
--- Add user_type to distinguish platform admins from library owners
+-- Step 1: Add user_type column (nullable first, no constraint yet)
 ALTER TABLE admin_users 
-ADD COLUMN IF NOT EXISTS user_type VARCHAR(50) DEFAULT 'platform_admin' 
+ADD COLUMN IF NOT EXISTS user_type VARCHAR(50);
+
+-- Step 2: Update existing data BEFORE adding constraint
+-- Set user_type for existing users based on tenant_id
+UPDATE admin_users 
+SET user_type = 'platform_admin'
+WHERE tenant_id IS NULL 
+AND user_type IS NULL;
+
+UPDATE admin_users 
+SET user_type = 'library_owner'
+WHERE tenant_id IS NOT NULL 
+AND user_type IS NULL;
+
+-- Step 3: Update roles for library owners to match constraint
+UPDATE admin_users 
+SET role = 'library_owner'
+WHERE user_type = 'library_owner'
+AND role != 'library_owner'
+AND role NOT IN ('super_admin', 'admin', 'support', 'analyst', 'sales', 'finance');
+
+-- Step 4: Set default for any remaining NULL values (safety check)
+UPDATE admin_users 
+SET user_type = 'platform_admin'
+WHERE user_type IS NULL;
+
+-- Step 5: Now add the NOT NULL constraint and check constraint
+ALTER TABLE admin_users 
+ALTER COLUMN user_type SET NOT NULL;
+
+ALTER TABLE admin_users 
+ADD CONSTRAINT admin_users_user_type_check 
 CHECK (user_type IN ('platform_admin', 'library_owner'));
 
--- Update role constraints to include library_owner
+-- Step 6: Update role constraints (drop old, add new)
 ALTER TABLE admin_users 
 DROP CONSTRAINT IF EXISTS admin_users_role_check;
 
