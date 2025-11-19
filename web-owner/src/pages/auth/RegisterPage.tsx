@@ -10,6 +10,9 @@ import {
   IconButton,
   Alert,
   Collapse,
+  Menu,
+  MenuItem,
+  Chip,
 } from '@mui/material';
 import { GridLegacy as Grid } from '@mui/material';
 import {
@@ -51,6 +54,7 @@ const RegisterPage: React.FC = () => {
   const [showApiInfo, setShowApiInfo] = useState(false);
   const [healthStatus, setHealthStatus] = useState<HealthStatus | null>(null);
   const [isCheckingHealth, setIsCheckingHealth] = useState(false);
+  const [healthMenuAnchor, setHealthMenuAnchor] = useState<null | HTMLElement>(null);
 
   // Clear any previous errors when component mounts
   useEffect(() => {
@@ -203,107 +207,85 @@ const RegisterPage: React.FC = () => {
         Sign up to manage your library with 🎓 STUDYSPOT
       </Typography>
 
-      {/* Backend Health Status */}
-      <Box sx={{ mb: 2 }}>
-        {healthStatus && (
-          <Alert 
-            severity={
-              healthStatus.isHealthy 
-                ? 'success' 
-                : healthStatus.status === 'checking' 
-                  ? 'info' 
-                  : 'error'
-            }
+      {/* Backend Health Status - Compact Dropdown */}
+      {healthStatus && !healthStatus.isHealthy && (
+        <Box sx={{ mb: 2, display: 'flex', justifyContent: 'flex-end' }}>
+          <Chip
             icon={
-              healthStatus.isHealthy 
-                ? <CheckCircle /> 
-                : healthStatus.status === 'checking'
-                  ? <Refresh />
-                  : <ErrorIcon />
+              healthStatus.status === 'checking' ? (
+                <Refresh fontSize="small" sx={{ animation: 'spin 1s linear infinite', '@keyframes spin': { '0%': { transform: 'rotate(0deg)' }, '100%': { transform: 'rotate(360deg)' } } }} />
+              ) : (
+                <CloudOff fontSize="small" />
+              )
             }
-            action={
-              <IconButton
-                size="small"
-                onClick={checkBackendHealth}
-                disabled={isCheckingHealth}
-                sx={{ ml: 1 }}
-              >
-                <Refresh fontSize="small" />
-              </IconButton>
-            }
-            sx={{ mb: 1 }}
+            label="Backend Status"
+            onClick={(e) => setHealthMenuAnchor(e.currentTarget)}
+            color={healthStatus.isHealthy ? 'success' : 'warning'}
+            size="small"
+            sx={{ cursor: 'pointer' }}
+          />
+          <Menu
+            anchorEl={healthMenuAnchor}
+            open={Boolean(healthMenuAnchor)}
+            onClose={() => setHealthMenuAnchor(null)}
+            PaperProps={{
+              sx: { minWidth: 300, maxWidth: 400 }
+            }}
           >
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+            <MenuItem disabled>
               <Box>
-                <Typography variant="body2" fontWeight={600}>
+                <Typography variant="caption" fontWeight={600} display="block">
                   {healthStatus.isHealthy ? 'Backend Connected' : 'Backend Unavailable'}
                 </Typography>
-                <Typography variant="caption" color="text.secondary" component="div">
+                <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
                   {healthStatus.message}
                   {healthStatus.latency && ` (${healthStatus.latency}ms)`}
-                  {!healthStatus.isHealthy && (
-                    <Box sx={{ mt: 0.5, fontSize: '0.7rem' }}>
-                      <Typography variant="caption" component="div">
-                        API URL: {process.env.REACT_APP_API_URL || 'http://localhost:3001'}
-                      </Typography>
-                      <Typography variant="caption" component="div" sx={{ mt: 0.25 }}>
-                        Troubleshooting: Check if backend is running, verify API URL in .env file, or restart the dev server.
-                      </Typography>
-                    </Box>
-                  )}
                 </Typography>
               </Box>
-            </Box>
-          </Alert>
-        )}
-        
-        {/* API Configuration Info */}
-        <Button
-          size="small"
-          startIcon={<Info />}
-          endIcon={showApiInfo ? <ExpandLess /> : <ExpandMore />}
-          onClick={() => setShowApiInfo(!showApiInfo)}
-          sx={{ textTransform: 'none', fontSize: '0.75rem' }}
-        >
-          API Configuration
-        </Button>
-        <Collapse in={showApiInfo}>
-          <Alert severity="info" sx={{ mt: 1 }}>
-            <Typography variant="caption" component="div">
-              <strong>API URL:</strong> {process.env.REACT_APP_API_URL || 'http://localhost:3001'}
-            </Typography>
-            <Typography variant="caption" component="div" sx={{ mt: 0.5 }}>
-              If you see network errors, ensure the backend is running and accessible at this URL.
-            </Typography>
-            {healthStatus && (
-              <>
-                <Typography variant="caption" component="div" sx={{ mt: 0.5, fontStyle: 'italic' }}>
-                  Last checked: {new Date(healthStatus.timestamp).toLocaleTimeString()}
+            </MenuItem>
+            <MenuItem disabled>
+              <Typography variant="caption" color="text.secondary">
+                API URL: {process.env.REACT_APP_API_URL || 'http://localhost:3001'}
+              </Typography>
+            </MenuItem>
+            {!healthStatus.isHealthy && (
+              <MenuItem disabled>
+                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
+                  Troubleshooting: Check if backend is running, verify API URL in .env file, or restart the dev server.
                 </Typography>
-                <Button
-                  size="small"
-                  variant="outlined"
-                  onClick={async () => {
-                    const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:3001';
-                    console.log('Testing connection to:', apiUrl);
-                    const healthTest = await testBackendConnection(apiUrl);
-                    const regTest = await testRegistrationEndpoint(apiUrl);
-                    console.log('Health test:', healthTest);
-                    console.log('Registration endpoint test:', regTest);
-                    dispatch(showSnackbar({
-                      message: `Connection test: Health ${healthTest.success ? '✅' : '❌'}, Registration ${regTest.success ? '✅' : '❌'}`,
-                      severity: healthTest.success && regTest.success ? 'success' : 'error',
-                    }));
-                  }}
-                  sx={{ mt: 1, fontSize: '0.7rem' }}
-                >
-                  Test Connection
-                </Button>
-              </>
+              </MenuItem>
             )}
-          </Alert>
-        </Collapse>
-      </Box>
+            <MenuItem 
+              onClick={async () => {
+                await checkBackendHealth();
+                setHealthMenuAnchor(null);
+              }}
+              disabled={isCheckingHealth}
+            >
+              <Refresh fontSize="small" sx={{ mr: 1 }} />
+              Refresh Status
+            </MenuItem>
+            <MenuItem 
+              onClick={async () => {
+                const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+                console.log('Testing connection to:', apiUrl);
+                const healthTest = await testBackendConnection(apiUrl);
+                const regTest = await testRegistrationEndpoint(apiUrl);
+                console.log('Health test:', healthTest);
+                console.log('Registration endpoint test:', regTest);
+                dispatch(showSnackbar({
+                  message: `Connection test: Health ${healthTest.success ? '✅' : '❌'}, Registration ${regTest.success ? '✅' : '❌'}`,
+                  severity: healthTest.success && regTest.success ? 'success' : 'error',
+                }));
+                setHealthMenuAnchor(null);
+              }}
+            >
+              <Info fontSize="small" sx={{ mr: 1 }} />
+              Test Connection
+            </MenuItem>
+          </Menu>
+        </Box>
+      )}
 
       {/* Error messages are now shown via GlobalSnackbar instead */}
 
