@@ -849,6 +849,8 @@ const StudentsPageAdvanced: React.FC = () => {
           overflowX: 'auto',
           overflowY: 'auto',
           maxHeight: 'calc(100vh - 500px)',
+          // Fixed min height to prevent layout shifts when empty
+          minHeight: 300,
           // Optimize scrolling performance
           WebkitOverflowScrolling: 'touch',
           scrollBehavior: 'smooth',
@@ -876,10 +878,51 @@ const StudentsPageAdvanced: React.FC = () => {
               <CircularProgress />
             </Box>
           ) : filteredStudents.length === 0 ? (
-            <Box sx={{ p: 4, textAlign: 'center' }}>
-              <PersonIcon sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />
-              <Typography variant="h6" color="text.secondary">No students found</Typography>
-              <Button startIcon={<AddIcon />} onClick={() => setAddDialogOpen(true)} sx={{ mt: 2 }}>
+            <Box sx={{ 
+              p: 4, 
+              textAlign: 'center',
+              // Fixed dimensions to prevent layout shifts
+              minHeight: 300,
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              alignItems: 'center',
+              // Prevent layout shifts
+              position: 'relative',
+            }}>
+              <PersonIcon sx={{ 
+                fontSize: 48, 
+                color: 'text.secondary', 
+                mb: 2,
+                // Prevent icon from causing shifts
+                flexShrink: 0,
+              }} />
+              <Typography 
+                variant="h6" 
+                color="text.secondary"
+                sx={{
+                  mb: 2,
+                  // Fixed height to prevent shifts
+                  minHeight: 32,
+                }}
+              >
+                No students found
+              </Typography>
+              <Button 
+                startIcon={<AddIcon />} 
+                onClick={() => { 
+                  setEditMode(false); 
+                  setCurrentStudent({}); 
+                  setAddDialogOpen(true); 
+                }} 
+                variant="contained"
+                sx={{ 
+                  mt: 2,
+                  // Fixed height to prevent shifts
+                  minHeight: 40,
+                  minWidth: 200,
+                }}
+              >
                 Add Your First Student
               </Button>
             </Box>
