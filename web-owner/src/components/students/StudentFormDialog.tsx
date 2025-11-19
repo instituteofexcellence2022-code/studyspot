@@ -173,31 +173,40 @@ const StudentFormDialog: React.FC<StudentFormProps> = ({ open, onClose, onSave, 
     switch (step) {
       case 0: // Personal Info
         return (
-          <Grid container spacing={2}>
-            <Grid item xs={12} sx={{ textAlign: 'center', mb: 2 }}>
-              <Avatar sx={{ width: 100, height: 100, margin: '0 auto', mb: 2, bgcolor: 'primary.main' }}>
-                {formData.firstName?.charAt(0)}{formData.lastName?.charAt(0) || ''}
-              </Avatar>
-              <input
-                accept="image/*"
-                style={{ display: 'none' }}
-                id="photo-upload"
-                type="file"
-              />
-              <label htmlFor="photo-upload">
-                <Button variant="outlined" component="span" startIcon={<PhotoCamera />} size="small">
-                  Upload Photo (Optional)
-                </Button>
-              </label>
+          <Grid container spacing={1.5}>
+            <Grid item xs={12} sx={{ textAlign: 'center', mb: 1 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+                <Avatar sx={{ width: 64, height: 64, bgcolor: 'primary.main', fontSize: '1.5rem', fontWeight: 700 }}>
+                  {formData.firstName?.charAt(0)}{formData.lastName?.charAt(0) || ''}
+                </Avatar>
+                <input
+                  accept="image/*"
+                  style={{ display: 'none' }}
+                  id="photo-upload"
+                  type="file"
+                />
+                <label htmlFor="photo-upload">
+                  <Button 
+                    variant="outlined" 
+                    component="span" 
+                    startIcon={<PhotoCamera />} 
+                    size="small"
+                    sx={{ fontSize: '0.75rem', py: 0.5 }}
+                  >
+                    Upload Photo
+                  </Button>
+                </label>
+              </Box>
             </Grid>
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
+                size="small"
                 label="First Name *"
                 value={formData.firstName}
                 onChange={(e) => handleChange('firstName', e.target.value)}
                 error={!!errors.firstName}
-                helperText={errors.firstName || 'Required - minimum 2 characters'}
+                helperText={errors.firstName || 'Required'}
                 autoFocus
                 placeholder="Enter first name"
               />
@@ -205,16 +214,18 @@ const StudentFormDialog: React.FC<StudentFormProps> = ({ open, onClose, onSave, 
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
+                size="small"
                 label="Last Name (Optional)"
                 value={formData.lastName}
                 onChange={(e) => handleChange('lastName', e.target.value)}
                 error={!!errors.lastName}
-                helperText={errors.lastName || 'Optional - leave blank if not applicable'}
+                helperText={errors.lastName || 'Optional'}
               />
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid item xs={12} sm={4}>
               <TextField
                 fullWidth
+                size="small"
                 label="Date of Birth"
                 type="date"
                 value={formData.dateOfBirth}
@@ -222,8 +233,8 @@ const StudentFormDialog: React.FC<StudentFormProps> = ({ open, onClose, onSave, 
                 InputLabelProps={{ shrink: true }}
               />
             </Grid>
-            <Grid item xs={12} sm={6}>
-              <FormControl fullWidth>
+            <Grid item xs={12} sm={4}>
+              <FormControl fullWidth size="small">
                 <InputLabel>Gender</InputLabel>
                 <Select
                   value={formData.gender}
@@ -237,8 +248,8 @@ const StudentFormDialog: React.FC<StudentFormProps> = ({ open, onClose, onSave, 
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} sm={6}>
-              <FormControl fullWidth>
+            <Grid item xs={12} sm={4}>
+              <FormControl fullWidth size="small">
                 <InputLabel>Blood Group</InputLabel>
                 <Select
                   value={formData.bloodGroup}
@@ -256,25 +267,29 @@ const StudentFormDialog: React.FC<StudentFormProps> = ({ open, onClose, onSave, 
 
       case 1: // Contact Details
         return (
-          <Grid container spacing={2}>
+          <Grid container spacing={1.5}>
             <Grid item xs={12}>
-              <Alert severity="info">Contact information for communication and emergencies</Alert>
+              <Alert severity="info" sx={{ py: 1, fontSize: '0.813rem' }}>
+                Contact information for communication and emergencies
+              </Alert>
             </Grid>
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
+                size="small"
                 label="Email *"
                 type="email"
                 value={formData.email}
                 onChange={(e) => handleChange('email', e.target.value)}
                 error={!!errors.email}
-                helperText={errors.email || 'We\'ll use this for communication and login'}
+                helperText={errors.email || 'Required'}
                 placeholder="student@example.com"
               />
             </Grid>
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
+                size="small"
                 label="Phone (Optional)"
                 value={formData.phone}
                 onChange={(e) => {
@@ -283,40 +298,41 @@ const StudentFormDialog: React.FC<StudentFormProps> = ({ open, onClose, onSave, 
                   handleChange('phone', phone);
                 }}
                 error={!!errors.phone}
-                helperText={errors.phone || '10-digit mobile number (optional)'}
+                helperText={errors.phone || '10 digits'}
                 placeholder="9876543210"
                 inputProps={{ maxLength: 10 }}
               />
             </Grid>
             <Grid item xs={12}>
               <Divider sx={{ my: 1 }}>
-                <Chip label="Address (Optional)" size="small" />
+                <Chip label="Address (Optional)" size="small" sx={{ fontSize: '0.688rem' }} />
               </Divider>
             </Grid>
 
             {/* PIN Code - Enter First for Auto-fill */}
-            <Grid item xs={12}>
+            <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
-                label="PIN Code (Enter first to auto-fill)"
+                size="small"
+                label="PIN Code (Auto-fill)"
                 value={formData.pincode || formData.postalCode || ''}
                 onChange={(e) => handlePincodeChange(e.target.value)}
                 placeholder="110001"
                 inputProps={{ maxLength: 6 }}
                 InputProps={{
-                  startAdornment: <LocationOn sx={{ fontSize: 18, color: 'text.secondary', mr: 1 }} />,
+                  startAdornment: <LocationOn sx={{ fontSize: 16, color: 'text.secondary', mr: 0.5 }} />,
                   endAdornment: fetchingPincode ? (
-                    <CircularProgress size={16} sx={{ mr: 1 }} />
+                    <CircularProgress size={14} sx={{ mr: 0.5 }} />
                   ) : formData.pincode?.length === 6 ? (
-                    <CheckCircle sx={{ fontSize: 18, color: '#10b981', mr: 1 }} />
+                    <CheckCircle sx={{ fontSize: 16, color: '#10b981', mr: 0.5 }} />
                   ) : null,
                 }}
                 helperText={
                   fetchingPincode 
-                    ? 'Loading address...'
+                    ? 'Loading...'
                     : formData.pincode?.length === 6 && !fetchingPincode
-                    ? 'City, State & District auto-filled'
-                    : 'Enter 6-digit PIN code to auto-fill address'
+                    ? 'Auto-filled'
+                    : 'Enter 6 digits'
                 }
               />
             </Grid>
@@ -325,14 +341,15 @@ const StudentFormDialog: React.FC<StudentFormProps> = ({ open, onClose, onSave, 
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
+                size="small"
                 label="District"
                 value={formData.district || ''}
                 onChange={(e) => handleChange('district', e.target.value)}
                 placeholder="District"
                 InputProps={{
-                  startAdornment: <LocationOn sx={{ fontSize: 18, color: 'text.secondary', mr: 1 }} />,
+                  startAdornment: <LocationOn sx={{ fontSize: 16, color: 'text.secondary', mr: 0.5 }} />,
                   endAdornment: formData.district && !fetchingPincode ? (
-                    <CheckCircle sx={{ fontSize: 16, color: '#10b981', mr: 1 }} />
+                    <CheckCircle sx={{ fontSize: 14, color: '#10b981', mr: 0.5 }} />
                   ) : null,
                 }}
               />
@@ -342,6 +359,7 @@ const StudentFormDialog: React.FC<StudentFormProps> = ({ open, onClose, onSave, 
             <Grid item xs={12} sm={6}>
               <Autocomplete
                 freeSolo
+                size="small"
                 options={[
                   'Mumbai', 'Delhi', 'Bangalore', 'Hyderabad', 'Chennai', 'Kolkata', 
                   'Pune', 'Ahmedabad', 'Jaipur', 'Surat', 'Lucknow', 'Kanpur',
@@ -362,9 +380,9 @@ const StudentFormDialog: React.FC<StudentFormProps> = ({ open, onClose, onSave, 
                     placeholder="City"
                     InputProps={{
                       ...params.InputProps,
-                      startAdornment: <LocationOn sx={{ fontSize: 18, color: 'text.secondary', mr: 1 }} />,
+                      startAdornment: <LocationOn sx={{ fontSize: 16, color: 'text.secondary', mr: 0.5 }} />,
                       endAdornment: formData.city && !fetchingPincode ? (
-                        <CheckCircle sx={{ fontSize: 16, color: '#10b981', mr: 1 }} />
+                        <CheckCircle sx={{ fontSize: 14, color: '#10b981', mr: 0.5 }} />
                       ) : params.InputProps.endAdornment,
                     }}
                   />
@@ -376,6 +394,7 @@ const StudentFormDialog: React.FC<StudentFormProps> = ({ open, onClose, onSave, 
             <Grid item xs={12} sm={6}>
               <Autocomplete
                 freeSolo
+                size="small"
                 options={[
                   'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
                   'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka',
@@ -399,9 +418,9 @@ const StudentFormDialog: React.FC<StudentFormProps> = ({ open, onClose, onSave, 
                     placeholder="State"
                     InputProps={{
                       ...params.InputProps,
-                      startAdornment: <LocationOn sx={{ fontSize: 18, color: 'text.secondary', mr: 1 }} />,
+                      startAdornment: <LocationOn sx={{ fontSize: 16, color: 'text.secondary', mr: 0.5 }} />,
                       endAdornment: formData.state && !fetchingPincode ? (
-                        <CheckCircle sx={{ fontSize: 16, color: '#10b981', mr: 1 }} />
+                        <CheckCircle sx={{ fontSize: 14, color: '#10b981', mr: 0.5 }} />
                       ) : params.InputProps.endAdornment,
                     }}
                   />
@@ -413,6 +432,7 @@ const StudentFormDialog: React.FC<StudentFormProps> = ({ open, onClose, onSave, 
             <Grid item xs={12}>
               <TextField
                 fullWidth
+                size="small"
                 label="Address Line 1"
                 value={formData.addressLine1}
                 onChange={(e) => handleChange('addressLine1', e.target.value)}
@@ -424,10 +444,11 @@ const StudentFormDialog: React.FC<StudentFormProps> = ({ open, onClose, onSave, 
             <Grid item xs={12}>
               <TextField
                 fullWidth
+                size="small"
                 label="Address Line 2 (Optional)"
                 value={formData.addressLine2 || ''}
                 onChange={(e) => handleChange('addressLine2', e.target.value)}
-                placeholder="Area, Landmark (Optional)"
+                placeholder="Area, Landmark"
               />
             </Grid>
 
@@ -435,6 +456,7 @@ const StudentFormDialog: React.FC<StudentFormProps> = ({ open, onClose, onSave, 
             <Grid item xs={12}>
               <TextField
                 fullWidth
+                size="small"
                 label="Country"
                 value={formData.country || 'India'}
                 onChange={(e) => handleChange('country', e.target.value)}
@@ -444,32 +466,48 @@ const StudentFormDialog: React.FC<StudentFormProps> = ({ open, onClose, onSave, 
             </Grid>
             <Grid item xs={12}>
               <Divider sx={{ my: 1 }}>
-                <Chip label="Guardian / Emergency Contact" size="small" />
+                <Chip label="Guardian / Emergency Contact (Optional)" size="small" sx={{ fontSize: '0.688rem' }} />
               </Divider>
             </Grid>
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
+                size="small"
                 label="Guardian Name"
                 value={formData.guardianName}
                 onChange={(e) => handleChange('guardianName', e.target.value)}
+                placeholder="Guardian name"
               />
             </Grid>
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
+                size="small"
                 label="Guardian Phone"
                 value={formData.guardianPhone}
-                onChange={(e) => handleChange('guardianPhone', e.target.value)}
+                onChange={(e) => {
+                  let phone = e.target.value.replace(/\D/g, '');
+                  if (phone.length > 10) phone = phone.slice(0, 10);
+                  handleChange('guardianPhone', phone);
+                }}
+                placeholder="9876543210"
+                inputProps={{ maxLength: 10 }}
               />
             </Grid>
             <Grid item xs={12}>
               <TextField
                 fullWidth
+                size="small"
                 label="Emergency Contact"
                 value={formData.emergencyContact}
-                onChange={(e) => handleChange('emergencyContact', e.target.value)}
-                helperText="Alternate contact number for emergencies"
+                onChange={(e) => {
+                  let phone = e.target.value.replace(/\D/g, '');
+                  if (phone.length > 10) phone = phone.slice(0, 10);
+                  handleChange('emergencyContact', phone);
+                }}
+                helperText="Alternate contact for emergencies"
+                placeholder="9876543210"
+                inputProps={{ maxLength: 10 }}
               />
             </Grid>
           </Grid>
@@ -477,64 +515,54 @@ const StudentFormDialog: React.FC<StudentFormProps> = ({ open, onClose, onSave, 
 
       case 2: // Fee & Plan
         return (
-          <Grid container spacing={2}>
+          <Grid container spacing={1.5}>
             <Grid item xs={12}>
-              <Alert severity="info">Configure student's plan and fee status</Alert>
+              <Alert severity="info" sx={{ py: 1, fontSize: '0.813rem' }}>
+                Configure student's plan and fee status
+              </Alert>
             </Grid>
             <Grid item xs={12} sm={6}>
-              <FormControl fullWidth>
-                <InputLabel>Current Plan (Default: Monthly Premium)</InputLabel>
+              <FormControl fullWidth size="small">
+                <InputLabel>Plan (Default: Monthly Premium)</InputLabel>
                 <Select
                   value={formData.currentPlan || 'Monthly Premium'}
-                  label="Current Plan (Default: Monthly Premium)"
+                  label="Plan (Default: Monthly Premium)"
                   onChange={(e) => handleChange('currentPlan', e.target.value)}
                 >
-                  <MenuItem value="Hourly Plan">Hourly Plan - ₹50/hour</MenuItem>
-                  <MenuItem value="Daily Plan">Daily Plan - ₹200/day</MenuItem>
-                  <MenuItem value="Weekly Plan">Weekly Plan - ₹1,000/week</MenuItem>
-                  <MenuItem value="Monthly Basic">Monthly Basic - ₹3,000/month</MenuItem>
-                  <MenuItem value="Monthly Premium">Monthly Premium - ₹5,000/month (Recommended)</MenuItem>
-                  <MenuItem value="Quarterly Plan">Quarterly Plan - ₹12,000/quarter</MenuItem>
-                  <MenuItem value="Annual Plan">Annual Plan - ₹40,000/year</MenuItem>
+                  <MenuItem value="Hourly Plan">Hourly - ₹50/hr</MenuItem>
+                  <MenuItem value="Daily Plan">Daily - ₹200/day</MenuItem>
+                  <MenuItem value="Weekly Plan">Weekly - ₹1,000/wk</MenuItem>
+                  <MenuItem value="Monthly Basic">Monthly Basic - ₹3,000/mo</MenuItem>
+                  <MenuItem value="Monthly Premium">Monthly Premium - ₹5,000/mo ⭐</MenuItem>
+                  <MenuItem value="Quarterly Plan">Quarterly - ₹12,000/qtr</MenuItem>
+                  <MenuItem value="Annual Plan">Annual - ₹40,000/yr</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
             <Grid item xs={12} sm={6}>
-              <FormControl fullWidth>
+              <FormControl fullWidth size="small">
                 <InputLabel>Fee Status</InputLabel>
                 <Select
-                  value={formData.feeStatus}
+                  value={formData.feeStatus || 'pending'}
                   label="Fee Status"
                   onChange={(e) => handleChange('feeStatus', e.target.value)}
                 >
-                  <MenuItem value="paid">
-                    <Chip label="Paid" color="success" size="small" sx={{ mr: 1 }} />
-                    Paid
-                  </MenuItem>
-                  <MenuItem value="pending">
-                    <Chip label="Pending" color="warning" size="small" sx={{ mr: 1 }} />
-                    Pending
-                  </MenuItem>
-                  <MenuItem value="overdue">
-                    <Chip label="Overdue" color="error" size="small" sx={{ mr: 1 }} />
-                    Overdue
-                  </MenuItem>
-                  <MenuItem value="partial">
-                    <Chip label="Partial" color="info" size="small" sx={{ mr: 1 }} />
-                    Partial
-                  </MenuItem>
+                  <MenuItem value="paid">Paid</MenuItem>
+                  <MenuItem value="pending">Pending (Default)</MenuItem>
+                  <MenuItem value="overdue">Overdue</MenuItem>
+                  <MenuItem value="partial">Partial</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
             <Grid item xs={12} sm={6}>
-              <FormControl fullWidth>
+              <FormControl fullWidth size="small">
                 <InputLabel>Student Status</InputLabel>
                 <Select
-                  value={formData.status}
+                  value={formData.status || 'active'}
                   label="Student Status"
                   onChange={(e) => handleChange('status', e.target.value)}
                 >
-                  <MenuItem value="active">Active</MenuItem>
+                  <MenuItem value="active">Active (Default)</MenuItem>
                   <MenuItem value="inactive">Inactive</MenuItem>
                   <MenuItem value="suspended">Suspended</MenuItem>
                   <MenuItem value="graduated">Graduated</MenuItem>
@@ -546,55 +574,57 @@ const StudentFormDialog: React.FC<StudentFormProps> = ({ open, onClose, onSave, 
 
       case 3: // KYC & Extras
         return (
-          <Grid container spacing={2}>
+          <Grid container spacing={1.5}>
             <Grid item xs={12}>
-              <Alert severity="info">Additional information and grouping</Alert>
+              <Alert severity="info" sx={{ py: 1, fontSize: '0.813rem' }}>
+                Additional information and grouping (Optional)
+              </Alert>
             </Grid>
-            <Grid item xs={12}>
-              <FormControl fullWidth>
-                <InputLabel>Groups</InputLabel>
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Groups (Optional)</InputLabel>
                 <Select
                   multiple
                   value={formData.groups}
                   onChange={(e) => handleChange('groups', e.target.value)}
-                  input={<OutlinedInput label="Groups" />}
+                  input={<OutlinedInput label="Groups (Optional)" />}
                   renderValue={(selected) => (
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                       {(selected as string[]).map((value) => (
-                        <Chip key={value} label={value} size="small" />
+                        <Chip key={value} label={value} size="small" sx={{ fontSize: '0.688rem', height: 20 }} />
                       ))}
                     </Box>
                   )}
                 >
                   {['Morning Batch', 'Evening Batch', 'Weekend Batch', 'Competitive Exams', 'Regular Students'].map((group) => (
                     <MenuItem key={group} value={group}>
-                      <Checkbox checked={formData.groups.includes(group)} />
-                      <ListItemText primary={group} />
+                      <Checkbox checked={formData.groups.includes(group)} size="small" />
+                      <ListItemText primary={group} primaryTypographyProps={{ fontSize: '0.813rem' }} />
                     </MenuItem>
                   ))}
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12}>
-              <FormControl fullWidth>
-                <InputLabel>Tags</InputLabel>
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Tags (Optional)</InputLabel>
                 <Select
                   multiple
                   value={formData.tags}
                   onChange={(e) => handleChange('tags', e.target.value)}
-                  input={<OutlinedInput label="Tags" />}
+                  input={<OutlinedInput label="Tags (Optional)" />}
                   renderValue={(selected) => (
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                       {(selected as string[]).map((value) => (
-                        <Chip key={value} label={value} size="small" color="primary" />
+                        <Chip key={value} label={value} size="small" color="primary" sx={{ fontSize: '0.688rem', height: 20 }} />
                       ))}
                     </Box>
                   )}
                 >
                   {['VIP', 'Scholarship', 'Long-term', 'New', 'Priority'].map((tag) => (
                     <MenuItem key={tag} value={tag}>
-                      <Checkbox checked={formData.tags.includes(tag)} />
-                      <ListItemText primary={tag} />
+                      <Checkbox checked={formData.tags.includes(tag)} size="small" />
+                      <ListItemText primary={tag} primaryTypographyProps={{ fontSize: '0.813rem' }} />
                     </MenuItem>
                   ))}
                 </Select>
@@ -603,9 +633,10 @@ const StudentFormDialog: React.FC<StudentFormProps> = ({ open, onClose, onSave, 
             <Grid item xs={12}>
               <TextField
                 fullWidth
+                size="small"
                 multiline
-                rows={4}
-                label="Notes"
+                rows={3}
+                label="Notes (Optional)"
                 value={formData.notes}
                 onChange={(e) => handleChange('notes', e.target.value)}
                 placeholder="Add any additional notes about the student..."
@@ -613,7 +644,7 @@ const StudentFormDialog: React.FC<StudentFormProps> = ({ open, onClose, onSave, 
             </Grid>
             <Grid item xs={12}>
               <Divider sx={{ my: 1 }}>
-                <Chip label="KYC Documents" size="small" />
+                <Chip label="KYC Documents (Optional)" size="small" sx={{ fontSize: '0.688rem' }} />
               </Divider>
             </Grid>
             <Grid item xs={12}>
@@ -625,12 +656,18 @@ const StudentFormDialog: React.FC<StudentFormProps> = ({ open, onClose, onSave, 
                 multiple
               />
               <label htmlFor="kyc-upload">
-                <Button variant="outlined" component="span" fullWidth>
+                <Button 
+                  variant="outlined" 
+                  component="span" 
+                  fullWidth
+                  size="small"
+                  sx={{ fontSize: '0.813rem', py: 1 }}
+                >
                   Upload KYC Documents (Aadhaar, ID Proof, Photo)
                 </Button>
               </label>
-              <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
-                Accepted formats: JPG, PNG, PDF (Max 5MB each)
+              <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5, fontSize: '0.688rem' }}>
+                JPG, PNG, PDF (Max 5MB each)
               </Typography>
             </Grid>
           </Grid>
@@ -642,44 +679,69 @@ const StudentFormDialog: React.FC<StudentFormProps> = ({ open, onClose, onSave, 
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-      <DialogTitle>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Box>
-            {editMode ? 'Edit Student' : 'Add New Student'}
-            <Typography variant="caption" display="block" color="text.secondary" sx={{ mt: 0.5 }}>
+    <Dialog 
+      open={open} 
+      onClose={onClose} 
+      maxWidth="md" 
+      fullWidth
+      PaperProps={{
+        sx: {
+          borderRadius: 3,
+          maxHeight: '90vh',
+        }
+      }}
+    >
+      <DialogTitle sx={{ pb: 1.5 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <Box sx={{ flex: 1 }}>
+            <Typography variant="h6" fontWeight={700} sx={{ mb: 0.5 }}>
+              {editMode ? 'Edit Student' : 'Add New Student'}
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
               {editMode ? 'Update student information' : 'Quick registration - only first name and email required'}
             </Typography>
           </Box>
         </Box>
       </DialogTitle>
-      <DialogContent>
+      <DialogContent sx={{ px: 3, py: 2 }}>
         {!editMode && (
-          <Alert severity="info" sx={{ mb: 2 }}>
-            <Typography variant="body2">
-              <strong>Quick Add:</strong> Fill in first name and email to create student. Other fields can be added later.
-            </Typography>
+          <Alert 
+            severity="info" 
+            sx={{ 
+              mb: 2, 
+              py: 1,
+              '& .MuiAlert-message': { fontSize: '0.813rem' }
+            }}
+          >
+            <strong>Quick Add:</strong> Fill in first name and email to create student. Other fields can be added later.
           </Alert>
         )}
-        <Box sx={{ mt: 2 }}>
-          <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
+        <Box>
+          <Stepper activeStep={activeStep} sx={{ mb: 3, '& .MuiStepLabel-root': { fontSize: '0.75rem' } }}>
             {steps.map((label) => (
               <Step key={label}>
-                <StepLabel>{label}</StepLabel>
+                <StepLabel sx={{ '& .MuiStepLabel-label': { fontSize: '0.75rem', fontWeight: 600 } }}>
+                  {label}
+                </StepLabel>
               </Step>
             ))}
           </Stepper>
-          {renderStepContent(activeStep)}
+          <Box sx={{ maxHeight: 'calc(90vh - 280px)', overflowY: 'auto', pr: 1 }}>
+            {renderStepContent(activeStep)}
+          </Box>
         </Box>
       </DialogContent>
-      <DialogActions sx={{ justifyContent: 'space-between', px: 3, pb: 2 }}>
-        <Button onClick={onClose}>Cancel</Button>
-        <Box>
+      <DialogActions sx={{ justifyContent: 'space-between', px: 3, pb: 2, pt: 1.5 }}>
+        <Button onClick={onClose} size="small" sx={{ fontSize: '0.813rem' }}>
+          Cancel
+        </Button>
+        <Box sx={{ display: 'flex', gap: 1 }}>
           <Button
             disabled={activeStep === 0}
             onClick={handleBack}
-            sx={{ mr: 1 }}
+            size="small"
             startIcon={<ArrowBack />}
+            sx={{ fontSize: '0.813rem' }}
           >
             Back
           </Button>
@@ -688,14 +750,18 @@ const StudentFormDialog: React.FC<StudentFormProps> = ({ open, onClose, onSave, 
               variant="contained"
               onClick={handleSubmit}
               startIcon={<Save />}
+              size="small"
+              sx={{ fontSize: '0.813rem', fontWeight: 600 }}
             >
-              {editMode ? 'Update Student' : 'Create Student'}
+              {editMode ? 'Update' : 'Create'}
             </Button>
           ) : (
             <Button
               variant="contained"
               onClick={handleNext}
               endIcon={<ArrowForward />}
+              size="small"
+              sx={{ fontSize: '0.813rem', fontWeight: 600 }}
             >
               Next
             </Button>
