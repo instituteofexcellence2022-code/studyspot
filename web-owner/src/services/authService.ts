@@ -6,7 +6,7 @@
 
 import { User as AppUser, UserRole, UserStatus } from '../types';
 import { mockAuthService } from './mockAuthService';
-import { authClient, tokenStorage } from './sdk';
+import { authClient, tokenStorage, apiClient } from './sdk';
 import { STORAGE_KEYS } from '../constants';
 import { apiService } from './api';
 
@@ -172,11 +172,14 @@ class AuthService {
       console.log('[AuthService] API URL:', apiUrl);
       console.log('[AuthService] Endpoint:', `${apiUrl}/api/auth/register`);
 
-      // Call actual registration endpoint
+      // Use direct apiClient call like student portal does (simpler and more reliable)
       let response: any;
       try {
-        response = await apiService.post<any>('/api/auth/register', requestPayload);
+        // Use apiClient directly instead of apiService to match student portal approach
+        response = await apiClient.post('/api/auth/register', requestPayload);
         console.log('[AuthService] ✅ API call successful');
+        console.log('[AuthService] Response status:', response.status);
+        console.log('[AuthService] Response data:', JSON.stringify(response.data, null, 2));
       } catch (apiError: any) {
         console.error('[AuthService] ❌ API call failed:', {
           message: apiError?.message,
@@ -189,83 +192,49 @@ class AuthService {
         throw apiError;
       }
 
-      console.log('[AuthService] Raw response received:', JSON.stringify(response, null, 2));
-      console.log('[AuthService] Response type:', typeof response);
-      console.log('[AuthService] Response structure analysis:', {
-        isObject: typeof response === 'object',
-        hasSuccess: !!response?.success,
-        successValue: response?.success,
-        hasData: !!response?.data,
-        dataType: typeof response?.data,
-        hasUser: !!response?.data?.user,
-        hasToken: !!response?.data?.token,
-        hasTokens: !!response?.data?.tokens,
-        userKeys: response?.data?.user ? Object.keys(response.data.user) : [],
-        tokensKeys: response?.data?.tokens ? Object.keys(response.data.tokens) : [],
-        fullResponseKeys: response ? Object.keys(response) : [],
+      // Student portal approach: response.data?.data || response.data
+      const payload = response.data?.data || response.data;
+      
+      console.log('[AuthService] Payload extracted:', {
+        hasPayload: !!payload,
+        payloadKeys: payload ? Object.keys(payload) : [],
+        hasUser: !!payload?.user,
+        hasToken: !!payload?.token,
+        hasTokens: !!payload?.tokens,
       });
 
       // Backend returns: { success: true, data: { user, token, tokens: { accessToken, refreshToken, expiresAt } }, message }
-      // apiService.post returns response.data (the full axios response.data)
+      // OR direct: { user, token, tokens: { accessToken, refreshToken, expiresAt } }
       
-      // Step 1: Check if response has success flag
-      if (!response || typeof response !== 'object') {
-        console.error('[AuthService] ❌ Response is not an object:', response);
-        throw new Error('Invalid response: Expected object but got ' + typeof response);
-      }
-
-      // Step 2: Check success flag
-      if (response.success !== true) {
-        console.error('[AuthService] ❌ Response success is not true:', response.success);
-        const errorMsg = response.error?.message || response.message || 'Registration failed';
-        throw new Error(errorMsg);
-      }
-
-      // Step 3: Check if data exists
-      if (!response.data) {
-        console.error('[AuthService] ❌ Response.data is missing');
-        throw new Error('Invalid response: Missing data field');
-      }
-
-      const payload = response.data;
-      console.log('[AuthService] Payload structure:', {
-        hasUser: !!payload.user,
-        hasToken: !!payload.token,
-        hasTokens: !!payload.tokens,
-        userType: typeof payload.user,
-        tokenType: typeof payload.token,
-        tokensType: typeof payload.tokens,
-      });
-
-      // Step 4: Extract user and tokens
+      // Extract user and tokens (match student portal logic)
       let user: any;
       let accessToken: string;
       let refreshToken: string | undefined;
       let expiresAt: number | undefined;
 
-      // Try to get user
-      if (payload.user) {
-        user = payload.user;
-        console.log('[AuthService] ✅ User found in payload');
-      } else {
-        console.error('[AuthService] ❌ User not found in payload');
-        throw new Error('Invalid response: Missing user in data');
+      // Check if payload has success wrapper
+      const actualData = payload?.success === true ? payload.data : payload;
+
+      // Get user
+      user = actualData?.user || payload?.user;
+      if (!user) {
+        console.error('[AuthService] ❌ User not found in response');
+        throw new Error('Invalid response: Missing user data');
       }
 
-      // Try to get tokens (prefer tokens object, fallback to token string)
-      if (payload.tokens) {
-        accessToken = payload.tokens.accessToken || payload.tokens.token || payload.token;
-        refreshToken = payload.tokens.refreshToken;
-        expiresAt = payload.tokens.expiresAt;
-        console.log('[AuthService] ✅ Tokens object found');
-      } else if (payload.token) {
-        accessToken = payload.token;
-        refreshToken = payload.refreshToken;
-        expiresAt = payload.expiresAt;
-        console.log('[AuthService] ✅ Token string found (fallback)');
+      // Get tokens (prefer tokens object, fallback to token string)
+      if (actualData?.tokens || payload?.tokens) {
+        const tokens = actualData?.tokens || payload?.tokens;
+        accessToken = tokens.accessToken || tokens.token || actualData?.token || payload?.token;
+        refreshToken = tokens.refreshToken;
+        expiresAt = tokens.expiresAt;
+      } else if (actualData?.token || payload?.token) {
+        accessToken = actualData?.token || payload?.token;
+        refreshToken = actualData?.refreshToken || payload?.refreshToken;
+        expiresAt = actualData?.expiresAt || payload?.expiresAt;
       } else {
-        console.error('[AuthService] ❌ No token or tokens found in payload');
-        throw new Error('Invalid response: Missing token or tokens in data');
+        console.error('[AuthService] ❌ No token or tokens found in response');
+        throw new Error('Invalid response: Missing token or tokens');
       }
 
       if (!accessToken) {
@@ -275,7 +244,7 @@ class AuthService {
 
       console.log('[AuthService] ✅ All required data extracted successfully');
 
-      // Step 5: Persist auth response
+      // Persist auth response
       try {
         this.persistAuthResponse({
           user,
@@ -291,10 +260,10 @@ class AuthService {
         throw new Error('Failed to save authentication data: ' + persistError.message);
       }
 
-      // Step 6: Return success response
+      // Return success response (match expected format)
       const result = {
         success: true,
-        message: response.message || 'Registration successful',
+        message: payload?.message || 'Registration successful',
         data: {
           user: this.user!,
           token: accessToken,
@@ -319,7 +288,6 @@ class AuthService {
       
       // Handle network errors
       if (!error?.response) {
-        // Network error (no response from server)
         if (error?.code === 'ECONNABORTED' || error?.code === 'ETIMEDOUT') {
           throw new Error('Request timeout. The server is taking too long to respond. Please check your connection and try again.');
         }
