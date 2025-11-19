@@ -29,7 +29,6 @@ import { useAppDispatch } from '../../hooks/redux';
 import { login, setCredentials } from '../../store/slices/authSlice';
 import { ROUTES, STORAGE_KEYS } from '../../constants';
 import errorService from '../../services/errorService';
-import ENV from '../../config/environment';
 import { authService } from '../../services/authService';
 
 const DEMO_ACCOUNT = {
@@ -424,31 +423,7 @@ const CleanLoginPage: React.FC = () => {
                 Create Account
               </Link>
             </Typography>
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 2 }}>
-              Demo Account: owner@demo.com / Demo123456
-            </Typography>
           </Box>
-          
-          {/* Diagnostic Info */}
-          {ENV.DEBUG && (
-            <Box sx={{ mt: 2, p: 2, bgcolor: 'info.main', color: 'white', borderRadius: 1, fontSize: '0.75rem' }}>
-              <Typography variant="caption" sx={{ display: 'block', fontWeight: 'bold', mb: 1 }}>
-                🔍 DIAGNOSTIC INFO:
-              </Typography>
-              <Typography variant="caption" sx={{ display: 'block', fontFamily: 'monospace' }}>
-                API URL: {ENV.API_URL}
-              </Typography>
-              <Typography variant="caption" sx={{ display: 'block', fontFamily: 'monospace' }}>
-                Portal: {ENV.PORTAL_NAME} ({ENV.PORTAL_TYPE})
-              </Typography>
-              <Typography variant="caption" sx={{ display: 'block', fontFamily: 'monospace' }}>
-                Environment: {ENV.NODE_ENV}
-              </Typography>
-              <Typography variant="caption" sx={{ display: 'block', fontFamily: 'monospace' }}>
-                Version: {ENV.VERSION}
-              </Typography>
-            </Box>
-          )}
         </Paper>
       </Box>
     </Container>
