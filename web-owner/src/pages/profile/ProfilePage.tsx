@@ -49,6 +49,8 @@ import {
   CheckCircle,
   Cancel as CancelIcon2,
   Send,
+  Badge,
+  Person,
 } from '@mui/icons-material';
 import { useAppSelector, useAppDispatch } from '../../hooks/redux';
 import { updateUser } from '../../store/slices/authSlice';
@@ -101,6 +103,14 @@ const ProfilePage: React.FC = () => {
   const [sendingPhoneCode, setSendingPhoneCode] = useState(false);
   const [verifyingEmail, setVerifyingEmail] = useState(false);
   const [verifyingPhone, setVerifyingPhone] = useState(false);
+  const [aadhaarKycDialog, setAadhaarKycDialog] = useState(false);
+  const [aadhaarOtpDialog, setAadhaarOtpDialog] = useState(false);
+  const [aadhaarNumber, setAadhaarNumber] = useState('');
+  const [aadhaarOtp, setAadhaarOtp] = useState('');
+  const [sendingAadhaarOtp, setSendingAadhaarOtp] = useState(false);
+  const [verifyingAadhaar, setVerifyingAadhaar] = useState(false);
+  const [aadhaarVerified, setAadhaarVerified] = useState((user as any)?.metadata?.kyc?.status === 'verified' || false);
+  const [aadhaarKycData, setAadhaarKycData] = useState<any>((user as any)?.metadata?.kyc || null);
 
   const [formData, setFormData] = useState({
     firstName: user?.firstName || '',
@@ -130,6 +140,16 @@ const ProfilePage: React.FC = () => {
       // Load verification status
       setEmailVerified((user as any)?.emailVerified || false);
       setPhoneVerified((user as any)?.phoneVerified || false);
+      
+      // Load Aadhaar KYC status
+      const kycData = (user as any)?.metadata?.kyc;
+      if (kycData) {
+        setAadhaarVerified(kycData.status === 'verified');
+        setAadhaarKycData(kycData);
+        if (kycData.aadhaarNumber) {
+          setAadhaarNumber(kycData.aadhaarNumber);
+        }
+      }
     }
   }, [user]);
 
@@ -445,6 +465,92 @@ const ProfilePage: React.FC = () => {
       setSnackbar({ open: true, message: `❌ ${errorMessage}`, severity: 'error' });
     } finally {
       setVerifyingPhone(false);
+    }
+  };
+
+  const handleSendAadhaarOtp = async () => {
+    // Validate Aadhaar number (12 digits)
+    const cleanedAadhaar = aadhaarNumber.replace(/\s/g, '');
+    if (!cleanedAadhaar || !/^\d{12}$/.test(cleanedAadhaar)) {
+      setSnackbar({ open: true, message: '❌ Please enter a valid 12-digit Aadhaar number', severity: 'error' });
+      return;
+    }
+
+    try {
+      setSendingAadhaarOtp(true);
+      const response = await apiClient.post('/api/users/kyc/send-otp', {
+        aadhaarNumber: cleanedAadhaar,
+      });
+      
+      if (response.data?.success) {
+        setSnackbar({ 
+          open: true, 
+          message: '✅ OTP sent to your Aadhaar-linked mobile number!', 
+          severity: 'success' 
+        });
+        setAadhaarKycDialog(false);
+        setAadhaarOtpDialog(true);
+      } else {
+        throw new Error(response.data?.error?.message || 'Failed to send OTP');
+      }
+    } catch (error: any) {
+      console.error('Failed to send Aadhaar OTP:', error);
+      const errorMessage = error?.response?.data?.error?.message || error?.message || 'Failed to send OTP';
+      setSnackbar({ open: true, message: `❌ ${errorMessage}`, severity: 'error' });
+    } finally {
+      setSendingAadhaarOtp(false);
+    }
+  };
+
+  const handleVerifyAadhaarOtp = async () => {
+    if (!aadhaarOtp || !/^\d{6}$/.test(aadhaarOtp.replace(/\s/g, ''))) {
+      setSnackbar({ open: true, message: '❌ Please enter a valid 6-digit OTP', severity: 'error' });
+      return;
+    }
+
+    const cleanedAadhaar = aadhaarNumber.replace(/\s/g, '');
+    if (!cleanedAadhaar || !/^\d{12}$/.test(cleanedAadhaar)) {
+      setSnackbar({ open: true, message: '❌ Invalid Aadhaar number', severity: 'error' });
+      return;
+    }
+
+    try {
+      setVerifyingAadhaar(true);
+      const response = await apiClient.post('/api/users/kyc/verify-otp', {
+        aadhaarNumber: cleanedAadhaar,
+        otp: aadhaarOtp.replace(/\s/g, ''),
+      });
+      
+      if (response.data?.success) {
+        const kycData = response.data.data?.kyc || response.data.data;
+        setAadhaarVerified(true);
+        setAadhaarKycData(kycData);
+        
+        // Update user in Redux with KYC data
+        dispatch(updateUser({
+          ...user,
+          metadata: {
+            ...(user as any)?.metadata,
+            kyc: kycData,
+          },
+        } as any));
+        
+        setSnackbar({ 
+          open: true, 
+          message: '✅ Aadhaar KYC verified successfully!', 
+          severity: 'success' 
+        });
+        setAadhaarOtpDialog(false);
+        setAadhaarOtp('');
+      } else {
+        throw new Error(response.data?.error?.message || 'Verification failed');
+      }
+    } catch (error: any) {
+      console.error('Failed to verify Aadhaar OTP:', error);
+      const errorMessage = error?.response?.data?.error?.message || error?.message || 'Invalid OTP. Please try again.';
+      setSnackbar({ open: true, message: `❌ ${errorMessage}`, severity: 'error' });
+    } finally {
+      setVerifyingAadhaar(false);
     }
   };
 
@@ -779,6 +885,66 @@ const ProfilePage: React.FC = () => {
                   </Box>
                 </Paper>
               </Grid>
+              <Grid item xs={12}>
+                <Paper sx={{ p: 3, bgcolor: alpha('#9c27b0', 0.05), border: '1px solid', borderColor: alpha('#9c27b0', 0.2) }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: aadhaarVerified && aadhaarKycData ? 2 : 0 }}>
+                    <Box sx={{ flex: 1 }}>
+                      <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
+                        <Badge sx={{ mr: 1 }} /> Aadhaar KYC Verification
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Verify your identity using Aadhaar-based KYC (Cashfree)
+                      </Typography>
+                      {aadhaarVerified && aadhaarKycData && (
+                        <Box sx={{ mt: 2, p: 2, bgcolor: alpha('#4caf50', 0.1), borderRadius: 1 }}>
+                          <Typography variant="body2" fontWeight={600} color="success.main" sx={{ mb: 1, display: 'flex', alignItems: 'center' }}>
+                            <CheckCircle sx={{ mr: 0.5, fontSize: '1rem' }} /> Verified
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary" display="block">
+                            Name: {aadhaarKycData.fullName || aadhaarKycData.firstName + ' ' + aadhaarKycData.lastName}
+                          </Typography>
+                          {aadhaarKycData.dateOfBirth && (
+                            <Typography variant="caption" color="text.secondary" display="block">
+                              DOB: {aadhaarKycData.dateOfBirth}
+                            </Typography>
+                          )}
+                          {aadhaarKycData.address && (
+                            <Typography variant="caption" color="text.secondary" display="block">
+                              Address: {aadhaarKycData.address}
+                            </Typography>
+                          )}
+                          {aadhaarKycData.photo && (
+                            <Box sx={{ mt: 1 }}>
+                              <Avatar 
+                                src={aadhaarKycData.photo} 
+                                sx={{ width: 60, height: 60 }}
+                              />
+                            </Box>
+                          )}
+                        </Box>
+                      )}
+                    </Box>
+                    <Box sx={{ ml: 2 }}>
+                      {aadhaarVerified ? (
+                        <Chip 
+                          icon={<CheckCircle />} 
+                          label="Verified" 
+                          color="success" 
+                          size="medium"
+                        />
+                      ) : (
+                        <Button 
+                          variant={aadhaarKycData ? "outlined" : "contained"} 
+                          color="primary"
+                          onClick={() => setAadhaarKycDialog(true)}
+                        >
+                          {aadhaarKycData ? 'Re-verify' : 'Verify Aadhaar'}
+                        </Button>
+                      )}
+                    </Box>
+                  </Box>
+                </Paper>
+              </Grid>
             </Grid>
           </TabPanel>
         </CardContent>
@@ -1030,6 +1196,140 @@ const ProfilePage: React.FC = () => {
             disabled={verifyingPhone || !phoneCode || phoneCode.length < 4}
           >
             {verifyingPhone ? 'Verifying...' : 'Verify'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Aadhaar KYC Dialog - Enter Aadhaar Number */}
+      <Dialog 
+        open={aadhaarKycDialog} 
+        onClose={() => {
+          setAadhaarKycDialog(false);
+          if (!aadhaarVerified) {
+            setAadhaarNumber('');
+          }
+        }}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <Badge sx={{ mr: 1 }} />
+            Aadhaar KYC Verification
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 2 }}>
+            <Alert severity="info" sx={{ mb: 3 }}>
+              Enter your 12-digit Aadhaar number. An OTP will be sent to your Aadhaar-linked mobile number for verification.
+            </Alert>
+            <TextField
+              fullWidth
+              label="Aadhaar Number"
+              value={aadhaarNumber}
+              onChange={(e) => {
+                const value = e.target.value.replace(/\D/g, '').slice(0, 12);
+                // Format as XXXX XXXX XXXX
+                const formatted = value.replace(/(\d{4})(?=\d)/g, '$1 ');
+                setAadhaarNumber(formatted);
+              }}
+              placeholder="1234 5678 9012"
+              disabled={sendingAadhaarOtp || aadhaarVerified}
+              inputProps={{ maxLength: 14 }}
+              helperText="Enter your 12-digit Aadhaar number"
+              sx={{ mb: 2 }}
+            />
+            <Alert severity="warning" sx={{ fontSize: '0.75rem' }}>
+              By proceeding, you consent to share your Aadhaar details with Cashfree for KYC verification as per UIDAI guidelines.
+            </Alert>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button 
+            onClick={() => {
+              setAadhaarKycDialog(false);
+              if (!aadhaarVerified) {
+                setAadhaarNumber('');
+              }
+            }} 
+            disabled={sendingAadhaarOtp}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleSendAadhaarOtp} 
+            variant="contained" 
+            disabled={sendingAadhaarOtp || !aadhaarNumber || aadhaarNumber.replace(/\s/g, '').length !== 12}
+          >
+            {sendingAadhaarOtp ? 'Sending OTP...' : 'Send OTP'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Aadhaar OTP Verification Dialog */}
+      <Dialog 
+        open={aadhaarOtpDialog} 
+        onClose={() => {
+          setAadhaarOtpDialog(false);
+          setAadhaarOtp('');
+        }}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <Badge sx={{ mr: 1 }} />
+            Verify Aadhaar OTP
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 2 }}>
+            <Alert severity="info" sx={{ mb: 3 }}>
+              We've sent a 6-digit OTP to your Aadhaar-linked mobile number ending with{' '}
+              <strong>{aadhaarKycData?.mobile?.slice(-4) || '****'}</strong>. Please enter the code below.
+            </Alert>
+            <TextField
+              fullWidth
+              label="OTP Code"
+              value={aadhaarOtp}
+              onChange={(e) => setAadhaarOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              placeholder="Enter 6-digit OTP"
+              disabled={verifyingAadhaar}
+              inputProps={{ maxLength: 6, style: { textAlign: 'center', fontSize: '1.5rem', letterSpacing: '0.5rem' } }}
+              sx={{ mb: 2 }}
+            />
+            <Typography variant="body2" color="text.secondary" align="center">
+              Didn't receive the OTP?{' '}
+              <Button
+                size="small"
+                onClick={() => {
+                  setAadhaarOtpDialog(false);
+                  setAadhaarOtp('');
+                  handleSendAadhaarOtp();
+                }}
+                disabled={sendingAadhaarOtp}
+              >
+                Resend OTP
+              </Button>
+            </Typography>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button 
+            onClick={() => {
+              setAadhaarOtpDialog(false);
+              setAadhaarOtp('');
+            }} 
+            disabled={verifyingAadhaar}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleVerifyAadhaarOtp} 
+            variant="contained" 
+            disabled={verifyingAadhaar || !aadhaarOtp || aadhaarOtp.length !== 6}
+          >
+            {verifyingAadhaar ? 'Verifying...' : 'Verify OTP'}
           </Button>
         </DialogActions>
       </Dialog>
