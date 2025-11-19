@@ -36,6 +36,14 @@ class AuthService {
       // Use SDK's authClient.login() - same as student portal
       const response = await authClient.login({ email, password });
       
+      console.log('[AuthService] Login response:', {
+        hasResponse: !!response,
+        hasTokens: !!response?.tokens,
+        hasAccessToken: !!response?.tokens?.accessToken,
+        hasUser: !!response?.user,
+        userKeys: response?.user ? Object.keys(response.user) : [],
+      });
+      
       // Validate response structure
       if (!response || !response.tokens || !response.tokens.accessToken) {
         console.error('[AuthService] Invalid login response:', response);
@@ -47,17 +55,72 @@ class AuthService {
         throw new Error('Invalid login response: user not found');
       }
       
-      this.setUser(response.user);
+      const mappedUser = this.mapToUser(response.user);
+      this.setUser(mappedUser);
       
       return {
         success: true,
         message: 'Login successful',
         data: {
-          user: this.mapToUser(response.user),
+          user: mappedUser,
           token: response.tokens.accessToken,
         },
       };
     } catch (error: any) {
+      console.error('[AuthService] Login error:', {
+        message: error?.message,
+        response: error?.response?.data,
+        status: error?.response?.status,
+        isNetworkError: !error?.response,
+      });
+      
+      // If SDK login fails, try direct API call as fallback
+      if (!error?.response || error.response?.status >= 500) {
+        try {
+          console.log('[AuthService] Trying fallback direct API login...');
+          const fallbackResponse = await fetch(`${AUTH_SERVICE_BASE}/api/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password }),
+          });
+
+          if (!fallbackResponse.ok) {
+            const fallbackError = await fallbackResponse.json().catch(() => ({}));
+            const errorMsg = fallbackError?.error?.message || 'Login failed';
+            const errorDetails = fallbackError?.error?.details ? `: ${fallbackError.error.details}` : '';
+            throw new Error(`${errorMsg}${errorDetails}`);
+          }
+
+          const payload = await fallbackResponse.json();
+          const result = payload.data || payload;
+
+          if (result.tokens && result.user && result.tokens.accessToken) {
+            tokenStorage.write({
+              accessToken: result.tokens.accessToken,
+              refreshToken: result.tokens.refreshToken,
+              expiresAt: result.tokens.expiresAt,
+              tenantId: result.user.tenantId,
+            });
+            
+            const mappedUser = this.mapToUser(result.user);
+            this.setUser(mappedUser);
+            
+            return {
+              success: true,
+              message: 'Login successful',
+              data: {
+                user: mappedUser,
+                token: result.tokens.accessToken,
+              },
+            };
+          }
+
+          throw new Error('Invalid response format from login endpoint');
+        } catch (fallbackError: any) {
+          throw this.handleError(fallbackError);
+        }
+      }
+
       throw this.handleError(error);
     }
   }
