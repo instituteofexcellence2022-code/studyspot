@@ -29,6 +29,7 @@
     "lint": "eslint . --ext .ts",
     "format": "prettier --write \"src/**/*.ts\"",
     "migrate": "node scripts/migrate.js",
+    "migrate:multi-tenant": "node scripts/run-migrations.js",
     "seed": "node scripts/seed.js",
     "test:health": "node test-all-services.js"
   },
