@@ -26,22 +26,27 @@ const PORT = parseInt(process.env.API_GATEWAY_PORT || '3000');
 // ============================================
 
 // CORS - Parse from environment or use comprehensive defaults
+// Note: Regex patterns must be tested, so we include explicit localhost ports
 const corsOrigins = process.env.CORS_ORIGIN?.split(',').map(o => o.trim()) || [
-  'http://localhost:3000',  // Owner Portal
-  'http://localhost:3001',  // Student PWA / Owner Portal (Vite)
-  'http://localhost:3002',  // Legacy
+  'http://localhost:3000',  // Student Portal
+  'http://localhost:3001',  // Web Owner Portal (React)
+  'http://localhost:3002',  // Web Admin Portal
   'http://localhost:5173',  // Vite dev server
+  'http://127.0.0.1:3000',   // Student Portal (alternative)
+  'http://127.0.0.1:3001',   // Web Owner Portal (alternative)
+  'http://127.0.0.1:3002',   // Web Admin Portal (alternative)
+  'http://127.0.0.1:5173',   // Vite dev server (alternative)
   'https://studyspot-librarys.vercel.app',  // Library Owner Portal
   'https://studyspot-admin-2.vercel.app',   // Admin Portal
   'https://studyspot-student.vercel.app',   // Student Portal
   'https://main.studyspot-student.pages.dev',  // Cloudflare Student PWA
   'https://studyspot-student.pages.dev',  // Cloudflare root domain
   'https://studyspot-student.netlify.app',  // Netlify Student Portal
+  /^http:\/\/localhost:\d+$/,  // Any localhost port (explicit regex)
+  /^http:\/\/127\.0\.0\.1:\d+$/,  // Any 127.0.0.1 port (explicit regex)
   /\.pages\.dev$/,  // All Cloudflare Pages domains
   /\.vercel\.app$/,  // All Vercel domains
   /\.netlify\.app$/,  // All Netlify domains
-  /localhost:\d+$/,  // Any localhost port
-  /127\.0\.0\.1:\d+$/,  // Any 127.0.0.1 port
 ];
 
 fastify.register(cors, {
