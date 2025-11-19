@@ -91,10 +91,8 @@ fastify.addHook('onResponse', async (request, reply) => {
 // ROUTES
 // ============================================
 
-// Handle OPTIONS requests for CORS preflight
-fastify.options('*', async (request, reply) => {
-  return reply.status(204).send();
-});
+// Note: OPTIONS requests are automatically handled by @fastify/cors plugin
+// No need to manually register OPTIONS handler
 
 // Simple health check (fast, no DB check)
 fastify.get('/health', async (request, reply) => {

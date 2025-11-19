@@ -230,10 +230,8 @@ const buildAuthPayload = (user: any, tokens: { accessToken: string; refreshToken
 // ROUTES
 // ============================================
 
-// Handle OPTIONS requests for CORS preflight
-fastify.options('*', async (request, reply) => {
-  return reply.status(204).send();
-});
+// Note: OPTIONS requests are automatically handled by @fastify/cors plugin
+// No need to manually register OPTIONS handler
 
 // Health check (with optional DB check)
 fastify.get('/health', async (request, reply) => {
