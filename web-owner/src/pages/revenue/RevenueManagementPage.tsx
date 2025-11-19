@@ -10,6 +10,9 @@ import {
 } from '@mui/material';
 import { GridLegacy as Grid } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
+import { revenueService } from '../../services/revenueService';
+import { BookingService } from '../../services/bookingService';
+import { toast } from 'react-toastify';
 import {
   Add as AddIcon, Search as SearchIcon, FilterList as FilterIcon,
   Payment as PaymentIcon, Receipt as ReceiptIcon, QrCode2 as QrCodeIcon,
@@ -46,85 +49,16 @@ interface Payment {
   notes?: string;
 }
 
-const MOCK_PAYMENTS: Payment[] = [
-  {
-    id: '1',
-    studentName: 'Rajesh Kumar',
-    studentId: 'STU-001',
-    studentEmail: 'rajesh@example.com',
-    studentPhone: '+91 9876543210',
-    amount: 5000,
-    paymentMethod: 'razorpay',
-    paymentType: 'online',
-    status: 'completed',
-    transactionId: 'RZP_20251023_001',
-    description: 'Monthly Fee - October 2025',
-    date: '2025-10-23T10:30:00',
-  },
-  {
-    id: '2',
-    studentName: 'Priya Sharma',
-    studentId: 'STU-002',
-    studentEmail: 'priya@example.com',
-    studentPhone: '+91 9876543211',
-    amount: 3000,
-    paymentMethod: 'cash',
-    paymentType: 'offline',
-    status: 'verification_pending',
-    description: 'Registration Fee',
-    date: '2025-10-23T09:15:00',
-  },
-  {
-    id: '3',
-    studentName: 'Amit Patel',
-    studentId: 'STU-003',
-    studentEmail: 'amit@example.com',
-    studentPhone: '+91 9876543212',
-    amount: 4500,
-    paymentMethod: 'cheque',
-    paymentType: 'offline',
-    status: 'pending',
-    chequeNumber: 'CHQ123456',
-    chequeDate: '2025-10-25',
-    bankName: 'HDFC Bank',
-    clearanceStatus: 'pending',
-    description: 'Monthly Fee - October 2025',
-    date: '2025-10-23T11:00:00',
-  },
-  {
-    id: '4',
-    studentName: 'Sneha Reddy',
-    studentId: 'STU-004',
-    studentEmail: 'sneha@example.com',
-    studentPhone: '+91 9876543213',
-    amount: 2500,
-    paymentMethod: 'qr_code',
-    paymentType: 'online',
-    status: 'completed',
-    transactionId: 'UPI_20251023_002',
-    description: 'Late Fee Payment',
-    date: '2025-10-23T08:45:00',
-  },
-  {
-    id: '5',
-    studentName: 'Vikas Singh',
-    studentId: 'STU-005',
-    studentEmail: 'vikas@example.com',
-    studentPhone: '+91 9876543214',
-    amount: 6000,
-    paymentMethod: 'stripe',
-    paymentType: 'online',
-    status: 'failed',
-    transactionId: 'STR_20251023_003',
-    description: 'Premium Plan - 3 Months',
-    date: '2025-10-23T07:30:00',
-  },
-];
+// Payment data will be fetched from backend
 
 const RevenueManagementPage: React.FC = () => {
   const theme = useTheme();
-  const [payments, setPayments] = useState<Payment[]>(MOCK_PAYMENTS);
-  const [filteredPayments, setFilteredPayments] = useState<Payment[]>(MOCK_PAYMENTS);
+  const bookingService = new BookingService();
+  
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [filteredPayments, setFilteredPayments] = useState<Payment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [methodFilter, setMethodFilter] = useState<string>('all');
@@ -145,6 +79,60 @@ const RevenueManagementPage: React.FC = () => {
     message: '', 
     severity: 'success' 
   });
+
+  // Fetch payments from backend
+  const fetchPayments = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Fetch bookings which contain payment information
+      const bookingsResponse = await bookingService.getBookings({
+        page: 1,
+        limit: 1000,
+      });
+
+      // Transform bookings to payments format
+      const bookingsData = Array.isArray(bookingsResponse)
+        ? bookingsResponse
+        : (bookingsResponse as any)?.data || (bookingsResponse as any)?.bookings || [];
+
+      const transformedPayments: Payment[] = bookingsData.map((booking: any) => ({
+        id: booking.id || booking.bookingId,
+        studentName: booking.studentName || booking.userName || booking.user?.firstName || 'Unknown',
+        studentId: booking.studentId || booking.userId || '',
+        studentEmail: booking.studentEmail || booking.user?.email || '',
+        studentPhone: booking.studentPhone || booking.user?.phone || '',
+        amount: booking.totalAmount || booking.amount || 0,
+        paymentMethod: booking.paymentMethod || 'cash',
+        paymentType: booking.paymentMethod === 'cash' || booking.paymentMethod === 'cheque' ? 'offline' : 'online',
+        status: booking.paymentStatus === 'paid' ? 'completed' : 
+                booking.paymentStatus === 'pending' ? 'pending' :
+                booking.paymentStatus === 'failed' ? 'failed' : 'pending',
+        transactionId: booking.transactionId || booking.paymentTransactionId,
+        referenceNumber: booking.referenceNumber,
+        description: booking.description || `Booking for ${booking.libraryName || 'Library'}`,
+        date: booking.createdAt || booking.bookingDate || booking.startTime,
+        verifiedBy: booking.verifiedBy,
+        verifiedAt: booking.verifiedAt,
+        notes: booking.notes,
+      }));
+
+      setPayments(transformedPayments);
+    } catch (err: any) {
+      console.error('❌ [RevenueManagementPage] Failed to fetch payments:', err);
+      setError(err.message || 'Failed to load payments');
+      toast.error('Failed to load payment data');
+      setPayments([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch payments on mount
+  useEffect(() => {
+    fetchPayments();
+  }, []);
 
   // Filter payments
   useEffect(() => {
@@ -326,6 +314,32 @@ const RevenueManagementPage: React.FC = () => {
         return <CardIcon />;
     }
   };
+
+  // Show loading state
+  if (loading && payments.length === 0) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh', flexDirection: 'column' }}>
+        <CircularProgress />
+        <Typography variant="body2" sx={{ mt: 2 }}>
+          Loading payment data...
+        </Typography>
+      </Box>
+    );
+  }
+
+  // Show error state
+  if (error && payments.length === 0) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+        <Button variant="contained" onClick={fetchPayments}>
+          Retry
+        </Button>
+      </Box>
+    );
+  }
 
   return (
     <Box>
