@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useNavigate } from 'react-router-dom';
 import {
   Box,
   AppBar,
@@ -27,11 +27,13 @@ import Sidebar from '../components/common/Sidebar';
 import { useAppSelector, useAppDispatch } from '../hooks/redux';
 import { logout } from '../store/slices/authSlice';
 import { toggleSidebar } from '../store/slices/uiSlice';
+import { ROUTES } from '../constants';
 
 const MainLayout: React.FC = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   
   const { user, isAuthenticated } = useAppSelector((state) => state.auth);
   const { sidebarOpen } = useAppSelector((state) => state.ui);
@@ -56,9 +58,20 @@ const MainLayout: React.FC = () => {
     setNotificationAnchorEl(null);
   };
 
+  const handleNavigateToProfile = () => {
+    navigate(ROUTES.PROFILE);
+    handleProfileMenuClose();
+  };
+
+  const handleNavigateToSettings = () => {
+    navigate(ROUTES.SETTINGS);
+    handleProfileMenuClose();
+  };
+
   const handleLogout = () => {
     dispatch(logout());
     handleProfileMenuClose();
+    navigate(ROUTES.LOGIN);
   };
 
   const handleToggleSidebar = () => {
@@ -101,7 +114,7 @@ const MainLayout: React.FC = () => {
             <IconButton
               color="inherit"
               aria-label="messages"
-              onClick={() => window.location.href = '/messages'}
+              onClick={() => navigate('/messages')}
             >
               <Badge badgeContent={unreadMessages} color="error">
                 <MessageIcon />
@@ -127,6 +140,7 @@ const MainLayout: React.FC = () => {
               <Avatar
                 sx={{ width: 32, height: 32 }}
                 alt={user?.firstName}
+                src={(user as any)?.profileImage || (user as any)?.avatar || (user as any)?.metadata?.profileImage}
               >
                 {user?.firstName?.[0]}{user?.lastName?.[0]}
               </Avatar>
@@ -167,8 +181,13 @@ const MainLayout: React.FC = () => {
               transformOrigin={{ horizontal: 'right', vertical: 'top' }}
               anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
             >
-              <MenuItem onClick={handleProfileMenuClose}>
-                <Avatar sx={{ width: 32, height: 32 }} />
+              <MenuItem onClick={handleNavigateToProfile}>
+                <Avatar 
+                  sx={{ width: 32, height: 32 }}
+                  src={(user as any)?.profileImage || (user as any)?.avatar || (user as any)?.metadata?.profileImage}
+                >
+                  {user?.firstName?.[0]}{user?.lastName?.[0]}
+                </Avatar>
                 <Box>
                   <Typography variant="body2" fontWeight="bold">
                     {user?.firstName} {user?.lastName}
@@ -179,11 +198,11 @@ const MainLayout: React.FC = () => {
                 </Box>
               </MenuItem>
               <Divider />
-              <MenuItem onClick={handleProfileMenuClose}>
+              <MenuItem onClick={handleNavigateToProfile}>
                 <AccountCircle sx={{ mr: 1 }} />
                 Profile
               </MenuItem>
-              <MenuItem onClick={handleProfileMenuClose}>
+              <MenuItem onClick={handleNavigateToSettings}>
                 <Settings sx={{ mr: 1 }} />
                 Settings
               </MenuItem>
