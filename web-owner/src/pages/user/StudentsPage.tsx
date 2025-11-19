@@ -320,7 +320,7 @@ const StudentsPageEnhanced: React.FC = () => {
         console.log('📝 Updating student:', currentStudent.id);
         await studentsService.updateStudent(currentStudent.id, {
           firstName: currentStudent.firstName!,
-          lastName: currentStudent.lastName!,
+          lastName: currentStudent.lastName || '', // Optional - can be empty
           email: currentStudent.email!,
           phone: currentStudent.phone,
           currentPlan: currentStudent.currentPlan,
@@ -688,12 +688,12 @@ const StudentsPageEnhanced: React.FC = () => {
                   <TableRow key={student.id} hover>
                     <TableCell>
                       <Avatar sx={{ bgcolor: 'primary.main' }}>
-                        {student.firstName.charAt(0)}{student.lastName.charAt(0)}
+                        {student.firstName.charAt(0)}{student.lastName?.charAt(0) || ''}
                       </Avatar>
                     </TableCell>
                     <TableCell>
                       <Typography variant="body2" fontWeight="bold">
-                        {student.firstName} {student.lastName}
+                        {student.firstName} {student.lastName || ''}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
                         ID: {student.studentId}
