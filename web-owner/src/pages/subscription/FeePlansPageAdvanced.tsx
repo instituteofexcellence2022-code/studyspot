@@ -146,9 +146,16 @@ const FeePlansPageAdvanced: React.FC = () => {
     setLoading(true);
     try {
       const fetchedPlans = await feePlanService.getFeePlans();
-      setPlans(fetchedPlans);
+      // Transform to match local FeePlan interface (add createdAt/updatedAt if missing)
+      const transformedPlans: FeePlan[] = fetchedPlans.map((plan: any) => ({
+        ...plan,
+        createdAt: plan.createdAt || new Date().toISOString(),
+        updatedAt: plan.updatedAt || new Date().toISOString(),
+        status: (plan.status === 'draft' ? 'active' : plan.status) as 'active' | 'inactive',
+      }));
+      setPlans(transformedPlans);
       
-      if (fetchedPlans.length === 0) {
+      if (transformedPlans.length === 0) {
         toast.info('No fee plans found. Create your first fee plan to get started.');
       }
     } catch (error: any) {
@@ -274,14 +281,22 @@ const FeePlansPageAdvanced: React.FC = () => {
     try {
       setLoading(true);
       // Create a new plan based on the duplicated one
-      const duplicatedPlan = {
-        ...plan,
-        id: undefined, // Remove ID to create new
+      const duplicatedPlan: Omit<FeePlan, 'id' | 'createdAt' | 'updatedAt'> = {
         name: `${plan.name} (Copy)`,
+        description: plan.description,
+        type: plan.type,
+        basePrice: plan.basePrice,
+        shiftPricing: plan.shiftPricing,
+        zonePricing: plan.zonePricing,
+        discount: plan.discount,
+        features: plan.features,
+        maxSeats: plan.maxSeats,
+        maxHours: plan.maxHours,
+        scholarshipEligible: plan.scholarshipEligible,
+        waiverAllowed: plan.waiverAllowed,
+        status: plan.status === 'draft' ? 'active' : plan.status,
+        isPopular: plan.isPopular,
       };
-      delete (duplicatedPlan as any).id;
-      delete (duplicatedPlan as any).createdAt;
-      delete (duplicatedPlan as any).updatedAt;
       
       await feePlanService.createFeePlan(duplicatedPlan);
       await loadFeePlans();
