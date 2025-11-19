@@ -893,7 +893,7 @@ const ProfilePage: React.FC = () => {
                         <Badge sx={{ mr: 1 }} /> Aadhaar KYC Verification
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
-                        Verify your identity using Aadhaar-based KYC (Cashfree)
+                        Verify your identity using Aadhaar-based KYC (StudySpot India Pvt. Ltd.)
                       </Typography>
                       {aadhaarVerified && aadhaarKycData && (
                         <Box sx={{ mt: 2, p: 2, bgcolor: alpha('#4caf50', 0.1), borderRadius: 1 }}>
@@ -1240,7 +1240,7 @@ const ProfilePage: React.FC = () => {
               sx={{ mb: 2 }}
             />
             <Alert severity="warning" sx={{ fontSize: '0.75rem' }}>
-              By proceeding, you consent to share your Aadhaar details with Cashfree for KYC verification as per UIDAI guidelines.
+              By proceeding, you consent to share your Aadhaar details with StudySpot India Pvt. Ltd. for KYC verification as per UIDAI guidelines.
             </Alert>
           </Box>
         </DialogContent>
