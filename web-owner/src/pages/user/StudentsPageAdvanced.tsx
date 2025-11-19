@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Box, Button, Card, CardContent, Typography, Avatar, Chip, Table, TableBody, TableCell,
   TableContainer, TableHead, TableRow, Paper, Dialog, DialogTitle, DialogContent, DialogActions,
@@ -248,8 +248,65 @@ const StudentsPageAdvanced: React.FC = () => {
     setMenuStudent(null);
   };
 
+  // Memoized filter calculations to prevent re-renders during scroll
+  const filteredStudents = useMemo(() => {
+    let filtered = [...students];
+    
+    // Search filter
+    if (searchTerm) {
+      const search = searchTerm.toLowerCase();
+      filtered = filtered.filter(s => 
+        s.firstName?.toLowerCase().includes(search) ||
+        s.lastName?.toLowerCase().includes(search) ||
+        s.email?.toLowerCase().includes(search) ||
+        s.phone?.includes(search) ||
+        s.studentId?.toLowerCase().includes(search)
+      );
+    }
+    
+    // Status filter
+    if (statusFilter.length > 0) {
+      filtered = filtered.filter(s => statusFilter.includes(s.status));
+    }
+    
+    // Fee status filter
+    if (feeStatusFilter.length > 0) {
+      filtered = filtered.filter(s => feeStatusFilter.includes(s.feeStatus));
+    }
+    
+    // KYC filter
+    if (kycFilter === 'verified') {
+      filtered = filtered.filter(s => s.kycVerified);
+    } else if (kycFilter === 'pending') {
+      filtered = filtered.filter(s => !s.kycVerified);
+    }
+    
+    return filtered;
+  }, [students, searchTerm, statusFilter, feeStatusFilter, kycFilter]);
+
+  // Memoized statistics to prevent recalculations
+  const stats = useMemo(() => {
+    const activeCount = students.filter(s => s.status === 'active').length;
+    const kycVerifiedCount = students.filter(s => s.kycVerified).length;
+    const feePendingCount = students.filter(s => s.feeStatus === 'pending').length;
+    const thisMonthEnrollments = students.filter(s => new Date(s.enrollmentDate).getMonth() === new Date().getMonth()).length;
+    const lastMonthEnrollments = students.filter(s => new Date(s.enrollmentDate).getMonth() === new Date().getMonth() - 1).length;
+    const avgAttendance = students.length > 0 
+      ? Math.round(students.reduce((acc, s) => acc + (s.attendancePercentage || 0), 0) / students.length)
+      : 0;
+    
+    return {
+      activeCount,
+      kycVerifiedCount,
+      feePendingCount,
+      thisMonthEnrollments,
+      lastMonthEnrollments,
+      avgAttendance,
+    };
+  }, [students]);
+
   // Lifecycle status
-  const getLifecycleStatus = (student: Student) => {
+  const getLifecycleStatus = useCallback((student: Student) => {
     const enrollDate = new Date(student.enrollmentDate);
     const daysSince = Math.floor((Date.now() - enrollDate.getTime()) / (1000 * 60 * 60 * 24));
     
@@ -257,10 +314,14 @@ const StudentsPageAdvanced: React.FC = () => {
     if (daysSince < 180) return { label: 'Active', color: 'success' };
     if (daysSince < 365) return { label: 'Regular', color: 'primary' };
     return { label: 'Long-term', color: 'secondary' };
-  };
+  }, []);
 
   return (
-    <Box>
+    <Box sx={{ 
+      position: 'relative',
+      overflow: 'hidden', // Prevent layout shifts
+      willChange: 'auto', // Optimize for scrolling
+    }}>
       {/* Enhanced Header */}
       <Box sx={{ mb: 3 }}>
         {/* Breadcrumbs */}
@@ -292,12 +353,7 @@ const StudentsPageAdvanced: React.FC = () => {
                     height: 8, 
                     borderRadius: '50%', 
                     bgcolor: 'success.main',
-                    animation: 'pulse 2s infinite',
-                    '@keyframes pulse': {
-                      '0%': { opacity: 1 },
-                      '50%': { opacity: 0.5 },
-                      '100%': { opacity: 1 },
-                    }
+                    // Removed pulse animation to prevent layout shifts during scroll
                   }} 
                 />
                 <Typography variant="caption" color="text.secondary">
@@ -382,7 +438,7 @@ const StudentsPageAdvanced: React.FC = () => {
                     Active Students
                   </Typography>
                   <Typography variant="h4" fontWeight="bold" color="success.main">
-                    {students.filter(s => s.status === 'active').length}
+                    {stats.activeCount}
                   </Typography>
                   <Typography variant="caption" color="text.secondary">
                     {Math.round((students.filter(s => s.status === 'active').length / totalCount) * 100)}% of total
@@ -401,10 +457,10 @@ const StudentsPageAdvanced: React.FC = () => {
                     KYC Verified
                   </Typography>
                   <Typography variant="h4" fontWeight="bold" color="info.main">
-                    {students.filter(s => s.kycVerified).length}
+                    {stats.kycVerifiedCount}
                   </Typography>
                   <Typography variant="caption" color="text.secondary">
-                    {Math.round((students.filter(s => s.kycVerified).length / totalCount) * 100)}% verified
+                    {totalCount > 0 ? Math.round((stats.kycVerifiedCount / totalCount) * 100) : 0}% verified
                   </Typography>
                 </Box>
                 <VerifiedIcon sx={{ fontSize: 40, color: 'info.main', opacity: 0.8 }} />
@@ -420,7 +476,7 @@ const StudentsPageAdvanced: React.FC = () => {
                     Fee Pending
                   </Typography>
                   <Typography variant="h4" fontWeight="bold" color="warning.main">
-                    {students.filter(s => s.feeStatus === 'pending').length}
+                    {stats.feePendingCount}
                   </Typography>
                   <Typography variant="caption" color="text.secondary">
                     Needs attention
@@ -444,12 +500,12 @@ const StudentsPageAdvanced: React.FC = () => {
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                   <Typography variant="body2">This Month</Typography>
                   <Typography variant="body2" fontWeight="bold">
-                    {students.filter(s => new Date(s.enrollmentDate).getMonth() === new Date().getMonth()).length}
+                    {stats.thisMonthEnrollments}
                   </Typography>
                 </Box>
                 <LinearProgress 
                   variant="determinate" 
-                  value={Math.min((students.filter(s => new Date(s.enrollmentDate).getMonth() === new Date().getMonth()).length / 50) * 100, 100)} 
+                  value={Math.min((stats.thisMonthEnrollments / 50) * 100, 100)} 
                   sx={{ height: 8, borderRadius: 4 }}
                 />
               </Box>
@@ -457,12 +513,12 @@ const StudentsPageAdvanced: React.FC = () => {
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                   <Typography variant="body2">Last Month</Typography>
                   <Typography variant="body2" fontWeight="bold">
-                    {students.filter(s => new Date(s.enrollmentDate).getMonth() === new Date().getMonth() - 1).length}
+                    {stats.lastMonthEnrollments}
                   </Typography>
                 </Box>
                 <LinearProgress 
                   variant="determinate" 
-                  value={Math.min((students.filter(s => new Date(s.enrollmentDate).getMonth() === new Date().getMonth() - 1).length / 50) * 100, 100)} 
+                  value={Math.min((stats.lastMonthEnrollments / 50) * 100, 100)} 
                   color="success"
                   sx={{ height: 8, borderRadius: 4 }}
                 />
@@ -471,12 +527,12 @@ const StudentsPageAdvanced: React.FC = () => {
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                   <Typography variant="body2">Average Attendance</Typography>
                   <Typography variant="body2" fontWeight="bold">
-                    {Math.round(students.reduce((acc, s) => acc + (s.attendancePercentage || 0), 0) / students.length)}%
+                    {stats.avgAttendance}%
                   </Typography>
                 </Box>
                 <LinearProgress 
                   variant="determinate" 
-                  value={students.reduce((acc, s) => acc + (s.attendancePercentage || 0), 0) / students.length} 
+                  value={stats.avgAttendance} 
                   color="secondary"
                   sx={{ height: 8, borderRadius: 4 }}
                 />
@@ -1052,7 +1108,19 @@ const StudentsPageAdvanced: React.FC = () => {
           {importPreview.length > 0 && (
             <>
               <Typography variant="h6" gutterBottom>Preview ({importPreview.length} students)</Typography>
-              <TableContainer component={Paper} variant="outlined" sx={{ maxHeight: 300 }}>
+              <TableContainer 
+                component={Paper} 
+                variant="outlined" 
+                sx={{ 
+                  maxHeight: 600,
+                  overflowY: 'auto',
+                  // Optimize scrolling performance
+                  WebkitOverflowScrolling: 'touch',
+                  scrollBehavior: 'smooth',
+                  // Prevent layout shifts
+                  contain: 'layout style paint',
+                }}
+              >
                 <Table size="small">
                   <TableHead>
                     <TableRow>
