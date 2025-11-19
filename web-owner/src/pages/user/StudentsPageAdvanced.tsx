@@ -874,10 +874,6 @@ const StudentsPageAdvanced: React.FC = () => {
           },
         }}>
           {loading ? (
-            <Box sx={{ p: 4, textAlign: 'center' }}>
-              <CircularProgress />
-            </Box>
-          ) : filteredStudents.length === 0 ? (
             <Box sx={{ 
               p: 4, 
               textAlign: 'center',
@@ -887,8 +883,26 @@ const StudentsPageAdvanced: React.FC = () => {
               flexDirection: 'column',
               justifyContent: 'center',
               alignItems: 'center',
+            }}>
+              <CircularProgress />
+            </Box>
+          ) : filteredStudents.length === 0 ? (
+            <Box sx={{ 
+              p: 4, 
+              textAlign: 'center',
+              // Fixed dimensions to prevent layout shifts and blinking
+              minHeight: 300,
+              height: 300,
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              alignItems: 'center',
               // Prevent layout shifts
               position: 'relative',
+              // Prevent re-renders from causing visual flicker
+              willChange: 'auto',
+              // Smooth transitions
+              transition: 'none',
             }}>
               <PersonIcon sx={{ 
                 fontSize: 48, 
@@ -896,6 +910,8 @@ const StudentsPageAdvanced: React.FC = () => {
                 mb: 2,
                 // Prevent icon from causing shifts
                 flexShrink: 0,
+                // Prevent blinking
+                display: 'block',
               }} />
               <Typography 
                 variant="h6" 
@@ -904,6 +920,9 @@ const StudentsPageAdvanced: React.FC = () => {
                   mb: 2,
                   // Fixed height to prevent shifts
                   minHeight: 32,
+                  height: 32,
+                  // Prevent text reflow
+                  whiteSpace: 'nowrap',
                 }}
               >
                 No students found
@@ -920,7 +939,10 @@ const StudentsPageAdvanced: React.FC = () => {
                   mt: 2,
                   // Fixed height to prevent shifts
                   minHeight: 40,
+                  height: 40,
                   minWidth: 200,
+                  // Prevent button from blinking
+                  position: 'relative',
                 }}
               >
                 Add Your First Student
