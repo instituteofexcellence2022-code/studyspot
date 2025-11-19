@@ -824,6 +824,66 @@ const ProfilePage: React.FC = () => {
           <TabPanel value={tabValue} index={2}>
             <Grid container spacing={3}>
               <Grid item xs={12}>
+                <Paper sx={{ p: 3, bgcolor: alpha('#9c27b0', 0.05), border: '1px solid', borderColor: alpha('#9c27b0', 0.2) }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: aadhaarVerified && aadhaarKycData ? 2 : 0 }}>
+                    <Box sx={{ flex: 1 }}>
+                      <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
+                        <Badge sx={{ mr: 1 }} /> Aadhaar KYC Verification
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Verify your identity using Aadhaar-based KYC (StudySpot India Pvt. Ltd.)
+                      </Typography>
+                      {aadhaarVerified && aadhaarKycData && (
+                        <Box sx={{ mt: 2, p: 2, bgcolor: alpha('#4caf50', 0.1), borderRadius: 1 }}>
+                          <Typography variant="body2" fontWeight={600} color="success.main" sx={{ mb: 1, display: 'flex', alignItems: 'center' }}>
+                            <CheckCircle sx={{ mr: 0.5, fontSize: '1rem' }} /> Verified
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary" display="block">
+                            Name: {aadhaarKycData.fullName || aadhaarKycData.firstName + ' ' + aadhaarKycData.lastName}
+                          </Typography>
+                          {aadhaarKycData.dateOfBirth && (
+                            <Typography variant="caption" color="text.secondary" display="block">
+                              DOB: {aadhaarKycData.dateOfBirth}
+                            </Typography>
+                          )}
+                          {aadhaarKycData.address && (
+                            <Typography variant="caption" color="text.secondary" display="block">
+                              Address: {aadhaarKycData.address}
+                            </Typography>
+                          )}
+                          {aadhaarKycData.photo && (
+                            <Box sx={{ mt: 1 }}>
+                              <Avatar 
+                                src={aadhaarKycData.photo} 
+                                sx={{ width: 60, height: 60 }}
+                              />
+                            </Box>
+                          )}
+                        </Box>
+                      )}
+                    </Box>
+                    <Box sx={{ ml: 2 }}>
+                      {aadhaarVerified ? (
+                        <Chip 
+                          icon={<CheckCircle />} 
+                          label="Verified" 
+                          color="success" 
+                          size="medium"
+                        />
+                      ) : (
+                        <Button 
+                          variant={aadhaarKycData ? "outlined" : "contained"} 
+                          color="primary"
+                          onClick={() => setAadhaarKycDialog(true)}
+                        >
+                          {aadhaarKycData ? 'Re-verify' : 'Verify Aadhaar'}
+                        </Button>
+                      )}
+                    </Box>
+                  </Box>
+                </Paper>
+              </Grid>
+              <Grid item xs={12}>
                 <Paper sx={{ p: 3, bgcolor: alpha('#1976d2', 0.05), border: '1px solid', borderColor: alpha('#1976d2', 0.2) }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Box>
@@ -882,66 +942,6 @@ const ProfilePage: React.FC = () => {
                     >
                       Configure
                     </Button>
-                  </Box>
-                </Paper>
-              </Grid>
-              <Grid item xs={12}>
-                <Paper sx={{ p: 3, bgcolor: alpha('#9c27b0', 0.05), border: '1px solid', borderColor: alpha('#9c27b0', 0.2) }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: aadhaarVerified && aadhaarKycData ? 2 : 0 }}>
-                    <Box sx={{ flex: 1 }}>
-                      <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
-                        <Badge sx={{ mr: 1 }} /> Aadhaar KYC Verification
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        Verify your identity using Aadhaar-based KYC (StudySpot India Pvt. Ltd.)
-                      </Typography>
-                      {aadhaarVerified && aadhaarKycData && (
-                        <Box sx={{ mt: 2, p: 2, bgcolor: alpha('#4caf50', 0.1), borderRadius: 1 }}>
-                          <Typography variant="body2" fontWeight={600} color="success.main" sx={{ mb: 1, display: 'flex', alignItems: 'center' }}>
-                            <CheckCircle sx={{ mr: 0.5, fontSize: '1rem' }} /> Verified
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary" display="block">
-                            Name: {aadhaarKycData.fullName || aadhaarKycData.firstName + ' ' + aadhaarKycData.lastName}
-                          </Typography>
-                          {aadhaarKycData.dateOfBirth && (
-                            <Typography variant="caption" color="text.secondary" display="block">
-                              DOB: {aadhaarKycData.dateOfBirth}
-                            </Typography>
-                          )}
-                          {aadhaarKycData.address && (
-                            <Typography variant="caption" color="text.secondary" display="block">
-                              Address: {aadhaarKycData.address}
-                            </Typography>
-                          )}
-                          {aadhaarKycData.photo && (
-                            <Box sx={{ mt: 1 }}>
-                              <Avatar 
-                                src={aadhaarKycData.photo} 
-                                sx={{ width: 60, height: 60 }}
-                              />
-                            </Box>
-                          )}
-                        </Box>
-                      )}
-                    </Box>
-                    <Box sx={{ ml: 2 }}>
-                      {aadhaarVerified ? (
-                        <Chip 
-                          icon={<CheckCircle />} 
-                          label="Verified" 
-                          color="success" 
-                          size="medium"
-                        />
-                      ) : (
-                        <Button 
-                          variant={aadhaarKycData ? "outlined" : "contained"} 
-                          color="primary"
-                          onClick={() => setAadhaarKycDialog(true)}
-                        >
-                          {aadhaarKycData ? 'Re-verify' : 'Verify Aadhaar'}
-                        </Button>
-                      )}
-                    </Box>
                   </Box>
                 </Paper>
               </Grid>
