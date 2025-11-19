@@ -265,7 +265,7 @@ const ProfilePage: React.FC = () => {
         const updatedUser = response.data.data?.user || response.data.data;
         
         // Update Redux store
-        dispatch(updateUser({
+      dispatch(updateUser({
           ...user,
           ...updatedUser,
           firstName: formData.firstName,
@@ -277,7 +277,7 @@ const ProfilePage: React.FC = () => {
           message: '✅ Profile updated successfully!',
           severity: 'success',
         }));
-        setEditMode(false);
+      setEditMode(false);
       } else {
         throw new Error('Update failed');
       }
@@ -310,9 +310,9 @@ const ProfilePage: React.FC = () => {
       });
 
       if (response.data?.success) {
-        setSnackbar({ open: true, message: '✅ Password changed successfully!', severity: 'success' });
-        setChangePasswordDialog(false);
-        setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      setSnackbar({ open: true, message: '✅ Password changed successfully!', severity: 'success' });
+      setChangePasswordDialog(false);
+      setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
       } else {
         throw new Error(response.data?.message || 'Password change failed');
       }
@@ -564,7 +564,11 @@ const ProfilePage: React.FC = () => {
     }
   };
 
-  const accountInfo = [
+  const accountInfo: Array<{
+    label: string;
+    value: string | React.ReactNode;
+    icon: React.ReactNode;
+  }> = [
     { label: 'User ID', value: user?.id?.substring(0, 8) + '...', icon: <Verified /> },
     { 
       label: 'Email', 
@@ -699,7 +703,7 @@ const ProfilePage: React.FC = () => {
                 {uploading ? (
                   <CircularProgress size={16} />
                 ) : (
-                  <PhotoCamera fontSize="small" />
+                <PhotoCamera fontSize="small" />
                 )}
               </IconButton>
             </Box>
@@ -800,10 +804,10 @@ const ProfilePage: React.FC = () => {
               </Grid>
               <Grid item xs={12} sm={6}>
                 <Box>
-                  <TextField
-                    fullWidth
-                    label="Email Address"
-                    value={formData.email}
+                <TextField
+                  fullWidth
+                  label="Email Address"
+                  value={formData.email}
                     disabled
                     variant="filled"
                     helperText="Email cannot be changed"
@@ -843,13 +847,13 @@ const ProfilePage: React.FC = () => {
               </Grid>
               <Grid item xs={12} sm={6}>
                 <Box>
-                  <TextField
-                    fullWidth
-                    label="Phone Number"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    disabled={!editMode || loading}
-                    variant={editMode ? 'outlined' : 'filled'}
+                <TextField
+                  fullWidth
+                  label="Phone Number"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  disabled={!editMode || loading}
+                  variant={editMode ? 'outlined' : 'filled'}
                     InputProps={{
                       endAdornment: phoneVerified && formData.phone ? (
                         <Chip 
@@ -906,10 +910,15 @@ const ProfilePage: React.FC = () => {
                     <ListItemIcon>{item.icon}</ListItemIcon>
                     <ListItemText
                       primary={item.label}
-                      secondary={item.value}
+                      secondary={typeof item.value === 'string' ? item.value : undefined}
                       primaryTypographyProps={{ fontWeight: 600, fontSize: '0.9rem' }}
                       secondaryTypographyProps={{ fontSize: '1rem' }}
                     />
+                    {typeof item.value !== 'string' && (
+                      <Box sx={{ ml: 'auto' }}>
+                        {item.value}
+                      </Box>
+                    )}
                   </ListItem>
                   {index < accountInfo.length - 1 && <Divider />}
                 </React.Fragment>
