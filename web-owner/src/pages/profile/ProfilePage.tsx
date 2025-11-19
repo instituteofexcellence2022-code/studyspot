@@ -118,7 +118,7 @@ const ProfilePage: React.FC = () => {
 
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
 
-  // Load profile image on mount
+  // Load profile image and verification status on mount
   useEffect(() => {
     if (user) {
       // Try to get profile image from user metadata or avatar
@@ -126,6 +126,10 @@ const ProfilePage: React.FC = () => {
       if (imageUrl) {
         setProfileImage(imageUrl);
       }
+      
+      // Load verification status
+      setEmailVerified((user as any)?.emailVerified || false);
+      setPhoneVerified((user as any)?.phoneVerified || false);
     }
   }, [user]);
 
