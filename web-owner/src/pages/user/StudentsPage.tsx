@@ -290,7 +290,13 @@ const StudentsPageEnhanced: React.FC = () => {
         email: '',
         phone: '',
         studentId: defaultStudentId,
+        pincode: '',
+        addressLine1: '',
+        addressLine2: '',
         district: '',
+        city: '',
+        state: '',
+        country: 'India',
         currentPlan: 'Monthly Premium',
         feeStatus: 'pending',
         status: 'active',
@@ -330,7 +336,7 @@ const StudentsPageEnhanced: React.FC = () => {
           currentStudent.lastName
         );
         
-        await studentsService.createStudent({
+        const studentData: any = {
           firstName: currentStudent.firstName!,
           lastName: currentStudent.lastName || '', // Optional - can be empty
           email: currentStudent.email!,
@@ -338,7 +344,23 @@ const StudentsPageEnhanced: React.FC = () => {
           currentPlan: currentStudent.currentPlan || 'Monthly Premium',
           feeStatus: currentStudent.feeStatus || 'pending',
           status: currentStudent.status || 'active',
-        });
+        };
+
+        // Add address if provided
+        if ((currentStudent as any).pincode || (currentStudent as any).addressLine1 || 
+            (currentStudent as any).district || (currentStudent as any).city || 
+            (currentStudent as any).state) {
+          studentData.address = {
+            line1: (currentStudent as any).addressLine1 || currentStudent.address?.line1,
+            line2: (currentStudent as any).addressLine2 || currentStudent.address?.line2,
+            city: (currentStudent as any).city || currentStudent.address?.city,
+            state: (currentStudent as any).state || currentStudent.address?.state,
+            postalCode: (currentStudent as any).pincode || currentStudent.address?.postalCode,
+            country: (currentStudent as any).country || currentStudent.address?.country || 'India',
+          };
+        }
+
+        await studentsService.createStudent(studentData);
         setSnackbar({ open: true, message: '✅ Student created successfully!', severity: 'success' });
       }
       
