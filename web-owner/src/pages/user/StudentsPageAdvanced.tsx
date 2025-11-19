@@ -319,8 +319,14 @@ const StudentsPageAdvanced: React.FC = () => {
   return (
     <Box sx={{ 
       position: 'relative',
-      overflow: 'hidden', // Prevent layout shifts
-      willChange: 'auto', // Optimize for scrolling
+      overflow: 'visible', // Allow content to scroll naturally
+      minHeight: '100vh',
+      // Add padding at bottom to prevent content from being cut off
+      pb: 4,
+      // Optimize rendering
+      willChange: 'auto',
+      // Prevent layout shifts
+      contain: 'layout style',
     }}>
       {/* Enhanced Header */}
       <Box sx={{ mb: 3 }}>
@@ -779,13 +785,45 @@ const StudentsPageAdvanced: React.FC = () => {
       </Paper>
 
       {/* Students Table */}
-      <Paper>
-        <TableContainer>
+      <Paper sx={{ 
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+        // Prevent layout shifts
+        minHeight: 400,
+      }}>
+        <TableContainer sx={{ 
+          flex: 1,
+          overflowX: 'auto',
+          overflowY: 'auto',
+          maxHeight: 'calc(100vh - 500px)',
+          // Optimize scrolling performance
+          WebkitOverflowScrolling: 'touch',
+          scrollBehavior: 'smooth',
+          // Prevent layout shifts during scroll
+          contain: 'layout style paint',
+          // Smooth scrolling
+          scrollbarWidth: 'thin',
+          '&::-webkit-scrollbar': {
+            width: '8px',
+            height: '8px',
+          },
+          '&::-webkit-scrollbar-track': {
+            background: 'transparent',
+          },
+          '&::-webkit-scrollbar-thumb': {
+            background: 'rgba(0,0,0,0.2)',
+            borderRadius: '4px',
+            '&:hover': {
+              background: 'rgba(0,0,0,0.3)',
+            },
+          },
+        }}>
           {loading ? (
             <Box sx={{ p: 4, textAlign: 'center' }}>
               <CircularProgress />
             </Box>
-          ) : students.length === 0 ? (
+          ) : filteredStudents.length === 0 ? (
             <Box sx={{ p: 4, textAlign: 'center' }}>
               <PersonIcon sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />
               <Typography variant="h6" color="text.secondary">No students found</Typography>
@@ -794,13 +832,13 @@ const StudentsPageAdvanced: React.FC = () => {
               </Button>
             </Box>
           ) : (
-            <Table>
+            <Table stickyHeader>
               <TableHead>
                 <TableRow>
                   <TableCell padding="checkbox">
                     <Checkbox
-                      indeterminate={selectedStudents.length > 0 && selectedStudents.length < students.length}
-                      checked={students.length > 0 && selectedStudents.length === students.length}
+                      indeterminate={selectedStudents.length > 0 && selectedStudents.length < filteredStudents.length}
+                      checked={filteredStudents.length > 0 && selectedStudents.length === filteredStudents.length}
                       onChange={handleSelectAll}
                     />
                   </TableCell>
@@ -823,7 +861,7 @@ const StudentsPageAdvanced: React.FC = () => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {students.map((student) => {
+                {filteredStudents.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((student) => {
                   const lifecycle = getLifecycleStatus(student);
                   return (
                     <TableRow key={student.id} hover selected={selectedStudents.includes(student.id)}>
@@ -902,7 +940,7 @@ const StudentsPageAdvanced: React.FC = () => {
         </TableContainer>
         <TablePagination
           component="div"
-          count={totalCount}
+          count={filteredStudents.length}
           page={page}
           onPageChange={(_, newPage) => setPage(newPage)}
           rowsPerPage={rowsPerPage}
@@ -911,6 +949,19 @@ const StudentsPageAdvanced: React.FC = () => {
             setPage(0);
           }}
           rowsPerPageOptions={[5, 10, 25, 50, 100]}
+          sx={{
+            // Stabilize pagination position
+            position: 'sticky',
+            bottom: 0,
+            backgroundColor: 'background.paper',
+            borderTop: '1px solid',
+            borderColor: 'divider',
+            zIndex: 1,
+            // Prevent layout shifts
+            minHeight: 52,
+            display: 'flex',
+            alignItems: 'center',
+          }}
         />
       </Paper>
         </Box>
