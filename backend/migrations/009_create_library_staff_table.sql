@@ -44,71 +44,111 @@ CREATE INDEX idx_library_staff_employee_id ON library_staff(employee_id);
 DO $$
 DECLARE
     has_library_id BOOLEAN;
+    has_password_hash BOOLEAN;
+    has_metadata BOOLEAN;
+    has_last_login_at BOOLEAN;
+    has_last_login_ip BOOLEAN;
+    column_list TEXT;
+    select_list TEXT;
 BEGIN
     IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'users') THEN
-        -- Check if library_id column exists in users table
+        -- Check which columns exist in users table
         SELECT EXISTS (
             SELECT 1 FROM information_schema.columns 
             WHERE table_name = 'users' AND column_name = 'library_id'
         ) INTO has_library_id;
         
+        SELECT EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_name = 'users' AND column_name = 'password_hash'
+        ) INTO has_password_hash;
+        
+        SELECT EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_name = 'users' AND column_name = 'metadata'
+        ) INTO has_metadata;
+        
+        SELECT EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_name = 'users' AND column_name = 'last_login_at'
+        ) INTO has_last_login_at;
+        
+        SELECT EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_name = 'users' AND column_name = 'last_login_ip'
+        ) INTO has_last_login_ip;
+        
+        -- Build dynamic column and select lists based on what exists
+        column_list := 'id, tenant_id';
+        select_list := 'id, tenant_id';
+        
         IF has_library_id THEN
-            -- Migrate with library_id
-            INSERT INTO library_staff (
-                id, tenant_id, library_id, email, password_hash, first_name, last_name, 
-                phone, role, is_active, last_login_at, last_login_ip, metadata, created_at, updated_at
-            )
-            SELECT 
-                id,
-                tenant_id,
-                library_id,
-                email,
-                password_hash,
-                first_name,
-                last_name,
-                phone,
-                CASE 
-                    WHEN role = 'manager' THEN 'manager'
-                    ELSE 'general'
-                END as role,
-                is_active,
-                last_login_at,
-                last_login_ip,
-                COALESCE(metadata, '{}'::jsonb),
-                created_at,
-                updated_at
-            FROM users
-            WHERE role IN ('manager', 'staff')
-            ON CONFLICT (tenant_id, email) DO NOTHING;
+            column_list := column_list || ', library_id';
+            select_list := select_list || ', library_id';
         ELSE
-            -- Migrate without library_id (set to NULL)
-            INSERT INTO library_staff (
-                id, tenant_id, library_id, email, password_hash, first_name, last_name, 
-                phone, role, is_active, last_login_at, last_login_ip, metadata, created_at, updated_at
-            )
-            SELECT 
-                id,
-                tenant_id,
-                NULL as library_id,
-                email,
-                password_hash,
-                first_name,
-                last_name,
-                phone,
-                CASE 
-                    WHEN role = 'manager' THEN 'manager'
-                    ELSE 'general'
-                END as role,
-                is_active,
-                last_login_at,
-                last_login_ip,
-                COALESCE(metadata, '{}'::jsonb),
-                created_at,
-                updated_at
-            FROM users
-            WHERE role IN ('manager', 'staff')
-            ON CONFLICT (tenant_id, email) DO NOTHING;
+            column_list := column_list || ', library_id';
+            select_list := select_list || ', NULL as library_id';
         END IF;
+        
+        column_list := column_list || ', email';
+        select_list := select_list || ', email';
+        
+        IF has_password_hash THEN
+            column_list := column_list || ', password_hash';
+            select_list := select_list || ', password_hash';
+        ELSE
+            -- Generate a placeholder password hash if password_hash doesn't exist
+            -- This should never be used for login, but allows migration to complete
+            column_list := column_list || ', password_hash';
+            select_list := select_list || ', ''$2b$10$PLACEHOLDER.DO.NOT.USE.FOR.LOGIN'' as password_hash';
+        END IF;
+        
+        column_list := column_list || ', first_name, last_name, phone';
+        select_list := select_list || ', first_name, last_name, phone';
+        
+        column_list := column_list || ', role';
+        select_list := select_list || ', CASE WHEN role = ''manager'' THEN ''manager'' ELSE ''general'' END as role';
+        
+        column_list := column_list || ', is_active';
+        select_list := select_list || ', is_active';
+        
+        IF has_last_login_at THEN
+            column_list := column_list || ', last_login_at';
+            select_list := select_list || ', last_login_at';
+        ELSE
+            column_list := column_list || ', last_login_at';
+            select_list := select_list || ', NULL as last_login_at';
+        END IF;
+        
+        IF has_last_login_ip THEN
+            column_list := column_list || ', last_login_ip';
+            select_list := select_list || ', last_login_ip';
+        ELSE
+            column_list := column_list || ', last_login_ip';
+            select_list := select_list || ', NULL as last_login_ip';
+        END IF;
+        
+        IF has_metadata THEN
+            column_list := column_list || ', metadata';
+            select_list := select_list || ', COALESCE(metadata, ''{}''::jsonb)';
+        ELSE
+            column_list := column_list || ', metadata';
+            select_list := select_list || ', ''{}''::jsonb as metadata';
+        END IF;
+        
+        column_list := column_list || ', created_at, updated_at';
+        select_list := select_list || ', created_at, updated_at';
+        
+        -- Execute dynamic migration
+        EXECUTE format('
+            INSERT INTO library_staff (%s)
+            SELECT %s
+            FROM users
+            WHERE role IN (''manager'', ''staff'')
+            ON CONFLICT (tenant_id, email) DO NOTHING
+        ', column_list, select_list);
+        
+        RAISE NOTICE 'Migrated data from users table to library_staff';
     END IF;
 END $$;
 
