@@ -48,6 +48,7 @@ DECLARE
     has_metadata BOOLEAN;
     has_last_login_at BOOLEAN;
     has_last_login_ip BOOLEAN;
+    has_is_active BOOLEAN;
     column_list TEXT;
     select_list TEXT;
 BEGIN
@@ -77,6 +78,11 @@ BEGIN
             SELECT 1 FROM information_schema.columns 
             WHERE table_name = 'users' AND column_name = 'last_login_ip'
         ) INTO has_last_login_ip;
+        
+        SELECT EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_name = 'users' AND column_name = 'is_active'
+        ) INTO has_is_active;
         
         -- Build dynamic column and select lists based on what exists
         column_list := 'id, tenant_id';
@@ -110,7 +116,11 @@ BEGIN
         select_list := select_list || ', CASE WHEN role = ''manager'' THEN ''manager'' ELSE ''general'' END as role';
         
         column_list := column_list || ', is_active';
-        select_list := select_list || ', is_active';
+        IF has_is_active THEN
+            select_list := select_list || ', is_active';
+        ELSE
+            select_list := select_list || ', true as is_active';
+        END IF;
         
         IF has_last_login_at THEN
             column_list := column_list || ', last_login_at';
