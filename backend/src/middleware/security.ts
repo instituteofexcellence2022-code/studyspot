@@ -30,16 +30,15 @@ export const requireAdmin = async (request: FastifyRequest, reply: FastifyReply)
     const userType = user.userType || user.user_type;
     const adminRoles = ['super_admin', 'admin', 'support', 'analyst', 'sales', 'finance'];
     const userRoles = Array.isArray(user.roles) ? user.roles : [user.role];
-    const isPlatformAdmin = userType === 'platform_admin';
+    const isPlatformAdmin = userType === 'platform_admin' || userType === 'platform_staff';
     const hasAdminRole = userRoles.some(role => adminRoles.includes(role));
     
-    // Platform admins must have platform_admin user_type AND admin role
+    // Platform admins must have platform_admin/platform_staff user_type AND admin role
     if (!isPlatformAdmin || !hasAdminRole) {
-
-    if (!hasAdminRole) {
       logger.warn('Unauthorized admin access attempt', {
         userId: user.userId || user.id,
         roles: userRoles,
+        userType,
         path: request.url,
         ip: request.ip,
       });

@@ -129,7 +129,24 @@ fastify.register(rateLimit, {
 
 const resolveTenantId = (user: any) => user?.tenant_id || user?.tenantId || null;
 
-const generateAccessToken = (user: any) => {
+/**
+ * Get user type from table name
+ */
+const getUserTypeFromTable = (userTable: string): string => {
+  const mapping: Record<string, string> = {
+    'library_owners': 'library_owner',
+    'platform_admins': 'platform_admin',
+    'platform_staff': 'platform_staff',
+    'library_staff': 'library_staff',
+    'students': 'student'
+  };
+  return mapping[userTable] || 'unknown';
+};
+
+/**
+ * Generate access token with userTable included
+ */
+const generateAccessToken = (user: any, userTable: string) => {
   if (!fastify.jwt) {
     throw new Error('JWT plugin not initialized');
   }
@@ -141,9 +158,8 @@ const generateAccessToken = (user: any) => {
     ? [user.role]
     : [];
 
-  // Determine user_type
-  const userType = user?.user_type || 
-                   (user?.tenant_id || user?.tenantId ? 'library_owner' : 'platform_admin');
+  // Determine user_type from table
+  const userType = getUserTypeFromTable(userTable);
 
   const payload: Record<string, unknown> = {
     sub: user.id,
@@ -153,6 +169,7 @@ const generateAccessToken = (user: any) => {
     permissions: user.permissions ?? [],
     userType,
     user_type: userType,
+    userTable, // NEW: Include which table the user is in
     tenantId,
     tenant_id: tenantId,
     type: 'access',
@@ -175,10 +192,14 @@ const generateAccessToken = (user: any) => {
   });
 };
 
-const generateRefreshToken = (user: any) => {
+/**
+ * Generate refresh token with userTable included
+ */
+const generateRefreshToken = (user: any, userTable: string) => {
   return fastify.jwt.sign(
     {
       userId: user.id,
+      userTable, // NEW: Include which table the user is in
       type: 'refresh',
     },
     { expiresIn: process.env.JWT_REFRESH_TOKEN_EXPIRY || '7d' }
@@ -202,7 +223,10 @@ const extractExpiryTimestamp = (token: string): number | null => {
   }
 };
 
-const formatUserResponse = (user: any) => {
+/**
+ * Format user response with userTable
+ */
+const formatUserResponse = (user: any, userTable?: string) => {
   // Parse metadata if it's a string
   let metadata = {};
   try {
@@ -215,9 +239,10 @@ const formatUserResponse = (user: any) => {
     // Ignore parse errors
   }
 
-  // Determine user_type
-  const userType = user?.user_type || 
-                   (user?.tenant_id || user?.tenantId ? 'library_owner' : 'platform_admin');
+  // Determine user_type from table or user data
+  const userType = userTable 
+    ? getUserTypeFromTable(userTable)
+    : (user?.user_type || (user?.tenant_id || user?.tenantId ? 'library_owner' : 'platform_admin'));
 
   return {
     id: user.id,
@@ -227,6 +252,7 @@ const formatUserResponse = (user: any) => {
     role: user.role ?? null,
     userType,
     user_type: userType,
+    userTable: userTable || null, // Include table name
     tenantId: resolveTenantId(user),
     status: user.is_active === false ? 'inactive' : 'active',
     createdAt: user.created_at ?? null,
@@ -244,7 +270,10 @@ const formatUserResponse = (user: any) => {
   };
 };
 
-const buildAuthPayload = (user: any, tokens: { accessToken: string; refreshToken?: string }) => {
+/**
+ * Build auth payload with userTable
+ */
+const buildAuthPayload = (user: any, tokens: { accessToken: string; refreshToken?: string }, userTable?: string) => {
   let expiresAt = extractExpiryTimestamp(tokens.accessToken);
   
   // Fallback: if expiry extraction fails, calculate from current time + 15 minutes
@@ -255,7 +284,7 @@ const buildAuthPayload = (user: any, tokens: { accessToken: string; refreshToken
   }
 
   return {
-    user: formatUserResponse(user),
+    user: formatUserResponse(user, userTable),
     token: tokens.accessToken,
     tokens: {
       accessToken: tokens.accessToken,
@@ -571,7 +600,7 @@ fastify.post('/api/v1/auth/student/register', async (request, reply) => {
   }
 });
 
-// Universal login endpoint (works for both admin and students)
+// Universal login endpoint (works for all user types)
 fastify.post('/api/auth/login', async (request, reply) => {
   try {
     const { email, password } = request.body as { email: string; password: string };
@@ -587,13 +616,62 @@ fastify.post('/api/auth/login', async (request, reply) => {
       });
     }
 
-    // Find user in admin_users table (works for all user types)
-    const result = await coreDb.query(
-      'SELECT * FROM admin_users WHERE email = $1',
+    // Try to find user in new tables (library_owners, platform_admins, platform_staff)
+    let user: any = null;
+    let userTable: string = '';
+
+    // 1. Try library_owners first
+    const libraryOwnerResult = await coreDb.query(
+      'SELECT * FROM library_owners WHERE email = $1',
       [email.toLowerCase()]
     );
 
-    if (!result.rows.length) {
+    if (libraryOwnerResult.rows.length > 0) {
+      user = libraryOwnerResult.rows[0];
+      userTable = 'library_owners';
+    } else {
+      // 2. Try platform_admins
+      const platformAdminResult = await coreDb.query(
+        'SELECT * FROM platform_admins WHERE email = $1',
+        [email.toLowerCase()]
+      );
+
+      if (platformAdminResult.rows.length > 0) {
+        user = platformAdminResult.rows[0];
+        userTable = 'platform_admins';
+      } else {
+        // 3. Try platform_staff
+        const platformStaffResult = await coreDb.query(
+          'SELECT * FROM platform_staff WHERE email = $1',
+          [email.toLowerCase()]
+        );
+
+        if (platformStaffResult.rows.length > 0) {
+          user = platformStaffResult.rows[0];
+          userTable = 'platform_staff';
+        } else {
+          // 4. Fallback to admin_users (for backward compatibility during migration)
+          const adminUserResult = await coreDb.query(
+            'SELECT * FROM admin_users WHERE email = $1',
+            [email.toLowerCase()]
+          );
+
+          if (adminUserResult.rows.length > 0) {
+            user = adminUserResult.rows[0];
+            // Determine table from user data
+            if (user.tenant_id) {
+              userTable = 'library_owners';
+            } else if (user.role === 'super_admin') {
+              userTable = 'platform_admins';
+            } else {
+              userTable = 'platform_staff';
+            }
+          }
+        }
+      }
+    }
+
+    if (!user) {
       return reply.status(HTTP_STATUS.UNAUTHORIZED).send({
         success: false,
         error: {
@@ -602,8 +680,6 @@ fastify.post('/api/auth/login', async (request, reply) => {
         },
       });
     }
-
-    const user = result.rows[0];
 
     // Verify password
     const isValidPassword = await bcrypt.compare(password, user.password_hash);
@@ -628,15 +704,14 @@ fastify.post('/api/auth/login', async (request, reply) => {
       });
     }
 
-    // Generate tokens
+    // Generate tokens with userTable
     console.log('[LOGIN] Generating tokens...');
-    const accessToken = generateAccessToken(user);
-    const refreshToken = generateRefreshToken(user);
+    const accessToken = generateAccessToken(user, userTable);
+    const refreshToken = generateRefreshToken(user, userTable);
     console.log('[LOGIN] Tokens generated:', {
       hasAccessToken: !!accessToken,
       hasRefreshToken: !!refreshToken,
-      accessTokenLength: accessToken?.length,
-      refreshTokenLength: refreshToken?.length,
+      userTable,
     });
 
     if (!accessToken) {
@@ -646,39 +721,34 @@ fastify.post('/api/auth/login', async (request, reply) => {
       throw new Error('Failed to generate refresh token');
     }
 
-    // Store refresh token (temporarily skipped to avoid database trigger errors)
+    // Store refresh token
     try {
-      // Temporarily skip refresh token storage
-      // await coreDb.query(
-      //   `INSERT INTO refresh_tokens (user_id, user_type, token, expires_at)
-      //    VALUES ($1, $2, $3, NOW() + INTERVAL '7 days')`,
-      //   [user.id, user.role || 'student', refreshToken]
-      // );
-      logger.info('Refresh token storage skipped (temporary)');
+      const userType = getUserTypeFromTable(userTable);
+      await coreDb.query(
+        `INSERT INTO refresh_tokens (user_id, user_table, user_type, token, expires_at)
+         VALUES ($1, $2, $3, $4, NOW() + INTERVAL '7 days')
+         ON CONFLICT (user_id, user_table) DO UPDATE SET token = $4, expires_at = NOW() + INTERVAL '7 days'`,
+        [user.id, userTable, userType, refreshToken]
+      );
     } catch (tokenError: any) {
-      logger.warn('Refresh token insert failed', {
-        userId: user.id,
-        error: tokenError.message,
-      });
+      logger.warn('Refresh token storage failed (non-critical):', tokenError.message);
     }
 
-    // Update last login (optional - won't fail if column missing)
+    // Update last login
     try {
-      await coreDb.query(
-        'UPDATE admin_users SET last_login_at = NOW(), last_login_ip = $1 WHERE id = $2',
-        [request.ip, user.id]
-      );
+      const updateQuery = `UPDATE ${userTable} SET last_login_at = NOW(), last_login_ip = $1 WHERE id = $2`;
+      await coreDb.query(updateQuery, [request.ip, user.id]);
     } catch (updateError: any) {
       logger.warn('Failed to update last login (non-critical):', updateError.message);
-      // Don't throw - this is optional
     }
 
     // Create audit log
     try {
+      const userType = getUserTypeFromTable(userTable);
       await coreDb.query(
-        `INSERT INTO audit_logs (user_id, user_type, action, ip_address)
-         VALUES ($1, $2, $3, $4)`,
-        [user.id, user.role || 'student', 'login', request.ip]
+        `INSERT INTO audit_logs (user_id, user_table, user_type, action, ip_address, user_agent)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [user.id, userTable, userType, 'login', request.ip, request.headers['user-agent'] || 'unknown']
       );
     } catch (auditError: any) {
       logger.warn('Audit log insert failed', {
@@ -689,19 +759,13 @@ fastify.post('/api/auth/login', async (request, reply) => {
 
     // Build auth payload
     console.log('[LOGIN] Building auth payload...');
-    const authPayload = buildAuthPayload(user, { accessToken, refreshToken });
+    const authPayload = buildAuthPayload(user, { accessToken, refreshToken }, userTable);
     console.log('[LOGIN] Auth payload built:', {
       hasUser: !!authPayload.user,
       hasToken: !!authPayload.token,
-      hasTokens: !!authPayload.tokens,
-      tokensStructure: authPayload.tokens ? {
-        hasAccessToken: !!authPayload.tokens.accessToken,
-        hasRefreshToken: !!authPayload.tokens.refreshToken,
-        hasExpiresAt: !!authPayload.tokens.expiresAt,
-      } : 'tokens is undefined',
+      userTable,
     });
 
-    // Remove sensitive data
     return {
       success: true,
       data: authPayload,
@@ -852,22 +916,20 @@ fastify.post('/api/auth/register', async (request, reply) => {
       console.warn('[REGISTER] Continuing without tenant - user will need manual tenant assignment');
     }
 
-    // Create user (without transaction for pooler compatibility)
-    console.log('[REGISTER] Step 4: Inserting user into database...');
+    // Create library owner in new table
+    console.log('[REGISTER] Step 4: Inserting library owner into database...');
     let result;
     try {
-      // Use simple query instead of transaction (pooler doesn't support transactions)
-      // lastName is optional, use null if not provided
-      // user_type: 'library_owner' for web owner portal registrations
+      // Insert into library_owners table (new structure)
       result = await coreDb.query(
-        `INSERT INTO admin_users (email, password_hash, first_name, last_name, role, user_type, tenant_id, is_active, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
-         RETURNING id, email, first_name, last_name, role, user_type, tenant_id, is_active, created_at, updated_at`,
-        [email.toLowerCase(), passwordHash, firstName, lastName || null, userRole, userType, tenantId, true]
+        `INSERT INTO library_owners (tenant_id, email, password_hash, first_name, last_name, phone, is_active, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
+         RETURNING id, email, first_name, last_name, tenant_id, is_active, created_at, updated_at, phone`,
+        [tenantId, email.toLowerCase(), passwordHash, firstName, lastName || null, phone || null, true]
       );
-      console.log('[REGISTER] Step 5: User inserted successfully');
+      console.log('[REGISTER] Step 5: Library owner inserted successfully');
     } catch (insertError: any) {
-      console.error('[REGISTER] User insert failed:', insertError);
+      console.error('[REGISTER] Library owner insert failed:', insertError);
       console.error('[REGISTER] Insert error details:', {
         code: insertError.code,
         message: insertError.message,
@@ -879,9 +941,10 @@ fastify.post('/api/auth/register', async (request, reply) => {
     }
 
     const user = result.rows[0];
-    console.log('[REGISTER] Step 6: User object:', { id: user.id, email: user.email, user_type: user.user_type, tenant_id: user.tenant_id });
+    const userTable = 'library_owners';
+    console.log('[REGISTER] Step 6: User object:', { id: user.id, email: user.email, tenant_id: user.tenant_id });
 
-    // Update tenant with owner_id
+    // Update tenant with owner_id (link to library_owners)
     if (tenantId && user.id) {
       try {
         await coreDb.query(
@@ -898,13 +961,13 @@ fastify.post('/api/auth/register', async (request, reply) => {
     let accessToken, refreshToken;
     try {
       console.log('[REGISTER] Step 7: Generating access token...');
-      console.log('[REGISTER] User object for token:', { id: user.id, email: user.email, role: user.role, tenant_id: user.tenant_id });
+      console.log('[REGISTER] User object for token:', { id: user.id, email: user.email, tenant_id: user.tenant_id, userTable });
       console.log('[REGISTER] JWT plugin available:', !!fastify.jwt);
-      accessToken = generateAccessToken(user);
+      accessToken = generateAccessToken(user, userTable);
       console.log('[REGISTER] Step 8: Access token generated, length:', accessToken?.length);
       
       console.log('[REGISTER] Step 9: Generating refresh token...');
-      refreshToken = generateRefreshToken(user);
+      refreshToken = generateRefreshToken(user, userTable);
       console.log('[REGISTER] Step 10: Refresh token generated, length:', refreshToken?.length);
     } catch (tokenError: any) {
       console.error('[REGISTER] Token generation failed:', tokenError);
@@ -927,17 +990,17 @@ fastify.post('/api/auth/register', async (request, reply) => {
       });
     }
 
-    // Store refresh token (optional - skip if database has triggers that require tenant)
-    // TODO: Re-enable once tenant validation is fixed in database
+    // Store refresh token
     try {
       console.log('[REGISTER] Step 11: Storing refresh token...');
-      // Temporarily skip refresh token storage to avoid database trigger errors
-      // await coreDb.query(
-      //   `INSERT INTO refresh_tokens (user_id, user_type, token, expires_at)
-      //    VALUES ($1, $2, $3, NOW() + INTERVAL '7 days')`,
-      //   [user.id, userRole, refreshToken]
-      // );
-      console.log('[REGISTER] Step 12: Refresh token storage skipped (temporary)');
+      const userType = getUserTypeFromTable(userTable);
+      await coreDb.query(
+        `INSERT INTO refresh_tokens (user_id, user_table, user_type, token, expires_at)
+         VALUES ($1, $2, $3, $4, NOW() + INTERVAL '7 days')
+         ON CONFLICT (user_id, user_table) DO UPDATE SET token = $4, expires_at = NOW() + INTERVAL '7 days'`,
+        [user.id, userTable, userType, refreshToken]
+      );
+      console.log('[REGISTER] Step 12: Refresh token stored successfully');
     } catch (tokenError: any) {
       console.warn('[REGISTER] Failed to store refresh token (non-critical):', tokenError.message);
       logger.warn('Failed to store refresh token:', tokenError.message);
@@ -952,8 +1015,10 @@ fastify.post('/api/auth/register', async (request, reply) => {
         {
           ...user,
           phone,
+          role: 'library_owner', // Library owners always have this role
         },
-        { accessToken, refreshToken }
+        { accessToken, refreshToken },
+        userTable
       );
       console.log('[REGISTER] Step 14: Auth payload built successfully');
     } catch (payloadError: any) {
@@ -1031,10 +1096,37 @@ fastify.get('/api/auth/me', async (request, reply) => {
     const token = authHeader.substring(7);
     const decoded = fastify.jwt.verify(token) as any;
 
-    const result = await coreDb.query(
-      'SELECT * FROM admin_users WHERE id = $1',
-      [decoded.userId]
-    );
+    // Get userTable from token (new structure) or determine from user data
+    const userTable = decoded.userTable || 'library_owners'; // Default fallback
+
+    // Query correct table based on userTable
+    let result;
+    switch (userTable) {
+      case 'library_owners':
+        result = await coreDb.query(
+          'SELECT * FROM library_owners WHERE id = $1',
+          [decoded.userId]
+        );
+        break;
+      case 'platform_admins':
+        result = await coreDb.query(
+          'SELECT * FROM platform_admins WHERE id = $1',
+          [decoded.userId]
+        );
+        break;
+      case 'platform_staff':
+        result = await coreDb.query(
+          'SELECT * FROM platform_staff WHERE id = $1',
+          [decoded.userId]
+        );
+        break;
+      default:
+        // Fallback to admin_users for backward compatibility
+        result = await coreDb.query(
+          'SELECT * FROM admin_users WHERE id = $1',
+          [decoded.userId]
+        );
+    }
 
     if (!result.rows.length) {
       return reply.status(HTTP_STATUS.NOT_FOUND).send({
@@ -1062,7 +1154,7 @@ fastify.get('/api/auth/me', async (request, reply) => {
     return {
       success: true,
       data: {
-        user: formatUserResponse(user),
+        user: formatUserResponse(user, userTable),
       },
     };
   } catch (error: any) {
@@ -1094,10 +1186,24 @@ fastify.get('/api/auth/profile', async (request, reply) => {
     const token = authHeader.substring(7);
     const decoded = fastify.jwt.verify(token) as any;
 
-    const result = await coreDb.query(
-      'SELECT * FROM admin_users WHERE id = $1',
-      [decoded.userId]
-    );
+    // Get userTable from token
+    const userTable = decoded.userTable || 'library_owners';
+
+    // Query correct table
+    let result;
+    switch (userTable) {
+      case 'library_owners':
+        result = await coreDb.query('SELECT * FROM library_owners WHERE id = $1', [decoded.userId]);
+        break;
+      case 'platform_admins':
+        result = await coreDb.query('SELECT * FROM platform_admins WHERE id = $1', [decoded.userId]);
+        break;
+      case 'platform_staff':
+        result = await coreDb.query('SELECT * FROM platform_staff WHERE id = $1', [decoded.userId]);
+        break;
+      default:
+        result = await coreDb.query('SELECT * FROM admin_users WHERE id = $1', [decoded.userId]);
+    }
 
     if (!result.rows.length) {
       return reply.status(HTTP_STATUS.NOT_FOUND).send({
@@ -1112,7 +1218,7 @@ fastify.get('/api/auth/profile', async (request, reply) => {
     return {
       success: true,
       data: {
-        user: formatUserResponse(result.rows[0]),
+        user: formatUserResponse(result.rows[0], userTable),
       },
     };
   } catch (error: any) {
@@ -2528,7 +2634,7 @@ const refreshHandler = async (request: any, reply: any) => {
       });
     }
 
-    const decoded = fastify.jwt.verify(refreshToken) as { userId?: string; type?: string };
+    const decoded = fastify.jwt.verify(refreshToken) as { userId?: string; userTable?: string; type?: string };
     if (decoded?.type !== 'refresh' || !decoded?.userId) {
       return reply.status(HTTP_STATUS.UNAUTHORIZED).send({
         success: false,
@@ -2539,9 +2645,12 @@ const refreshHandler = async (request: any, reply: any) => {
       });
     }
 
+    // Get userTable from token or fallback
+    const userTable = decoded.userTable || 'library_owners';
+
     const tokenRow = await coreDb.query(
-      'SELECT * FROM refresh_tokens WHERE token = $1 AND revoked_at IS NULL AND expires_at > NOW()',
-      [refreshToken]
+      'SELECT * FROM refresh_tokens WHERE token = $1 AND user_table = $2 AND revoked_at IS NULL AND expires_at > NOW()',
+      [refreshToken, userTable]
     );
 
     if (!tokenRow.rows.length) {
@@ -2554,10 +2663,21 @@ const refreshHandler = async (request: any, reply: any) => {
       });
     }
 
-    const userResult = await coreDb.query(
-      'SELECT * FROM admin_users WHERE id = $1 AND is_active = true',
-      [decoded.userId]
-    );
+    // Query user from correct table
+    let userResult;
+    switch (userTable) {
+      case 'library_owners':
+        userResult = await coreDb.query('SELECT * FROM library_owners WHERE id = $1 AND is_active = true', [decoded.userId]);
+        break;
+      case 'platform_admins':
+        userResult = await coreDb.query('SELECT * FROM platform_admins WHERE id = $1 AND is_active = true', [decoded.userId]);
+        break;
+      case 'platform_staff':
+        userResult = await coreDb.query('SELECT * FROM platform_staff WHERE id = $1 AND is_active = true', [decoded.userId]);
+        break;
+      default:
+        userResult = await coreDb.query('SELECT * FROM admin_users WHERE id = $1 AND is_active = true', [decoded.userId]);
+    }
 
     if (!userResult.rows.length) {
       return reply.status(HTTP_STATUS.UNAUTHORIZED).send({
@@ -2570,11 +2690,11 @@ const refreshHandler = async (request: any, reply: any) => {
     }
 
     const user = userResult.rows[0];
-    const newAccessToken = generateAccessToken(user);
+    const newAccessToken = generateAccessToken(user, userTable);
 
     return {
       success: true,
-      data: buildAuthPayload(user, { accessToken: newAccessToken, refreshToken }),
+      data: buildAuthPayload(user, { accessToken: newAccessToken, refreshToken }, userTable),
     };
   } catch (error: any) {
     logger.error('Refresh token error:', error);

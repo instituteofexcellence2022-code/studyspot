@@ -241,56 +241,225 @@ BEGIN
 END $$;
 
 -- Migrate platform staff
+-- Check for existence of metadata, department, and permissions columns
 DO $$
 BEGIN
-    IF EXISTS (
-        SELECT 1 FROM information_schema.columns 
-        WHERE table_name = 'admin_users' AND column_name = 'metadata'
-    ) THEN
-        INSERT INTO platform_staff (id, email, password_hash, first_name, last_name, phone, role, department, permissions, is_active, last_login_at, last_login_ip, metadata, created_at, updated_at)
-        SELECT 
-            id,
-            email,
-            password_hash,
-            first_name,
-            last_name,
-            phone,
-            role,
-            department,
-            COALESCE(permissions, '[]'::jsonb),
-            is_active,
-            last_login_at,
-            last_login_ip,
-            COALESCE(metadata, '{}'::jsonb),
-            created_at,
-            updated_at
-        FROM admin_users
-        WHERE role IN ('admin', 'support', 'analyst', 'sales', 'finance') 
-        AND tenant_id IS NULL
-        ON CONFLICT (id) DO NOTHING;
-    ELSE
-        INSERT INTO platform_staff (id, email, password_hash, first_name, last_name, phone, role, department, permissions, is_active, last_login_at, last_login_ip, metadata, created_at, updated_at)
-        SELECT 
-            id,
-            email,
-            password_hash,
-            first_name,
-            last_name,
-            phone,
-            role,
-            department,
-            COALESCE(permissions, '[]'::jsonb),
-            is_active,
-            last_login_at,
-            last_login_ip,
-            '{}'::jsonb as metadata,
-            created_at,
-            updated_at
-        FROM admin_users
-        WHERE role IN ('admin', 'support', 'analyst', 'sales', 'finance') 
-        AND tenant_id IS NULL
-        ON CONFLICT (id) DO NOTHING;
-    END IF;
+    -- Check which columns exist
+    DECLARE
+        has_metadata BOOLEAN;
+        has_department BOOLEAN;
+        has_permissions BOOLEAN;
+    BEGIN
+        -- Check column existence
+        SELECT EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_name = 'admin_users' AND column_name = 'metadata'
+        ) INTO has_metadata;
+        
+        SELECT EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_name = 'admin_users' AND column_name = 'department'
+        ) INTO has_department;
+        
+        SELECT EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_name = 'admin_users' AND column_name = 'permissions'
+        ) INTO has_permissions;
+        
+        -- Build and execute INSERT based on available columns
+        IF has_metadata AND has_department AND has_permissions THEN
+            -- All columns exist
+            INSERT INTO platform_staff (id, email, password_hash, first_name, last_name, phone, role, department, permissions, is_active, last_login_at, last_login_ip, metadata, created_at, updated_at)
+            SELECT 
+                id,
+                email,
+                password_hash,
+                first_name,
+                last_name,
+                phone,
+                role,
+                department,
+                COALESCE(permissions, '[]'::jsonb),
+                is_active,
+                last_login_at,
+                last_login_ip,
+                COALESCE(metadata, '{}'::jsonb),
+                created_at,
+                updated_at
+            FROM admin_users
+            WHERE role IN ('admin', 'support', 'analyst', 'sales', 'finance') 
+            AND tenant_id IS NULL
+            ON CONFLICT (id) DO NOTHING;
+            
+        ELSIF has_metadata AND has_department AND NOT has_permissions THEN
+            -- metadata and department exist, but permissions doesn't
+            INSERT INTO platform_staff (id, email, password_hash, first_name, last_name, phone, role, department, permissions, is_active, last_login_at, last_login_ip, metadata, created_at, updated_at)
+            SELECT 
+                id,
+                email,
+                password_hash,
+                first_name,
+                last_name,
+                phone,
+                role,
+                department,
+                '[]'::jsonb as permissions, -- Default empty array
+                is_active,
+                last_login_at,
+                last_login_ip,
+                COALESCE(metadata, '{}'::jsonb),
+                created_at,
+                updated_at
+            FROM admin_users
+            WHERE role IN ('admin', 'support', 'analyst', 'sales', 'finance') 
+            AND tenant_id IS NULL
+            ON CONFLICT (id) DO NOTHING;
+            
+        ELSIF has_metadata AND NOT has_department AND has_permissions THEN
+            -- metadata and permissions exist, but department doesn't
+            INSERT INTO platform_staff (id, email, password_hash, first_name, last_name, phone, role, department, permissions, is_active, last_login_at, last_login_ip, metadata, created_at, updated_at)
+            SELECT 
+                id,
+                email,
+                password_hash,
+                first_name,
+                last_name,
+                phone,
+                role,
+                NULL as department,
+                COALESCE(permissions, '[]'::jsonb),
+                is_active,
+                last_login_at,
+                last_login_ip,
+                COALESCE(metadata, '{}'::jsonb),
+                created_at,
+                updated_at
+            FROM admin_users
+            WHERE role IN ('admin', 'support', 'analyst', 'sales', 'finance') 
+            AND tenant_id IS NULL
+            ON CONFLICT (id) DO NOTHING;
+            
+        ELSIF has_metadata AND NOT has_department AND NOT has_permissions THEN
+            -- Only metadata exists
+            INSERT INTO platform_staff (id, email, password_hash, first_name, last_name, phone, role, department, permissions, is_active, last_login_at, last_login_ip, metadata, created_at, updated_at)
+            SELECT 
+                id,
+                email,
+                password_hash,
+                first_name,
+                last_name,
+                phone,
+                role,
+                NULL as department,
+                '[]'::jsonb as permissions,
+                is_active,
+                last_login_at,
+                last_login_ip,
+                COALESCE(metadata, '{}'::jsonb),
+                created_at,
+                updated_at
+            FROM admin_users
+            WHERE role IN ('admin', 'support', 'analyst', 'sales', 'finance') 
+            AND tenant_id IS NULL
+            ON CONFLICT (id) DO NOTHING;
+            
+        ELSIF NOT has_metadata AND has_department AND has_permissions THEN
+            -- department and permissions exist, but metadata doesn't
+            INSERT INTO platform_staff (id, email, password_hash, first_name, last_name, phone, role, department, permissions, is_active, last_login_at, last_login_ip, metadata, created_at, updated_at)
+            SELECT 
+                id,
+                email,
+                password_hash,
+                first_name,
+                last_name,
+                phone,
+                role,
+                department,
+                COALESCE(permissions, '[]'::jsonb),
+                is_active,
+                last_login_at,
+                last_login_ip,
+                '{}'::jsonb as metadata,
+                created_at,
+                updated_at
+            FROM admin_users
+            WHERE role IN ('admin', 'support', 'analyst', 'sales', 'finance') 
+            AND tenant_id IS NULL
+            ON CONFLICT (id) DO NOTHING;
+            
+        ELSIF NOT has_metadata AND has_department AND NOT has_permissions THEN
+            -- Only department exists
+            INSERT INTO platform_staff (id, email, password_hash, first_name, last_name, phone, role, department, permissions, is_active, last_login_at, last_login_ip, metadata, created_at, updated_at)
+            SELECT 
+                id,
+                email,
+                password_hash,
+                first_name,
+                last_name,
+                phone,
+                role,
+                department,
+                '[]'::jsonb as permissions,
+                is_active,
+                last_login_at,
+                last_login_ip,
+                '{}'::jsonb as metadata,
+                created_at,
+                updated_at
+            FROM admin_users
+            WHERE role IN ('admin', 'support', 'analyst', 'sales', 'finance') 
+            AND tenant_id IS NULL
+            ON CONFLICT (id) DO NOTHING;
+            
+        ELSIF NOT has_metadata AND NOT has_department AND has_permissions THEN
+            -- Only permissions exists
+            INSERT INTO platform_staff (id, email, password_hash, first_name, last_name, phone, role, department, permissions, is_active, last_login_at, last_login_ip, metadata, created_at, updated_at)
+            SELECT 
+                id,
+                email,
+                password_hash,
+                first_name,
+                last_name,
+                phone,
+                role,
+                NULL as department,
+                COALESCE(permissions, '[]'::jsonb),
+                is_active,
+                last_login_at,
+                last_login_ip,
+                '{}'::jsonb as metadata,
+                created_at,
+                updated_at
+            FROM admin_users
+            WHERE role IN ('admin', 'support', 'analyst', 'sales', 'finance') 
+            AND tenant_id IS NULL
+            ON CONFLICT (id) DO NOTHING;
+            
+        ELSE
+            -- None of the optional columns exist
+            INSERT INTO platform_staff (id, email, password_hash, first_name, last_name, phone, role, department, permissions, is_active, last_login_at, last_login_ip, metadata, created_at, updated_at)
+            SELECT 
+                id,
+                email,
+                password_hash,
+                first_name,
+                last_name,
+                phone,
+                role,
+                NULL as department,
+                '[]'::jsonb as permissions,
+                is_active,
+                last_login_at,
+                last_login_ip,
+                '{}'::jsonb as metadata,
+                created_at,
+                updated_at
+            FROM admin_users
+            WHERE role IN ('admin', 'support', 'analyst', 'sales', 'finance') 
+            AND tenant_id IS NULL
+            ON CONFLICT (id) DO NOTHING;
+        END IF;
+    END;
 END $$;
 
 -- ============================================
@@ -299,52 +468,134 @@ END $$;
 -- ============================================
 
 -- Update owner_id to reference library_owners
-UPDATE tenants t
-SET owner_id = (
-    SELECT lo.id FROM library_owners lo
-    WHERE lo.tenant_id = t.id
-    LIMIT 1
-)
-WHERE owner_id IS NOT NULL
-AND EXISTS (SELECT 1 FROM library_owners WHERE tenant_id = t.id);
-
--- Drop old foreign key and add new one
-ALTER TABLE tenants 
-DROP CONSTRAINT IF EXISTS tenants_owner_id_fkey;
-
-ALTER TABLE tenants 
-ADD CONSTRAINT tenants_owner_id_fkey 
-FOREIGN KEY (owner_id) REFERENCES library_owners(id);
+-- Only if tenants table exists and has owner_id column
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.tables 
+        WHERE table_name = 'tenants'
+    ) AND EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'tenants' AND column_name = 'owner_id'
+    ) THEN
+        -- Update owner_id to reference library_owners
+        UPDATE tenants t
+        SET owner_id = (
+            SELECT lo.id FROM library_owners lo
+            WHERE lo.tenant_id = t.id
+            LIMIT 1
+        )
+        WHERE owner_id IS NOT NULL
+        AND EXISTS (SELECT 1 FROM library_owners WHERE tenant_id = t.id);
+        
+        -- Drop old foreign key if it exists
+        ALTER TABLE tenants 
+        DROP CONSTRAINT IF EXISTS tenants_owner_id_fkey;
+        
+        -- Add new foreign key constraint if owner_id column exists
+        IF EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_name = 'tenants' AND column_name = 'owner_id'
+        ) THEN
+            -- Check if constraint already exists
+            IF NOT EXISTS (
+                SELECT 1 FROM information_schema.table_constraints 
+                WHERE table_name = 'tenants' 
+                AND constraint_name = 'tenants_owner_id_fkey'
+            ) THEN
+                ALTER TABLE tenants 
+                ADD CONSTRAINT tenants_owner_id_fkey 
+                FOREIGN KEY (owner_id) REFERENCES library_owners(id);
+            END IF;
+        END IF;
+    END IF;
+END $$;
 
 -- ============================================
 -- STEP 6: UPDATE AUDIT LOGS
 -- Add user_table column to track which table the user is in
 -- ============================================
 
-ALTER TABLE audit_logs 
-ADD COLUMN IF NOT EXISTS user_table VARCHAR(50) 
-CHECK (user_table IN ('platform_admins', 'platform_staff', 'library_owners', 'library_staff', 'students'));
-
--- Update existing audit logs
-UPDATE audit_logs 
-SET user_table = CASE 
-    WHEN user_type = 'platform_admin' AND user_id IN (SELECT id FROM platform_admins) THEN 'platform_admins'
-    WHEN user_type = 'platform_admin' AND user_id IN (SELECT id FROM platform_staff) THEN 'platform_staff'
-    WHEN user_type = 'library_owner' AND user_id IN (SELECT id FROM library_owners) THEN 'library_owners'
-    WHEN user_type = 'library_staff' THEN 'library_staff'
-    WHEN user_type = 'student' THEN 'students'
-    ELSE 'platform_staff' -- Default fallback
-END
-WHERE user_table IS NULL;
+-- Only update if audit_logs table exists
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.tables 
+        WHERE table_name = 'audit_logs'
+    ) THEN
+        -- Add user_table column if it doesn't exist
+        ALTER TABLE audit_logs 
+        ADD COLUMN IF NOT EXISTS user_table VARCHAR(50);
+        
+        -- Add check constraint if it doesn't exist
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.constraint_column_usage 
+            WHERE table_name = 'audit_logs' 
+            AND constraint_name = 'audit_logs_user_table_check'
+        ) THEN
+            ALTER TABLE audit_logs 
+            ADD CONSTRAINT audit_logs_user_table_check 
+            CHECK (user_table IN ('platform_admins', 'platform_staff', 'library_owners', 'library_staff', 'students'));
+        END IF;
+        
+        -- Update existing audit logs
+        IF EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_name = 'audit_logs' AND column_name = 'user_type'
+        ) THEN
+            -- user_type column exists - use it
+            UPDATE audit_logs 
+            SET user_table = CASE 
+                WHEN user_type = 'platform_admin' AND user_id IN (SELECT id FROM platform_admins) THEN 'platform_admins'
+                WHEN user_type = 'platform_admin' AND user_id IN (SELECT id FROM platform_staff) THEN 'platform_staff'
+                WHEN user_type = 'library_owner' AND user_id IN (SELECT id FROM library_owners) THEN 'library_owners'
+                WHEN user_type = 'library_staff' THEN 'library_staff'
+                WHEN user_type = 'student' THEN 'students'
+                ELSE 'platform_staff' -- Default fallback
+            END
+            WHERE user_table IS NULL;
+        ELSE
+            -- user_type column doesn't exist - identify by user_id
+            UPDATE audit_logs 
+            SET user_table = CASE 
+                WHEN user_id IN (SELECT id FROM platform_admins) THEN 'platform_admins'
+                WHEN user_id IN (SELECT id FROM platform_staff) THEN 'platform_staff'
+                WHEN user_id IN (SELECT id FROM library_owners) THEN 'library_owners'
+                ELSE 'platform_staff' -- Default fallback
+            END
+            WHERE user_table IS NULL;
+        END IF;
+    END IF;
+END $$;
 
 -- ============================================
 -- STEP 7: UPDATE REFRESH TOKENS
 -- Add user_table column
 -- ============================================
 
-ALTER TABLE refresh_tokens 
-ADD COLUMN IF NOT EXISTS user_table VARCHAR(50)
-CHECK (user_table IN ('platform_admins', 'platform_staff', 'library_owners', 'library_staff', 'students'));
+-- Only update if refresh_tokens table exists
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.tables 
+        WHERE table_name = 'refresh_tokens'
+    ) THEN
+        -- Add user_table column if it doesn't exist
+        ALTER TABLE refresh_tokens 
+        ADD COLUMN IF NOT EXISTS user_table VARCHAR(50);
+        
+        -- Add check constraint if it doesn't exist
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.constraint_column_usage 
+            WHERE table_name = 'refresh_tokens' 
+            AND constraint_name = 'refresh_tokens_user_table_check'
+        ) THEN
+            ALTER TABLE refresh_tokens 
+            ADD CONSTRAINT refresh_tokens_user_table_check
+            CHECK (user_table IN ('platform_admins', 'platform_staff', 'library_owners', 'library_staff', 'students'));
+        END IF;
+    END IF;
+END $$;
 
 -- ============================================
 -- COMMENTS

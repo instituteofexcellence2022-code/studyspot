@@ -20,6 +20,7 @@ const migrations = [
   '005_redesign_multi_tenant_saas.sql',
   '006_update_tenant_users_schema.sql',
   '007_migrate_existing_data.sql',
+  '008_redesign_clear_user_structure.sql',
 ];
 
 async function runMigrations() {
@@ -66,53 +67,83 @@ async function runMigrations() {
     // Verify migrations
     console.log('🔍 Verifying migrations...\n');
     
-    // Check user_type column
-    const userTypeCheck = await pool.query(`
-      SELECT column_name, data_type 
-      FROM information_schema.columns 
-      WHERE table_name = 'admin_users' 
-      AND column_name = 'user_type'
-    `);
-    
-    if (userTypeCheck.rows.length > 0) {
-      console.log('✅ user_type column exists in admin_users');
-    } else {
-      console.log('❌ user_type column NOT found in admin_users');
+    // Check new user tables
+    const tables = ['library_owners', 'platform_admins', 'platform_staff'];
+    for (const table of tables) {
+      const tableCheck = await pool.query(`
+        SELECT EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_schema = 'public' 
+          AND table_name = $1
+        )
+      `, [table]);
+      
+      if (tableCheck.rows[0].exists) {
+        const count = await pool.query(`SELECT COUNT(*) as count FROM ${table}`);
+        console.log(`✅ ${table}: ${count.rows[0].count} records`);
+      } else {
+        console.log(`❌ ${table}: Table not found`);
+      }
     }
 
-    // Check user_type distribution
-    const userTypeDist = await pool.query(`
-      SELECT user_type, COUNT(*) as count 
-      FROM admin_users 
-      GROUP BY user_type
+    // Check library owners
+    const libraryOwnersCount = await pool.query(`
+      SELECT COUNT(*) as count FROM library_owners
     `);
-    
-    console.log('\n📊 User Type Distribution:');
-    userTypeDist.rows.forEach(row => {
-      console.log(`   ${row.user_type || 'NULL'}: ${row.count}`);
-    });
+    console.log(`\n📊 Library Owners: ${libraryOwnersCount.rows[0].count}`);
 
-    // Check tenants with owner_id
+    // Check platform admins
+    const platformAdminsCount = await pool.query(`
+      SELECT COUNT(*) as count FROM platform_admins
+    `);
+    console.log(`📊 Platform Admins: ${platformAdminsCount.rows[0].count}`);
+
+    // Check platform staff
+    const platformStaffCount = await pool.query(`
+      SELECT COUNT(*) as count FROM platform_staff
+    `);
+    console.log(`📊 Platform Staff: ${platformStaffCount.rows[0].count}`);
+
+    // Check tenants with owner_id linked to library_owners
     const tenantsWithOwner = await pool.query(`
       SELECT COUNT(*) as count 
-      FROM tenants 
-      WHERE owner_id IS NOT NULL
+      FROM tenants t
+      INNER JOIN library_owners lo ON t.owner_id = lo.id
     `);
-    
-    console.log(`\n📊 Tenants with owner_id: ${tenantsWithOwner.rows[0].count}`);
+    console.log(`📊 Tenants with linked owners: ${tenantsWithOwner.rows[0].count}`);
 
-    // Check for issues
-    const issues = await pool.query(`
-      SELECT COUNT(*) as count 
-      FROM admin_users 
-      WHERE user_type IS NULL
+    // Check audit_logs user_table column
+    const auditLogsCheck = await pool.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'audit_logs' 
+      AND column_name = 'user_table'
     `);
     
-    if (issues.rows[0].count > 0) {
-      console.log(`\n⚠️  Warning: ${issues.rows[0].count} users without user_type`);
+    if (auditLogsCheck.rows.length > 0) {
+      console.log(`✅ audit_logs.user_table column exists`);
     } else {
-      console.log('\n✅ All users have user_type set');
+      console.log(`⚠️  audit_logs.user_table column not found`);
     }
+
+    // Check refresh_tokens user_table column
+    const refreshTokensCheck = await pool.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'refresh_tokens' 
+      AND column_name = 'user_table'
+    `);
+    
+    if (refreshTokensCheck.rows.length > 0) {
+      console.log(`✅ refresh_tokens.user_table column exists`);
+    } else {
+      console.log(`⚠️  refresh_tokens.user_table column not found`);
+    }
+
+    // Summary
+    console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('✅ Migration 008 Verification Complete!');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 
   } catch (error) {
     console.error('\n❌ Migration failed:', error);
