@@ -10,6 +10,8 @@
     "start:auth": "node dist/services/auth-service/index.js",
     "start:student": "node dist/services/student-service/index.js",
     "start:library": "node dist/services/library-service/index.js",
+    "start:booking": "node dist/services/booking-service/index.js",
+    "start:payment": "node dist/services/payment-service/index.js",
     "start:api-gateway": "node dist/services/api-gateway/index.js",
     "test": "jest",
     "test:watch": "jest --watch",

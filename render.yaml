@@ -64,3 +64,43 @@ services:
         value: 10002
       - key: CORS_ORIGIN
         value: https://studyspot-rose.vercel.app,https://studyspot-librarys.vercel.app,https://studyspot-admin-2.vercel.app,https://studyspot-student.vercel.app,http://localhost:3000,http://localhost:3001,http://localhost:3002,https://main.studyspot-student.pages.dev,https://studyspot-student.netlify.app
+
+  # Booking Service
+  - type: web
+    name: studyspot-bookings
+    env: node
+    region: oregon
+    plan: free
+    buildCommand: cd backend && npm install && npm run build
+    startCommand: cd backend && npm run start:booking
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: BOOKING_SERVICE_PORT
+        value: 10003
+      - key: CORS_ORIGIN
+        value: https://studyspot-rose.vercel.app,https://studyspot-librarys.vercel.app,https://studyspot-admin-2.vercel.app,https://studyspot-student.vercel.app,http://localhost:3000,http://localhost:3001,http://localhost:3002,https://main.studyspot-student.pages.dev,https://studyspot-student.netlify.app
+
+  # Payment Service
+  - type: web
+    name: studyspot-payments
+    env: node
+    region: oregon
+    plan: free
+    buildCommand: cd backend && npm install && npm run build
+    startCommand: cd backend && npm run start:payment
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PAYMENT_SERVICE_PORT
+        value: 10004
+      - key: CORS_ORIGIN
+        value: https://studyspot-rose.vercel.app,https://studyspot-librarys.vercel.app,https://studyspot-admin-2.vercel.app,https://studyspot-student.vercel.app,http://localhost:3000,http://localhost:3001,http://localhost:3002,https://main.studyspot-student.pages.dev,https://studyspot-student.netlify.app
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: CASHFREE_APP_ID
+        sync: false
+      - key: CASHFREE_SECRET_KEY
+        sync: false
