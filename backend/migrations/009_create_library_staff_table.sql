@@ -42,34 +42,73 @@ CREATE INDEX idx_library_staff_employee_id ON library_staff(employee_id);
 
 -- Migrate from users table if it exists (optional - only if users table has data)
 DO $$
+DECLARE
+    has_library_id BOOLEAN;
 BEGIN
     IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'users') THEN
-        INSERT INTO library_staff (
-            id, tenant_id, library_id, email, password_hash, first_name, last_name, 
-            phone, role, is_active, last_login_at, last_login_ip, metadata, created_at, updated_at
-        )
-        SELECT 
-            id,
-            tenant_id,
-            library_id,
-            email,
-            password_hash,
-            first_name,
-            last_name,
-            phone,
-            CASE 
-                WHEN role = 'manager' THEN 'manager'
-                ELSE 'general'
-            END as role,
-            is_active,
-            last_login_at,
-            last_login_ip,
-            COALESCE(metadata, '{}'::jsonb),
-            created_at,
-            updated_at
-        FROM users
-        WHERE role IN ('manager', 'staff')
-        ON CONFLICT (tenant_id, email) DO NOTHING;
+        -- Check if library_id column exists in users table
+        SELECT EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_name = 'users' AND column_name = 'library_id'
+        ) INTO has_library_id;
+        
+        IF has_library_id THEN
+            -- Migrate with library_id
+            INSERT INTO library_staff (
+                id, tenant_id, library_id, email, password_hash, first_name, last_name, 
+                phone, role, is_active, last_login_at, last_login_ip, metadata, created_at, updated_at
+            )
+            SELECT 
+                id,
+                tenant_id,
+                library_id,
+                email,
+                password_hash,
+                first_name,
+                last_name,
+                phone,
+                CASE 
+                    WHEN role = 'manager' THEN 'manager'
+                    ELSE 'general'
+                END as role,
+                is_active,
+                last_login_at,
+                last_login_ip,
+                COALESCE(metadata, '{}'::jsonb),
+                created_at,
+                updated_at
+            FROM users
+            WHERE role IN ('manager', 'staff')
+            ON CONFLICT (tenant_id, email) DO NOTHING;
+        ELSE
+            -- Migrate without library_id (set to NULL)
+            INSERT INTO library_staff (
+                id, tenant_id, library_id, email, password_hash, first_name, last_name, 
+                phone, role, is_active, last_login_at, last_login_ip, metadata, created_at, updated_at
+            )
+            SELECT 
+                id,
+                tenant_id,
+                NULL as library_id,
+                email,
+                password_hash,
+                first_name,
+                last_name,
+                phone,
+                CASE 
+                    WHEN role = 'manager' THEN 'manager'
+                    ELSE 'general'
+                END as role,
+                is_active,
+                last_login_at,
+                last_login_ip,
+                COALESCE(metadata, '{}'::jsonb),
+                created_at,
+                updated_at
+            FROM users
+            WHERE role IN ('manager', 'staff')
+            ON CONFLICT (tenant_id, email) DO NOTHING;
+        END IF;
     END IF;
 END $$;
 
