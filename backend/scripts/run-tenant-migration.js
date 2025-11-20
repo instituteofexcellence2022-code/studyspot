@@ -150,6 +150,18 @@ async function runTenantMigration() {
     if (checkTable.rows[0].exists) {
       const count = await corePool.query(`SELECT COUNT(*) as count FROM library_staff`);
       console.log(`✅ library_staff table exists: ${count.rows[0].count} records`);
+      
+      // Check table structure
+      const columns = await corePool.query(`
+        SELECT column_name, data_type, is_nullable, column_default
+        FROM information_schema.columns
+        WHERE table_name = 'library_staff'
+        ORDER BY ordinal_position
+      `);
+      console.log(`\n📋 Table structure (${columns.rows.length} columns):`);
+      columns.rows.forEach(col => {
+        console.log(`   - ${col.column_name}: ${col.data_type} ${col.is_nullable === 'NO' ? '(NOT NULL)' : '(nullable)'}`);
+      });
     } else {
       console.log(`⚠️  library_staff table not found in core database (may be in tenant databases)`);
     }
