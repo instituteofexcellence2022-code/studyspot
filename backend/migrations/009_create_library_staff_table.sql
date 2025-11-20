@@ -49,6 +49,17 @@ DECLARE
     has_last_login_at BOOLEAN;
     has_last_login_ip BOOLEAN;
     has_is_active BOOLEAN;
+    has_first_name BOOLEAN;
+    has_last_name BOOLEAN;
+    has_phone BOOLEAN;
+    has_permissions BOOLEAN;
+    has_staff_type BOOLEAN;
+    has_employee_id BOOLEAN;
+    has_hire_date BOOLEAN;
+    has_salary BOOLEAN;
+    has_employment_status BOOLEAN;
+    has_created_at BOOLEAN;
+    has_updated_at BOOLEAN;
     column_list TEXT;
     select_list TEXT;
 BEGIN
@@ -84,6 +95,61 @@ BEGIN
             WHERE table_name = 'users' AND column_name = 'is_active'
         ) INTO has_is_active;
         
+        SELECT EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_name = 'users' AND column_name = 'first_name'
+        ) INTO has_first_name;
+        
+        SELECT EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_name = 'users' AND column_name = 'last_name'
+        ) INTO has_last_name;
+        
+        SELECT EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_name = 'users' AND column_name = 'phone'
+        ) INTO has_phone;
+        
+        SELECT EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_name = 'users' AND column_name = 'permissions'
+        ) INTO has_permissions;
+        
+        SELECT EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_name = 'users' AND column_name = 'staff_type'
+        ) INTO has_staff_type;
+        
+        SELECT EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_name = 'users' AND column_name = 'employee_id'
+        ) INTO has_employee_id;
+        
+        SELECT EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_name = 'users' AND column_name = 'hire_date'
+        ) INTO has_hire_date;
+        
+        SELECT EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_name = 'users' AND column_name = 'salary'
+        ) INTO has_salary;
+        
+        SELECT EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_name = 'users' AND column_name = 'employment_status'
+        ) INTO has_employment_status;
+        
+        SELECT EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_name = 'users' AND column_name = 'created_at'
+        ) INTO has_created_at;
+        
+        SELECT EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_name = 'users' AND column_name = 'updated_at'
+        ) INTO has_updated_at;
+        
         -- Build dynamic column and select lists based on what exists
         column_list := 'id, tenant_id';
         select_list := 'id, tenant_id';
@@ -109,12 +175,88 @@ BEGIN
             select_list := select_list || ', ''$2b$10$PLACEHOLDER.DO.NOT.USE.FOR.LOGIN'' as password_hash';
         END IF;
         
-        column_list := column_list || ', first_name, last_name, phone';
-        select_list := select_list || ', first_name, last_name, phone';
+        -- Handle first_name (NOT NULL in library_staff, so provide default)
+        column_list := column_list || ', first_name';
+        IF has_first_name THEN
+            select_list := select_list || ', COALESCE(first_name, ''Staff'')';
+        ELSE
+            select_list := select_list || ', ''Staff'' as first_name';
+        END IF;
         
+        -- Handle last_name
+        column_list := column_list || ', last_name';
+        IF has_last_name THEN
+            select_list := select_list || ', last_name';
+        ELSE
+            select_list := select_list || ', NULL as last_name';
+        END IF;
+        
+        -- Handle phone
+        column_list := column_list || ', phone';
+        IF has_phone THEN
+            select_list := select_list || ', phone';
+        ELSE
+            select_list := select_list || ', NULL as phone';
+        END IF;
+        
+        -- Handle role (always required, map manager/staff to appropriate roles)
         column_list := column_list || ', role';
         select_list := select_list || ', CASE WHEN role = ''manager'' THEN ''manager'' ELSE ''general'' END as role';
         
+        -- Handle staff_type (new column from migration 006)
+        column_list := column_list || ', staff_type';
+        IF has_staff_type THEN
+            select_list := select_list || ', staff_type';
+        ELSE
+            -- Map role to staff_type if staff_type doesn't exist
+            select_list := select_list || ', CASE WHEN role = ''manager'' THEN ''manager'' ELSE ''general'' END as staff_type';
+        END IF;
+        
+        -- Handle employee_id (new column from migration 006)
+        column_list := column_list || ', employee_id';
+        IF has_employee_id THEN
+            select_list := select_list || ', employee_id';
+        ELSE
+            select_list := select_list || ', NULL as employee_id';
+        END IF;
+        
+        -- Handle hire_date (new column from migration 006)
+        column_list := column_list || ', hire_date';
+        IF has_hire_date THEN
+            select_list := select_list || ', hire_date';
+        ELSE
+            select_list := select_list || ', NULL as hire_date';
+        END IF;
+        
+        -- Handle salary (new column from migration 006)
+        column_list := column_list || ', salary';
+        IF has_salary THEN
+            select_list := select_list || ', salary';
+        ELSE
+            select_list := select_list || ', NULL as salary';
+        END IF;
+        
+        -- Handle employment_status (new column from migration 006)
+        column_list := column_list || ', employment_status';
+        IF has_employment_status THEN
+            select_list := select_list || ', employment_status';
+        ELSIF has_is_active THEN
+            -- Use is_active to determine employment_status if employment_status doesn't exist
+            select_list := select_list || ', CASE WHEN is_active THEN ''active'' ELSE ''terminated'' END as employment_status';
+        ELSE
+            -- Default to 'active' if neither exists
+            select_list := select_list || ', ''active'' as employment_status';
+        END IF;
+        
+        -- Handle permissions
+        column_list := column_list || ', permissions';
+        IF has_permissions THEN
+            select_list := select_list || ', COALESCE(permissions, ''{}''::jsonb)';
+        ELSE
+            select_list := select_list || ', ''{}''::jsonb as permissions';
+        END IF;
+        
+        -- Handle is_active
         column_list := column_list || ', is_active';
         IF has_is_active THEN
             select_list := select_list || ', is_active';
@@ -146,8 +288,21 @@ BEGIN
             select_list := select_list || ', ''{}''::jsonb as metadata';
         END IF;
         
-        column_list := column_list || ', created_at, updated_at';
-        select_list := select_list || ', created_at, updated_at';
+        -- Handle created_at
+        column_list := column_list || ', created_at';
+        IF has_created_at THEN
+            select_list := select_list || ', created_at';
+        ELSE
+            select_list := select_list || ', NOW() as created_at';
+        END IF;
+        
+        -- Handle updated_at
+        column_list := column_list || ', updated_at';
+        IF has_updated_at THEN
+            select_list := select_list || ', updated_at';
+        ELSE
+            select_list := select_list || ', NOW() as updated_at';
+        END IF;
         
         -- Execute dynamic migration
         EXECUTE format('
