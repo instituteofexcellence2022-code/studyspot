@@ -17,9 +17,9 @@ const DEFAULT_SERVICE_URLS = {
   BOOKING: 'https://studyspot-bookings.onrender.com',
   CREDIT: 'https://studyspot-credits.onrender.com',
   SUBSCRIPTION: 'https://studyspot-subscriptions.onrender.com',
-  MESSAGE: 'https://studyspot-messages.onrender.com',
-  COMMUNITY: 'https://studyspot-communities.onrender.com',
-  ATTENDANCE: 'https://studyspot-attendance.onrender.com',
+  MESSAGE: 'https://studyspot-message-service.onrender.com', // Updated to match actual service name
+  COMMUNITY: 'https://studyspot-community-service.onrender.com', // Updated to match actual service name
+  ATTENDANCE: 'https://studyspot-attendance-service.onrender.com', // Updated to match actual service name
   MESSAGING: 'https://studyspot-messaging.onrender.com',
   ANALYTICS: 'https://studyspot-analytics.onrender.com',
 };
