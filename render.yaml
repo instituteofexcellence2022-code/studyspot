@@ -5,8 +5,8 @@ services:
     env: node
     region: oregon
     plan: free
-    buildCommand: npm install
-    startCommand: node backend/src/services/api-gateway/index.js
+    buildCommand: cd backend && npm install && npm run build
+    startCommand: cd backend && node dist/services/api-gateway/index.js
     envVars:
       - key: NODE_ENV
         value: production
@@ -21,8 +21,8 @@ services:
     env: node
     region: oregon
     plan: free
-    buildCommand: npm install
-    startCommand: node backend/src/services/auth-service/index.js
+    buildCommand: cd backend && npm install && npm run build
+    startCommand: cd backend && npm run start:auth
     envVars:
       - key: NODE_ENV
         value: production
