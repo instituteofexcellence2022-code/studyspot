@@ -28,8 +28,8 @@ export async function requestLogger(
     userType: user?.userType || user?.user_type || 'none',
   });
 
-  // Log response when finished
-  reply.addHook('onSend', (request, reply, payload, done) => {
+  // Log response when finished (using raw response event)
+  reply.raw.on('finish', () => {
     const duration = Date.now() - startTime;
     
     logger.info('Request completed', {
@@ -40,8 +40,6 @@ export async function requestLogger(
       userId: (request as any).user?.id || 'anonymous',
       tenantId: (request as any).tenantId || 'none',
     });
-
-    done();
   });
 }
 
@@ -55,7 +53,7 @@ export async function slowRequestLogger(
   const startTime = Date.now();
   const SLOW_REQUEST_THRESHOLD = 1000; // 1 second
 
-  reply.addHook('onSend', (request, reply, payload, done) => {
+  reply.raw.on('finish', () => {
     const duration = Date.now() - startTime;
     
     if (duration > SLOW_REQUEST_THRESHOLD) {
@@ -68,8 +66,6 @@ export async function slowRequestLogger(
         tenantId: (request as any).tenantId || 'none',
       });
     }
-
-    done();
   });
 }
 

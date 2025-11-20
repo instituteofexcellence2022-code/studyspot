@@ -20,6 +20,9 @@ import { Server as SocketIOServer } from 'socket.io';
 
 dotenv.config();
 
+// JWT plugin types are provided by @fastify/jwt
+// No need to redeclare them
+
 const fastify = Fastify({ logger: false });
 const PORT = parseInt(process.env.AUTH_SERVICE_PORT || '3001');
 
@@ -473,9 +476,12 @@ fastify.post('/api/v1/auth/admin/login', async (request, reply) => {
       });
     }
 
+    // Determine userTable based on user properties (legacy admin_users table)
+    const userTable = user.tenant_id ? 'library_owners' : 'platform_admins';
+    
     // Generate tokens
-    const accessToken = generateAccessToken(user);
-    const refreshToken = generateRefreshToken(user);
+    const accessToken = generateAccessToken(user, userTable);
+    const refreshToken = generateRefreshToken(user, userTable);
 
     // Determine user_type for refresh token and audit log
     const userType = user.user_type || (user.tenant_id ? 'library_owner' : 'platform_admin');
@@ -2521,9 +2527,12 @@ fastify.post('/api/v1/auth/student/login', async (request, reply) => {
       });
     }
 
+    // Determine userTable (students are in tenant databases, but for this legacy endpoint, use 'students')
+    const userTable = 'students';
+    
     // Generate tokens
-    const accessToken = generateAccessToken(user);
-    const refreshToken = generateRefreshToken(user);
+    const accessToken = generateAccessToken(user, userTable);
+    const refreshToken = generateRefreshToken(user, userTable);
 
     // Store refresh token
     await coreDb.query(

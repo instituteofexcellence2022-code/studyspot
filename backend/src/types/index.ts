@@ -98,6 +98,8 @@ export interface AdminUser {
   department?: string;
   permissions: string[];
   is_active: boolean;
+  tenant_id?: string | null;
+  user_type?: string | null;
   last_login_at?: Date;
   last_login_ip?: string;
   created_at: Date;

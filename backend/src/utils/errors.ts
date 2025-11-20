@@ -27,7 +27,10 @@ export class AppError extends Error {
     this.isOperational = isOperational;
     this.details = details;
 
-    Error.captureStackTrace(this, this.constructor);
+    // Capture stack trace if available (Node.js specific)
+    if (Error.captureStackTrace) {
+      Error.captureStackTrace(this, this.constructor);
+    }
   }
 }
 
