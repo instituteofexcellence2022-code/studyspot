@@ -25,6 +25,9 @@ logs/
 .env.production
 **/.env.production
 api/.env.production
+DEPLOYMENT_ENV_VARS.md
+*_CREDENTIALS.md
+*_SECRETS.md
 
 # IDE
 .vscode/
