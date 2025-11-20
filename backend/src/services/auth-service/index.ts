@@ -147,6 +147,38 @@ const getUserTypeFromTable = (userTable: string): string => {
 };
 
 /**
+ * Get user table from user type (reverse mapping)
+ */
+const getUserTableFromUserType = (userType: string): string => {
+  const mapping: Record<string, string> = {
+    'library_owner': 'library_owners',
+    'platform_admin': 'platform_admins',
+    'platform_staff': 'platform_staff',
+    'library_staff': 'library_staff',
+    'student': 'students'
+  };
+  return mapping[userType] || 'library_owners'; // Default to library_owners for web owner portal
+};
+
+/**
+ * Get user table from JWT token
+ */
+const getUserTableFromToken = (decoded: any): string => {
+  // Check if userTable is directly in token
+  if (decoded.userTable) {
+    return decoded.userTable;
+  }
+  
+  // Check if userType is in token
+  if (decoded.userType || decoded.user_type) {
+    return getUserTableFromUserType(decoded.userType || decoded.user_type);
+  }
+  
+  // Default to library_owners for web owner portal
+  return 'library_owners';
+};
+
+/**
  * Generate access token with userTable included
  */
 const generateAccessToken = (user: any, userTable: string) => {
@@ -1257,11 +1289,33 @@ fastify.put('/api/users/profile', async (request, reply) => {
     const decoded = fastify.jwt.verify(token) as any;
     const updates = request.body as any;
 
-    // Get current user
-    const currentUser = await coreDb.query(
-      'SELECT * FROM admin_users WHERE id = $1',
-      [decoded.userId]
-    );
+    // Get user table from token
+    const userTable = getUserTableFromToken(decoded);
+
+    // Get current user from correct table
+    let currentUser;
+    if (userTable === 'library_owners') {
+      currentUser = await coreDb.query(
+        'SELECT * FROM library_owners WHERE id = $1',
+        [decoded.userId]
+      );
+    } else if (userTable === 'platform_admins') {
+      currentUser = await coreDb.query(
+        'SELECT * FROM platform_admins WHERE id = $1',
+        [decoded.userId]
+      );
+    } else if (userTable === 'platform_staff') {
+      currentUser = await coreDb.query(
+        'SELECT * FROM platform_staff WHERE id = $1',
+        [decoded.userId]
+      );
+    } else {
+      // Fallback to admin_users for legacy support
+      currentUser = await coreDb.query(
+        'SELECT * FROM admin_users WHERE id = $1',
+        [decoded.userId]
+      );
+    }
 
     if (!currentUser.rows.length) {
       return reply.status(HTTP_STATUS.NOT_FOUND).send({
@@ -1333,12 +1387,38 @@ fastify.put('/api/users/profile', async (request, reply) => {
     updateFields.push(`updated_at = NOW()`);
     values.push(decoded.userId);
 
-    const updateQuery = `
-      UPDATE admin_users 
-      SET ${updateFields.join(', ')}
-      WHERE id = $${paramIndex}
-      RETURNING *
-    `;
+    // Build update query for correct table
+    let updateQuery: string;
+    if (userTable === 'library_owners') {
+      updateQuery = `
+        UPDATE library_owners 
+        SET ${updateFields.join(', ')}
+        WHERE id = $${paramIndex}
+        RETURNING *
+      `;
+    } else if (userTable === 'platform_admins') {
+      updateQuery = `
+        UPDATE platform_admins 
+        SET ${updateFields.join(', ')}
+        WHERE id = $${paramIndex}
+        RETURNING *
+      `;
+    } else if (userTable === 'platform_staff') {
+      updateQuery = `
+        UPDATE platform_staff 
+        SET ${updateFields.join(', ')}
+        WHERE id = $${paramIndex}
+        RETURNING *
+      `;
+    } else {
+      // Fallback to admin_users
+      updateQuery = `
+        UPDATE admin_users 
+        SET ${updateFields.join(', ')}
+        WHERE id = $${paramIndex}
+        RETURNING *
+      `;
+    }
 
     const result = await coreDb.query(updateQuery, values);
 
@@ -1381,6 +1461,9 @@ fastify.post('/api/users/profile/picture', async (request, reply) => {
     const token = authHeader.substring(7);
     const decoded = fastify.jwt.verify(token) as any;
 
+    // Get user table from token
+    const userTable = getUserTableFromToken(decoded);
+
     // Check if multipart/form-data
     const isMultipart = request.headers['content-type']?.includes('multipart/form-data');
     
@@ -1411,18 +1494,48 @@ fastify.post('/api/users/profile/picture', async (request, reply) => {
       });
     }
 
-    // Update user profile with image
-    const result = await coreDb.query(
-      `UPDATE admin_users 
-       SET metadata = COALESCE(metadata, '{}'::jsonb) || $1::jsonb,
-           updated_at = NOW()
-       WHERE id = $2
-       RETURNING *`,
-      [
-        JSON.stringify({ profileImage: imageData, avatar: imageData }),
-        decoded.userId
-      ]
-    );
+    // Update user profile with image in correct table
+    let result;
+    const imageMetadata = JSON.stringify({ profileImage: imageData, avatar: imageData });
+    
+    if (userTable === 'library_owners') {
+      result = await coreDb.query(
+        `UPDATE library_owners 
+         SET metadata = COALESCE(metadata, '{}'::jsonb) || $1::jsonb,
+             updated_at = NOW()
+         WHERE id = $2
+         RETURNING *`,
+        [imageMetadata, decoded.userId]
+      );
+    } else if (userTable === 'platform_admins') {
+      result = await coreDb.query(
+        `UPDATE platform_admins 
+         SET metadata = COALESCE(metadata, '{}'::jsonb) || $1::jsonb,
+             updated_at = NOW()
+         WHERE id = $2
+         RETURNING *`,
+        [imageMetadata, decoded.userId]
+      );
+    } else if (userTable === 'platform_staff') {
+      result = await coreDb.query(
+        `UPDATE platform_staff 
+         SET metadata = COALESCE(metadata, '{}'::jsonb) || $1::jsonb,
+             updated_at = NOW()
+         WHERE id = $2
+         RETURNING *`,
+        [imageMetadata, decoded.userId]
+      );
+    } else {
+      // Fallback to admin_users
+      result = await coreDb.query(
+        `UPDATE admin_users 
+         SET metadata = COALESCE(metadata, '{}'::jsonb) || $1::jsonb,
+             updated_at = NOW()
+         WHERE id = $2
+         RETURNING *`,
+        [imageMetadata, decoded.userId]
+      );
+    }
 
     if (!result.rows.length) {
       return reply.status(HTTP_STATUS.NOT_FOUND).send({

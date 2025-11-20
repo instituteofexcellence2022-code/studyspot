@@ -243,6 +243,317 @@ fastify.get('/api/v1/libraries/realtime-occupancy', async (request, reply) => {
 });
 
 // ============================================
+// FEE PLANS ENDPOINTS
+// ============================================
+
+// Get all fee plans
+fastify.get('/api/fee-plans', async (request, reply) => {
+  try {
+    const tenantId = request.headers['x-tenant-id'] as string;
+    if (!tenantId) {
+      return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.VALIDATION_ERROR,
+          message: 'Tenant ID is required',
+        },
+      });
+    }
+
+    const tenantDb = await tenantDbManager.getTenantConnection(tenantId);
+
+    // Check if fee_plans table exists, if not return empty array
+    const tableExists = await tenantDb.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = 'fee_plans'
+      )
+    `);
+
+    if (!tableExists.rows[0].exists) {
+      return {
+        success: true,
+        data: { plans: [] },
+        message: 'Fee plans table does not exist yet',
+      };
+    }
+
+    const result = await tenantDb.query(`
+      SELECT * FROM fee_plans 
+      WHERE tenant_id = $1 
+      ORDER BY created_at DESC
+    `, [tenantId]);
+
+    return {
+      success: true,
+      data: { plans: result.rows },
+      timestamp: new Date().toISOString(),
+    };
+  } catch (error: any) {
+    logger.error('Get fee plans error:', error);
+    return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
+      success: false,
+      error: {
+        code: ERROR_CODES.SERVER_ERROR,
+        message: 'Failed to fetch fee plans',
+      },
+    });
+  }
+});
+
+// Create fee plan
+fastify.post('/api/fee-plans', async (request, reply) => {
+  try {
+    const tenantId = request.headers['x-tenant-id'] as string;
+    if (!tenantId) {
+      return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.VALIDATION_ERROR,
+          message: 'Tenant ID is required',
+        },
+      });
+    }
+
+    const planData = request.body as any;
+    const tenantDb = await tenantDbManager.getTenantConnection(tenantId);
+
+    // Create fee_plans table if it doesn't exist
+    await tenantDb.query(`
+      CREATE TABLE IF NOT EXISTS fee_plans (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        tenant_id UUID NOT NULL,
+        name VARCHAR(255) NOT NULL,
+        description TEXT,
+        type VARCHAR(50) NOT NULL CHECK (type IN ('hourly', 'daily', 'weekly', 'monthly', 'quarterly', 'annual', 'combo')),
+        base_price DECIMAL(10,2) NOT NULL,
+        shift_pricing JSONB DEFAULT '{}',
+        zone_pricing JSONB DEFAULT '{}',
+        discount JSONB DEFAULT '{}',
+        max_seats INTEGER,
+        max_hours INTEGER,
+        scholarship_eligible BOOLEAN DEFAULT false,
+        waiver_allowed BOOLEAN DEFAULT false,
+        status VARCHAR(50) DEFAULT 'active' CHECK (status IN ('active', 'inactive')),
+        is_popular BOOLEAN DEFAULT false,
+        features JSONB DEFAULT '[]',
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW(),
+        UNIQUE(tenant_id, name)
+      )
+    `);
+
+    // Create indexes
+    await tenantDb.query(`
+      CREATE INDEX IF NOT EXISTS idx_fee_plans_tenant ON fee_plans(tenant_id);
+      CREATE INDEX IF NOT EXISTS idx_fee_plans_type ON fee_plans(type);
+      CREATE INDEX IF NOT EXISTS idx_fee_plans_status ON fee_plans(status);
+    `);
+
+    const result = await tenantDb.query(`
+      INSERT INTO fee_plans (
+        tenant_id, name, description, type, base_price, shift_pricing, 
+        zone_pricing, discount, max_seats, max_hours, scholarship_eligible, 
+        waiver_allowed, status, is_popular, features
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+      RETURNING *
+    `, [
+      tenantId,
+      planData.name,
+      planData.description || '',
+      planData.type,
+      planData.basePrice || 0,
+      JSON.stringify(planData.shiftPricing || {}),
+      JSON.stringify(planData.zonePricing || {}),
+      JSON.stringify(planData.discount || {}),
+      planData.maxSeats,
+      planData.maxHours,
+      planData.scholarshipEligible || false,
+      planData.waiverAllowed || false,
+      planData.status || 'active',
+      planData.isPopular || false,
+      JSON.stringify(planData.features || [])
+    ]);
+
+    logger.info(`✅ Fee plan created: ${planData.name}`);
+
+    return reply.status(HTTP_STATUS.CREATED).send({
+      success: true,
+      data: result.rows[0],
+      message: 'Fee plan created successfully',
+    });
+  } catch (error: any) {
+    logger.error('Create fee plan error:', error);
+    return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
+      success: false,
+      error: {
+        code: ERROR_CODES.SERVER_ERROR,
+        message: 'Failed to create fee plan',
+        details: error.message,
+      },
+    });
+  }
+});
+
+// Update fee plan
+fastify.put('/api/fee-plans/:id', async (request, reply) => {
+  try {
+    const { id } = request.params as { id: string };
+    const tenantId = request.headers['x-tenant-id'] as string;
+    const planData = request.body as any;
+
+    if (!tenantId) {
+      return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.VALIDATION_ERROR,
+          message: 'Tenant ID is required',
+        },
+      });
+    }
+
+    const tenantDb = await tenantDbManager.getTenantConnection(tenantId);
+
+    const updateFields: string[] = [];
+    const values: any[] = [];
+    let paramIndex = 1;
+
+    if (planData.name !== undefined) {
+      updateFields.push(`name = $${paramIndex++}`);
+      values.push(planData.name);
+    }
+    if (planData.description !== undefined) {
+      updateFields.push(`description = $${paramIndex++}`);
+      values.push(planData.description);
+    }
+    if (planData.type !== undefined) {
+      updateFields.push(`type = $${paramIndex++}`);
+      values.push(planData.type);
+    }
+    if (planData.basePrice !== undefined) {
+      updateFields.push(`base_price = $${paramIndex++}`);
+      values.push(planData.basePrice);
+    }
+    if (planData.shiftPricing !== undefined) {
+      updateFields.push(`shift_pricing = $${paramIndex++}`);
+      values.push(JSON.stringify(planData.shiftPricing));
+    }
+    if (planData.zonePricing !== undefined) {
+      updateFields.push(`zone_pricing = $${paramIndex++}`);
+      values.push(JSON.stringify(planData.zonePricing));
+    }
+    if (planData.discount !== undefined) {
+      updateFields.push(`discount = $${paramIndex++}`);
+      values.push(JSON.stringify(planData.discount));
+    }
+    if (planData.status !== undefined) {
+      updateFields.push(`status = $${paramIndex++}`);
+      values.push(planData.status);
+    }
+    if (planData.isPopular !== undefined) {
+      updateFields.push(`is_popular = $${paramIndex++}`);
+      values.push(planData.isPopular);
+    }
+
+    if (updateFields.length === 0) {
+      return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.VALIDATION_ERROR,
+          message: 'No fields to update',
+        },
+      });
+    }
+
+    updateFields.push(`updated_at = NOW()`);
+    values.push(id, tenantId);
+
+    const result = await tenantDb.query(`
+      UPDATE fee_plans 
+      SET ${updateFields.join(', ')}
+      WHERE id = $${paramIndex++} AND tenant_id = $${paramIndex}
+      RETURNING *
+    `, values);
+
+    if (!result.rows.length) {
+      return reply.status(HTTP_STATUS.NOT_FOUND).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.NOT_FOUND,
+          message: 'Fee plan not found',
+        },
+      });
+    }
+
+    return {
+      success: true,
+      data: result.rows[0],
+      message: 'Fee plan updated successfully',
+    };
+  } catch (error: any) {
+    logger.error('Update fee plan error:', error);
+    return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
+      success: false,
+      error: {
+        code: ERROR_CODES.SERVER_ERROR,
+        message: 'Failed to update fee plan',
+      },
+    });
+  }
+});
+
+// Delete fee plan
+fastify.delete('/api/fee-plans/:id', async (request, reply) => {
+  try {
+    const { id } = request.params as { id: string };
+    const tenantId = request.headers['x-tenant-id'] as string;
+
+    if (!tenantId) {
+      return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.VALIDATION_ERROR,
+          message: 'Tenant ID is required',
+        },
+      });
+    }
+
+    const tenantDb = await tenantDbManager.getTenantConnection(tenantId);
+
+    const result = await tenantDb.query(`
+      DELETE FROM fee_plans 
+      WHERE id = $1 AND tenant_id = $2
+      RETURNING id
+    `, [id, tenantId]);
+
+    if (!result.rows.length) {
+      return reply.status(HTTP_STATUS.NOT_FOUND).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.NOT_FOUND,
+          message: 'Fee plan not found',
+        },
+      });
+    }
+
+    return {
+      success: true,
+      message: 'Fee plan deleted successfully',
+    };
+  } catch (error: any) {
+    logger.error('Delete fee plan error:', error);
+    return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
+      success: false,
+      error: {
+        code: ERROR_CODES.SERVER_ERROR,
+        message: 'Failed to delete fee plan',
+      },
+    });
+  }
+});
+
+// ============================================
 // START SERVER
 // ============================================
 

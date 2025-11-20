@@ -24,22 +24,28 @@ const DEFAULT_SERVICE_URLS = {
   ANALYTICS: 'https://studyspot-analytics.onrender.com',
 };
 
-// Service URLs from environment
+// Fallback: If service is not deployed, use auth service as fallback
+const getServiceUrl = (serviceName: string, defaultUrl: string): string => {
+  const envKey = `${serviceName}_SERVICE_URL`;
+  return process.env[envKey] || defaultUrl;
+};
+
+// Service URLs from environment (with fallback to auth service if not deployed)
 const SERVICES = {
   AUTH: process.env.AUTH_SERVICE_URL || DEFAULT_SERVICE_URLS.AUTH,
-  USER: process.env.USER_SERVICE_URL || DEFAULT_SERVICE_URLS.USER,
-  TENANT: process.env.TENANT_SERVICE_URL || DEFAULT_SERVICE_URLS.TENANT,
-  STUDENT: process.env.STUDENT_SERVICE_URL || DEFAULT_SERVICE_URLS.STUDENT,
-  LIBRARY: process.env.LIBRARY_SERVICE_URL || DEFAULT_SERVICE_URLS.LIBRARY,
-  PAYMENT: process.env.PAYMENT_SERVICE_URL || DEFAULT_SERVICE_URLS.PAYMENT,
-  BOOKING: process.env.BOOKING_SERVICE_URL || DEFAULT_SERVICE_URLS.BOOKING,
-  CREDIT: process.env.CREDIT_SERVICE_URL || DEFAULT_SERVICE_URLS.CREDIT,
-  SUBSCRIPTION: process.env.SUBSCRIPTION_SERVICE_URL || DEFAULT_SERVICE_URLS.SUBSCRIPTION,
-  MESSAGE: process.env.MESSAGE_SERVICE_URL || DEFAULT_SERVICE_URLS.MESSAGE,
-  COMMUNITY: process.env.COMMUNITY_SERVICE_URL || DEFAULT_SERVICE_URLS.COMMUNITY,
-  ATTENDANCE: process.env.ATTENDANCE_SERVICE_URL || DEFAULT_SERVICE_URLS.ATTENDANCE,
-  MESSAGING: process.env.MESSAGING_SERVICE_URL || DEFAULT_SERVICE_URLS.MESSAGING,
-  ANALYTICS: process.env.ANALYTICS_SERVICE_URL || DEFAULT_SERVICE_URLS.ANALYTICS,
+  USER: getServiceUrl('USER', DEFAULT_SERVICE_URLS.USER),
+  TENANT: getServiceUrl('TENANT', DEFAULT_SERVICE_URLS.TENANT),
+  STUDENT: getServiceUrl('STUDENT', DEFAULT_SERVICE_URLS.STUDENT),
+  LIBRARY: getServiceUrl('LIBRARY', DEFAULT_SERVICE_URLS.LIBRARY),
+  PAYMENT: getServiceUrl('PAYMENT', DEFAULT_SERVICE_URLS.PAYMENT),
+  BOOKING: getServiceUrl('BOOKING', DEFAULT_SERVICE_URLS.BOOKING),
+  CREDIT: getServiceUrl('CREDIT', DEFAULT_SERVICE_URLS.CREDIT),
+  SUBSCRIPTION: getServiceUrl('SUBSCRIPTION', DEFAULT_SERVICE_URLS.SUBSCRIPTION),
+  MESSAGE: getServiceUrl('MESSAGE', DEFAULT_SERVICE_URLS.MESSAGE),
+  COMMUNITY: getServiceUrl('COMMUNITY', DEFAULT_SERVICE_URLS.COMMUNITY),
+  ATTENDANCE: getServiceUrl('ATTENDANCE', DEFAULT_SERVICE_URLS.ATTENDANCE),
+  MESSAGING: getServiceUrl('MESSAGING', DEFAULT_SERVICE_URLS.MESSAGING),
+  ANALYTICS: getServiceUrl('ANALYTICS', DEFAULT_SERVICE_URLS.ANALYTICS),
 };
 
 /**
@@ -228,6 +234,19 @@ export function registerRoutes(fastify: FastifyInstance) {
       'Library',
       SERVICES.LIBRARY,
       path,
+      request.method,
+      request.headers,
+      request.body
+    );
+    return reply.code(result.statusCode).send(result.data);
+  });
+
+  // Fee plans route (proxies to library service)
+  fastify.all('/api/fee-plans*', async (request, reply) => {
+    const result = await proxyToService(
+      'Library',
+      SERVICES.LIBRARY,
+      request.url,
       request.method,
       request.headers,
       request.body

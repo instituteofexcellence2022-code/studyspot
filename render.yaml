@@ -32,3 +32,35 @@ services:
         generateValue: true
       - key: CORS_ORIGIN
         value: https://studyspot-rose.vercel.app,https://studyspot-librarys.vercel.app,https://studyspot-admin-2.vercel.app,https://studyspot-student.vercel.app,http://localhost:3000,http://localhost:3001,http://localhost:3002,https://main.studyspot-student.pages.dev,https://studyspot-student.netlify.app
+
+  # Student Service
+  - type: web
+    name: studyspot-students
+    env: node
+    region: oregon
+    plan: free
+    buildCommand: cd backend && npm install && npm run build
+    startCommand: cd backend && npm run start:student
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: STUDENT_SERVICE_PORT
+        value: 10001
+      - key: CORS_ORIGIN
+        value: https://studyspot-rose.vercel.app,https://studyspot-librarys.vercel.app,https://studyspot-admin-2.vercel.app,https://studyspot-student.vercel.app,http://localhost:3000,http://localhost:3001,http://localhost:3002,https://main.studyspot-student.pages.dev,https://studyspot-student.netlify.app
+
+  # Library Service (handles fee plans)
+  - type: web
+    name: studyspot-libraries
+    env: node
+    region: oregon
+    plan: free
+    buildCommand: cd backend && npm install && npm run build
+    startCommand: cd backend && npm run start:library
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: LIBRARY_SERVICE_PORT
+        value: 10002
+      - key: CORS_ORIGIN
+        value: https://studyspot-rose.vercel.app,https://studyspot-librarys.vercel.app,https://studyspot-admin-2.vercel.app,https://studyspot-student.vercel.app,http://localhost:3000,http://localhost:3001,http://localhost:3002,https://main.studyspot-student.pages.dev,https://studyspot-student.netlify.app
