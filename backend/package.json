@@ -15,7 +15,8 @@
     "lint:fix": "eslint src --ext .ts --fix",
     "format": "prettier --write \"src/**/*.ts\"",
     "migrate": "node scripts/run-migrations.js",
-    "migrate:multi-tenant": "node scripts/run-migrations.js"
+    "migrate:multi-tenant": "node scripts/run-migrations.js",
+    "migrate:tenant": "node scripts/run-tenant-migration.js"
   },
   "keywords": [
     "saas",
