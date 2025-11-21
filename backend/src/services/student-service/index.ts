@@ -11,23 +11,74 @@ import dotenv from 'dotenv';
 import { coreDb, tenantDbManager } from '../../config/database';
 import { logger } from '../../utils/logger';
 import { HTTP_STATUS, ERROR_CODES } from '../../config/constants';
+import { authenticate, AuthenticatedRequest } from '../../middleware/auth';
+import { validateBody, validateQuery, validateParams } from '../../middleware/validator';
+import { registerRateLimit, SERVICE_RATE_LIMITS } from '../../middleware/rateLimiter';
+import { requestLogger } from '../../middleware/requestLogger';
+import { errorHandler, notFoundHandler } from '../../middleware/errorHandler';
+import {
+  createStudentSchema,
+  updateStudentSchema,
+  getStudentsQuerySchema,
+  getStudentParamsSchema,
+  suspendStudentSchema,
+  getStudentAttendanceQuerySchema,
+  getStudentPaymentsQuerySchema,
+  bulkImportStudentsSchema,
+} from '../../validators/student.validator';
+import { z } from 'zod';
 import type { Student } from '../../types';
+import { config } from '../../config/env';
 
 dotenv.config();
 
 const fastify = Fastify({ logger: false });
-const PORT = parseInt(process.env.STUDENT_SERVICE_PORT || '3004');
+const PORT = config.ports.student;
 
 // ============================================
 // MIDDLEWARE
 // ============================================
 
 fastify.register(cors, {
-  origin: process.env.CORS_ORIGIN?.split(',') || ['http://localhost:3002'],
+  origin: config.cors.origins.length > 0 ? config.cors.origins : ['http://localhost:3002'],
   credentials: true,
 });
 
 fastify.register(helmet);
+
+// ============================================
+// RATE LIMITING
+// ============================================
+
+// Register rate limiting in async function
+(async () => {
+  await registerRateLimit(fastify, SERVICE_RATE_LIMITS.student);
+})();
+
+// ============================================
+// REQUEST LOGGING
+// ============================================
+
+fastify.addHook('onRequest', requestLogger);
+
+// ============================================
+// AUTHENTICATION MIDDLEWARE
+// ============================================
+
+fastify.addHook('onRequest', async (request: AuthenticatedRequest, reply) => {
+  // Skip auth for health check
+  if (request.url === '/health') {
+    return;
+  }
+  return authenticate(request, reply);
+});
+
+// ============================================
+// ERROR HANDLING
+// ============================================
+
+fastify.setErrorHandler(errorHandler);
+fastify.setNotFoundHandler(notFoundHandler);
 
 // ============================================
 // HELPER FUNCTIONS
@@ -56,10 +107,12 @@ fastify.get('/health', async () => {
 });
 
 // Get all students (tenant-specific)
-fastify.get('/api/v1/students', async (request, reply) => {
+fastify.get('/api/v1/students', {
+  preHandler: [validateQuery(getStudentsQuerySchema)],
+}, async (request: AuthenticatedRequest, reply) => {
   try {
-    // In production, get tenantId from auth middleware
-    const tenantId = request.headers['x-tenant-id'] as string;
+    // Get tenantId from authenticated user
+    const tenantId = (request as any).tenantId || (request.user as any)?.tenantId || request.headers['x-tenant-id'] as string;
 
     if (!tenantId) {
       return reply.status(HTTP_STATUS.BAD_REQUEST).send({
@@ -134,10 +187,12 @@ fastify.get('/api/v1/students', async (request, reply) => {
 });
 
 // Get student by ID
-fastify.get('/api/v1/students/:id', async (request, reply) => {
+fastify.get('/api/v1/students/:id', {
+  preHandler: [validateParams(getStudentParamsSchema)],
+}, async (request: AuthenticatedRequest, reply) => {
   try {
     const { id } = request.params as { id: string };
-    const tenantId = request.headers['x-tenant-id'] as string;
+    const tenantId = (request as any).tenantId || (request.user as any)?.tenantId || request.headers['x-tenant-id'] as string;
 
     const tenantDb = await tenantDbManager.getTenantConnection(tenantId);
 
@@ -174,9 +229,11 @@ fastify.get('/api/v1/students/:id', async (request, reply) => {
 });
 
 // Create student
-fastify.post('/api/v1/students', async (request, reply) => {
+fastify.post('/api/v1/students', {
+  preHandler: [validateBody(createStudentSchema)],
+}, async (request: AuthenticatedRequest, reply) => {
   try {
-    const tenantId = request.headers['x-tenant-id'] as string;
+    const tenantId = (request as any).tenantId || (request.user as any)?.tenantId || request.headers['x-tenant-id'] as string;
     const studentData = request.body as any;
 
     // Validate required fields
@@ -246,10 +303,15 @@ fastify.post('/api/v1/students', async (request, reply) => {
 });
 
 // Update student
-fastify.put('/api/v1/students/:id', async (request, reply) => {
+fastify.put('/api/v1/students/:id', {
+  preHandler: [
+    validateParams(getStudentParamsSchema),
+    validateBody(updateStudentSchema),
+  ],
+}, async (request: AuthenticatedRequest, reply) => {
   try {
     const { id } = request.params as { id: string };
-    const tenantId = request.headers['x-tenant-id'] as string;
+    const tenantId = (request as any).tenantId || (request.user as any)?.tenantId || request.headers['x-tenant-id'] as string;
     const updates = request.body as any;
 
     delete updates.id;
@@ -307,10 +369,10 @@ fastify.put('/api/v1/students/:id', async (request, reply) => {
 });
 
 // Delete student (soft delete)
-fastify.delete('/api/v1/students/:id', async (request, reply) => {
+fastify.delete('/api/v1/students/:id', async (request: AuthenticatedRequest, reply) => {
   try {
     const { id } = request.params as { id: string };
-    const tenantId = request.headers['x-tenant-id'] as string;
+    const tenantId = (request as any).tenantId || (request.user as any)?.tenantId || request.headers['x-tenant-id'] as string;
 
     const tenantDb = await tenantDbManager.getTenantConnection(tenantId);
 
@@ -347,9 +409,9 @@ fastify.delete('/api/v1/students/:id', async (request, reply) => {
 });
 
 // Get student analytics
-fastify.get('/api/v1/students/analytics', async (request, reply) => {
+fastify.get('/api/v1/students/analytics', async (request: AuthenticatedRequest, reply) => {
   try {
-    const tenantId = request.headers['x-tenant-id'] as string;
+    const tenantId = (request as any).tenantId || (request.user as any)?.tenantId || request.headers['x-tenant-id'] as string;
     const tenantDb = await tenantDbManager.getTenantConnection(tenantId);
 
     // Get statistics
@@ -381,11 +443,16 @@ fastify.get('/api/v1/students/analytics', async (request, reply) => {
 });
 
 // Suspend student
-fastify.post('/api/v1/students/:id/suspend', async (request, reply) => {
+fastify.post('/api/v1/students/:id/suspend', {
+  preHandler: [
+    validateParams(getStudentParamsSchema),
+    validateBody(suspendStudentSchema),
+  ],
+}, async (request: AuthenticatedRequest, reply) => {
   try {
     const { id } = request.params as { id: string };
-    const tenantId = request.headers['x-tenant-id'] as string;
-    const { reason } = request.body as { reason: string };
+    const tenantId = (request as any).tenantId || (request.user as any)?.tenantId || request.headers['x-tenant-id'] as string;
+    const { reason } = request.body as { reason?: string };
 
     const tenantDb = await tenantDbManager.getTenantConnection(tenantId);
 
@@ -423,10 +490,10 @@ fastify.post('/api/v1/students/:id/suspend', async (request, reply) => {
 });
 
 // Reactivate student
-fastify.post('/api/v1/students/:id/reactivate', async (request, reply) => {
+fastify.post('/api/v1/students/:id/reactivate', async (request: AuthenticatedRequest, reply) => {
   try {
     const { id } = request.params as { id: string };
-    const tenantId = request.headers['x-tenant-id'] as string;
+    const tenantId = (request as any).tenantId || (request.user as any)?.tenantId || request.headers['x-tenant-id'] as string;
 
     const tenantDb = await tenantDbManager.getTenantConnection(tenantId);
 
@@ -464,10 +531,15 @@ fastify.post('/api/v1/students/:id/reactivate', async (request, reply) => {
 });
 
 // Get student attendance
-fastify.get('/api/v1/students/:id/attendance', async (request, reply) => {
+fastify.get('/api/v1/students/:id/attendance', {
+  preHandler: [
+    validateParams(getStudentParamsSchema),
+    validateQuery(getStudentAttendanceQuerySchema),
+  ],
+}, async (request: AuthenticatedRequest, reply) => {
   try {
     const { id } = request.params as { id: string };
-    const tenantId = request.headers['x-tenant-id'] as string;
+    const tenantId = (request as any).tenantId || (request.user as any)?.tenantId || request.headers['x-tenant-id'] as string;
     const { startDate, endDate, limit = 30 } = request.query as any;
 
     const tenantDb = await tenantDbManager.getTenantConnection(tenantId);
@@ -509,10 +581,10 @@ fastify.get('/api/v1/students/:id/attendance', async (request, reply) => {
 });
 
 // Get student payments
-fastify.get('/api/v1/students/:id/payments', async (request, reply) => {
+fastify.get('/api/v1/students/:id/payments', async (request: AuthenticatedRequest, reply) => {
   try {
     const { id } = request.params as { id: string };
-    const tenantId = request.headers['x-tenant-id'] as string;
+    const tenantId = (request as any).tenantId || (request.user as any)?.tenantId || request.headers['x-tenant-id'] as string;
     const { limit = 20 } = request.query as any;
 
     const tenantDb = await tenantDbManager.getTenantConnection(tenantId);
@@ -543,9 +615,11 @@ fastify.get('/api/v1/students/:id/payments', async (request, reply) => {
 });
 
 // Bulk import students
-fastify.post('/api/v1/students/bulk-import', async (request, reply) => {
+fastify.post('/api/v1/students/bulk-import', {
+  preHandler: [validateBody(bulkImportStudentsSchema)],
+}, async (request: AuthenticatedRequest, reply) => {
   try {
-    const tenantId = request.headers['x-tenant-id'] as string;
+    const tenantId = (request as any).tenantId || (request.user as any)?.tenantId || request.headers['x-tenant-id'] as string;
     const { students } = request.body as { students: any[] };
 
     if (!students || !Array.isArray(students) || students.length === 0) {
@@ -599,6 +673,223 @@ fastify.post('/api/v1/students/bulk-import', async (request, reply) => {
       error: {
         code: ERROR_CODES.SERVER_ERROR,
         message: 'Failed to import students',
+      },
+    });
+  }
+});
+
+// ============================================
+// STUDENT PROFILE ENHANCEMENTS
+// ============================================
+
+// Get student profile with analytics
+fastify.get('/api/v1/students/:id/profile', {
+  preHandler: [validateParams(getStudentParamsSchema)],
+}, async (request: AuthenticatedRequest, reply) => {
+  try {
+    const { id } = request.params as { id: string };
+    const tenantId = (request as any).tenantId || (request.user as any)?.tenantId || request.headers['x-tenant-id'] as string;
+
+    const tenantDb = await tenantDbManager.getTenantConnection(tenantId);
+
+    // Get student
+    const studentResult = await tenantDb.query(
+      'SELECT * FROM students WHERE id = $1 AND tenant_id = $2 AND deleted_at IS NULL',
+      [id, tenantId]
+    );
+
+    if (!studentResult.rows.length) {
+      return reply.status(HTTP_STATUS.NOT_FOUND).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.RESOURCE_NOT_FOUND,
+          message: 'Student not found',
+        },
+      });
+    }
+
+    const student = studentResult.rows[0];
+
+    // Get academic goals
+    const goalsResult = await tenantDb.query(
+      'SELECT * FROM student_academic_goals WHERE student_id = $1 ORDER BY created_at DESC',
+      [id]
+    ).catch(() => ({ rows: [] }));
+
+    // Get privacy settings
+    const privacyResult = await tenantDb.query(
+      'SELECT * FROM student_privacy_settings WHERE student_id = $1',
+      [id]
+    ).catch(() => ({ rows: [] }));
+
+    // Get profile analytics
+    const analyticsResult = await tenantDb.query(`
+      SELECT 
+        COUNT(DISTINCT b.id) as total_bookings,
+        SUM(b.total_amount) as total_spent,
+        AVG(EXTRACT(EPOCH FROM (b.end_time::timestamp - b.start_time::timestamp))/3600) as avg_hours_per_booking,
+        COUNT(DISTINCT DATE(a.date)) as days_attended,
+        MAX(a.date) as last_attendance_date
+      FROM students s
+      LEFT JOIN bookings b ON s.id = b.user_id AND b.tenant_id = $2
+      LEFT JOIN attendance a ON s.id = a.student_id AND a.tenant_id = $2
+      WHERE s.id = $1
+      GROUP BY s.id
+    `, [id, tenantId]).catch(() => ({ rows: [{}] }));
+
+    return {
+      success: true,
+      data: {
+        student,
+        academicGoals: goalsResult.rows,
+        privacySettings: privacyResult.rows[0] || {
+          profileVisibility: 'public',
+          showEmail: true,
+          showPhone: true,
+          showLocation: true,
+          allowDataSharing: false,
+        },
+        analytics: analyticsResult.rows[0] || {},
+      },
+      timestamp: new Date().toISOString(),
+    };
+  } catch (error: any) {
+    logger.error('Get student profile error:', error);
+    return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
+      success: false,
+      error: {
+        code: ERROR_CODES.SERVER_ERROR,
+        message: 'Failed to fetch profile',
+      },
+    });
+  }
+});
+
+// Update academic goals
+fastify.post('/api/v1/students/:id/academic-goals', {
+  preHandler: [
+    validateParams(getStudentParamsSchema),
+    validateBody(z.object({
+      goal: z.string().min(1).max(500),
+      targetDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+      priority: z.enum(['low', 'medium', 'high']).optional().default('medium'),
+      status: z.enum(['active', 'completed', 'cancelled']).optional().default('active'),
+    })),
+  ],
+}, async (request: AuthenticatedRequest, reply) => {
+  try {
+    const { id } = request.params as { id: string };
+    const tenantId = (request as any).tenantId || (request.user as any)?.tenantId || request.headers['x-tenant-id'] as string;
+    const { goal, targetDate, priority, status } = request.body as any;
+
+    const tenantDb = await tenantDbManager.getTenantConnection(tenantId);
+
+    // Create academic_goals table if it doesn't exist
+    await tenantDb.query(`
+      CREATE TABLE IF NOT EXISTS student_academic_goals (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        student_id UUID NOT NULL,
+        tenant_id UUID NOT NULL,
+        goal TEXT NOT NULL,
+        target_date DATE,
+        priority VARCHAR(20) DEFAULT 'medium',
+        status VARCHAR(20) DEFAULT 'active',
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW(),
+        FOREIGN KEY (student_id) REFERENCES students(id),
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id)
+      )
+    `).catch(() => {});
+
+    const result = await tenantDb.query(
+      `INSERT INTO student_academic_goals (student_id, tenant_id, goal, target_date, priority, status)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING *`,
+      [id, tenantId, goal, targetDate || null, priority, status]
+    );
+
+    return reply.status(HTTP_STATUS.CREATED).send({
+      success: true,
+      data: result.rows[0],
+      message: 'Academic goal created successfully',
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error: any) {
+    logger.error('Create academic goal error:', error);
+    return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
+      success: false,
+      error: {
+        code: ERROR_CODES.SERVER_ERROR,
+        message: 'Failed to create academic goal',
+      },
+    });
+  }
+});
+
+// Update privacy settings
+fastify.put('/api/v1/students/:id/privacy-settings', {
+  preHandler: [
+    validateParams(getStudentParamsSchema),
+    validateBody(z.object({
+      profileVisibility: z.enum(['public', 'private', 'friends']).optional(),
+      showEmail: z.boolean().optional(),
+      showPhone: z.boolean().optional(),
+      showLocation: z.boolean().optional(),
+      allowDataSharing: z.boolean().optional(),
+    })),
+  ],
+}, async (request: AuthenticatedRequest, reply) => {
+  try {
+    const { id } = request.params as { id: string };
+    const tenantId = (request as any).tenantId || (request.user as any)?.tenantId || request.headers['x-tenant-id'] as string;
+    const settings = request.body as any;
+
+    const tenantDb = await tenantDbManager.getTenantConnection(tenantId);
+
+    // Create privacy_settings table if it doesn't exist
+    await tenantDb.query(`
+      CREATE TABLE IF NOT EXISTS student_privacy_settings (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        student_id UUID NOT NULL UNIQUE,
+        tenant_id UUID NOT NULL,
+        profile_visibility VARCHAR(20) DEFAULT 'public',
+        show_email BOOLEAN DEFAULT true,
+        show_phone BOOLEAN DEFAULT true,
+        show_location BOOLEAN DEFAULT true,
+        allow_data_sharing BOOLEAN DEFAULT false,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW(),
+        FOREIGN KEY (student_id) REFERENCES students(id),
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id)
+      )
+    `).catch(() => {});
+
+    const fields = Object.keys(settings);
+    const setClause = fields.map((field, idx) => `${field} = $${idx + 3}`).join(', ');
+    const values = [id, tenantId, ...fields.map(f => settings[f])];
+
+    const result = await tenantDb.query(
+      `INSERT INTO student_privacy_settings (student_id, tenant_id, ${fields.join(', ')})
+       VALUES ($1, $2, ${fields.map((_, idx) => `$${idx + 3}`).join(', ')})
+       ON CONFLICT (student_id) 
+       DO UPDATE SET ${setClause}, updated_at = NOW()
+       RETURNING *`,
+      values
+    );
+
+    return {
+      success: true,
+      data: result.rows[0],
+      message: 'Privacy settings updated successfully',
+      timestamp: new Date().toISOString(),
+    };
+  } catch (error: any) {
+    logger.error('Update privacy settings error:', error);
+    return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
+      success: false,
+      error: {
+        code: ERROR_CODES.SERVER_ERROR,
+        message: 'Failed to update privacy settings',
       },
     });
   }

@@ -14,22 +14,69 @@ import razorpayService from './razorpay.service';
 import { tenantDbManager } from '../../config/database';
 import { logger } from '../../utils/logger';
 import { HTTP_STATUS, ERROR_CODES } from '../../config/constants';
+import { authenticate, AuthenticatedRequest } from '../../middleware/auth';
+import { validateBody, validateParams, validateQuery } from '../../middleware/validator';
+import { z } from 'zod';
+import { registerRateLimit, SERVICE_RATE_LIMITS } from '../../middleware/rateLimiter';
+import { requestLogger } from '../../middleware/requestLogger';
+import { errorHandler, notFoundHandler } from '../../middleware/errorHandler';
+import {
+  createPaymentOrderSchema,
+  verifyPaymentSchema,
+  processRefundSchema,
+  paymentParamsSchema,
+} from '../../validators/payment.validator';
+import { config } from '../../config/env';
 
 dotenv.config();
 
 const fastify = Fastify({ logger: false });
-const PORT = parseInt(process.env.PAYMENT_SERVICE_PORT || '3006');
+const PORT = config.ports.payment;
 
 // ============================================
 // MIDDLEWARE
 // ============================================
 
 fastify.register(cors, {
-  origin: process.env.CORS_ORIGIN?.split(',') || ['http://localhost:3002'],
+  origin: config.cors.origins.length > 0 ? config.cors.origins : ['http://localhost:3002'],
   credentials: true,
 });
 
 fastify.register(helmet);
+
+// ============================================
+// RATE LIMITING
+// ============================================
+
+// Register rate limiting in async function
+(async () => {
+  await registerRateLimit(fastify, SERVICE_RATE_LIMITS.payment);
+})();
+
+// ============================================
+// REQUEST LOGGING
+// ============================================
+
+fastify.addHook('onRequest', requestLogger);
+
+// ============================================
+// AUTHENTICATION MIDDLEWARE
+// ============================================
+
+fastify.addHook('onRequest', async (request: AuthenticatedRequest, reply) => {
+  // Skip auth for health check and webhooks
+  if (request.url === '/health' || request.url.includes('/webhook/')) {
+    return;
+  }
+  return authenticate(request, reply);
+});
+
+// ============================================
+// ERROR HANDLING
+// ============================================
+
+fastify.setErrorHandler(errorHandler);
+fastify.setNotFoundHandler(notFoundHandler);
 
 // ============================================
 // ROUTES
@@ -52,9 +99,11 @@ fastify.get('/health', async () => {
 });
 
 // Create payment order
-fastify.post('/api/v1/payments/create', async (request, reply) => {
+fastify.post('/api/v1/payments/create', {
+  preHandler: [validateBody(createPaymentOrderSchema)],
+}, async (request: AuthenticatedRequest, reply) => {
   try {
-    const tenantId = request.headers['x-tenant-id'] as string;
+    const tenantId = (request as any).tenantId || (request.user as any)?.tenantId || request.headers['x-tenant-id'] as string;
     const {
       amount,
       currency = 'INR',
@@ -133,9 +182,11 @@ fastify.post('/api/v1/payments/create', async (request, reply) => {
 });
 
 // Verify payment
-fastify.post('/api/v1/payments/verify', async (request, reply) => {
+fastify.post('/api/v1/payments/verify', {
+  preHandler: [validateBody(verifyPaymentSchema)],
+}, async (request: AuthenticatedRequest, reply) => {
   try {
-    const tenantId = request.headers['x-tenant-id'] as string;
+    const tenantId = (request as any).tenantId || (request.user as any)?.tenantId || request.headers['x-tenant-id'] as string;
     const { orderId, paymentId, signature, gateway } = request.body as any;
 
     // Verify payment with gateway
@@ -181,10 +232,15 @@ fastify.post('/api/v1/payments/verify', async (request, reply) => {
 });
 
 // Process refund
-fastify.post('/api/v1/payments/:id/refund', async (request, reply) => {
+fastify.post('/api/v1/payments/:id/refund', {
+  preHandler: [
+    validateParams(paymentParamsSchema),
+    validateBody(processRefundSchema),
+  ],
+}, async (request: AuthenticatedRequest, reply) => {
   try {
     const { id } = request.params as { id: string };
-    const tenantId = request.headers['x-tenant-id'] as string;
+    const tenantId = (request as any).tenantId || (request.user as any)?.tenantId || request.headers['x-tenant-id'] as string;
     const { amount, reason } = request.body as any;
 
     const tenantDb = await tenantDbManager.getTenantConnection(tenantId);
@@ -291,6 +347,210 @@ fastify.post('/api/v1/payments/webhook/cashfree', async (request, reply) => {
     return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
       success: false,
       error: error.message,
+    });
+  }
+});
+
+// ============================================
+// STUDENT PAYMENT ENHANCEMENTS
+// ============================================
+
+// Get student payment preferences
+fastify.get('/api/v1/payments/students/:studentId/preferences', {
+  preHandler: [validateParams(z.object({ studentId: z.string().uuid() }))],
+}, async (request: AuthenticatedRequest, reply) => {
+  try {
+    const { studentId } = request.params as { studentId: string };
+    const tenantId = (request as any).tenantId || (request.user as any)?.tenantId || request.headers['x-tenant-id'] as string;
+
+    const tenantDb = await tenantDbManager.getTenantConnection(tenantId);
+
+    // Create payment_preferences table if it doesn't exist
+    await tenantDb.query(`
+      CREATE TABLE IF NOT EXISTS student_payment_preferences (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        student_id UUID NOT NULL UNIQUE,
+        tenant_id UUID NOT NULL,
+        preferred_gateway VARCHAR(50),
+        auto_pay_enabled BOOLEAN DEFAULT false,
+        auto_pay_threshold DECIMAL(10,2),
+        saved_cards JSONB DEFAULT '[]',
+        upi_ids JSONB DEFAULT '[]',
+        wallet_preferences JSONB DEFAULT '{}',
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW(),
+        FOREIGN KEY (student_id) REFERENCES students(id),
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id)
+      )
+    `).catch(() => {});
+
+    const result = await tenantDb.query(
+      'SELECT * FROM student_payment_preferences WHERE student_id = $1 AND tenant_id = $2',
+      [studentId, tenantId]
+    );
+
+    return {
+      success: true,
+      data: result.rows[0] || {
+        studentId,
+        preferredGateway: null,
+        autoPayEnabled: false,
+        autoPayThreshold: null,
+        savedCards: [],
+        upiIds: [],
+        walletPreferences: {},
+      },
+      timestamp: new Date().toISOString(),
+    };
+  } catch (error: any) {
+    logger.error('Get payment preferences error:', error);
+    return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
+      success: false,
+      error: {
+        code: ERROR_CODES.SERVER_ERROR,
+        message: 'Failed to fetch payment preferences',
+      },
+    });
+  }
+});
+
+// Update student payment preferences
+fastify.put('/api/v1/payments/students/:studentId/preferences', {
+  preHandler: [
+    validateParams(z.object({ studentId: z.string().uuid() })),
+    validateBody(z.object({
+      preferredGateway: z.enum(['cashfree', 'razorpay']).optional(),
+      autoPayEnabled: z.boolean().optional(),
+      autoPayThreshold: z.coerce.number().positive().optional(),
+      savedCards: z.array(z.any()).optional(),
+      upiIds: z.array(z.string()).optional(),
+      walletPreferences: z.record(z.any()).optional(),
+    })),
+  ],
+}, async (request: AuthenticatedRequest, reply) => {
+  try {
+    const { studentId } = request.params as { studentId: string };
+    const tenantId = (request as any).tenantId || (request.user as any)?.tenantId || request.headers['x-tenant-id'] as string;
+    const preferences = request.body as any;
+
+    const tenantDb = await tenantDbManager.getTenantConnection(tenantId);
+
+    const fields = Object.keys(preferences);
+    const setClause = fields.map((field, idx) => `${field} = $${idx + 3}`).join(', ');
+    const values = [studentId, tenantId, ...fields.map(f => 
+      typeof preferences[f] === 'object' ? JSON.stringify(preferences[f]) : preferences[f]
+    )];
+
+    const result = await tenantDb.query(
+      `INSERT INTO student_payment_preferences (student_id, tenant_id, ${fields.join(', ')})
+       VALUES ($1, $2, ${fields.map((_, idx) => `$${idx + 3}`).join(', ')})
+       ON CONFLICT (student_id) 
+       DO UPDATE SET ${setClause}, updated_at = NOW()
+       RETURNING *`,
+      values
+    );
+
+    return {
+      success: true,
+      data: result.rows[0],
+      message: 'Payment preferences updated successfully',
+      timestamp: new Date().toISOString(),
+    };
+  } catch (error: any) {
+    logger.error('Update payment preferences error:', error);
+    return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
+      success: false,
+      error: {
+        code: ERROR_CODES.SERVER_ERROR,
+        message: 'Failed to update payment preferences',
+      },
+    });
+  }
+});
+
+// Get student payment history with analytics
+fastify.get('/api/v1/payments/students/:studentId/history', {
+  preHandler: [
+    validateParams(z.object({ studentId: z.string().uuid() })),
+    validateQuery(z.object({
+      limit: z.coerce.number().int().positive().max(100).default(20).optional(),
+      page: z.coerce.number().int().positive().default(1).optional(),
+      startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+      endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    })),
+  ],
+}, async (request: AuthenticatedRequest, reply) => {
+  try {
+    const { studentId } = request.params as { studentId: string };
+    const tenantId = (request as any).tenantId || (request.user as any)?.tenantId || request.headers['x-tenant-id'] as string;
+    const { limit = 20, page = 1, startDate, endDate } = request.query as any;
+
+    const tenantDb = await tenantDbManager.getTenantConnection(tenantId);
+
+    let query = 'SELECT * FROM payments WHERE student_id = $1 AND tenant_id = $2';
+    const params: any[] = [studentId, tenantId];
+    let paramIndex = 3;
+
+    if (startDate) {
+      query += ` AND payment_date >= $${paramIndex++}`;
+      params.push(startDate);
+    }
+
+    if (endDate) {
+      query += ` AND payment_date <= $${paramIndex++}`;
+      params.push(endDate);
+    }
+
+    // Get total count
+    const countQuery = query.replace('SELECT *', 'SELECT COUNT(*) as total');
+    const countResult = await tenantDb.query(countQuery, params);
+    const total = parseInt(countResult.rows[0].total);
+
+    // Pagination
+    const offset = (page - 1) * limit;
+    query += ` ORDER BY created_at DESC LIMIT $${paramIndex++} OFFSET $${paramIndex}`;
+    params.push(limit, offset);
+
+    const result = await tenantDb.query(query, params);
+
+    // Get analytics
+    const analyticsResult = await tenantDb.query(`
+      SELECT 
+        COUNT(*) as total_payments,
+        SUM(amount) FILTER (WHERE payment_status = 'completed') as total_spent,
+        AVG(amount) FILTER (WHERE payment_status = 'completed') as avg_payment,
+        COUNT(*) FILTER (WHERE payment_status = 'refunded') as refunds_count,
+        SUM(amount) FILTER (WHERE payment_status = 'refunded') as refunds_amount,
+        MAX(payment_date) as last_payment_date,
+        MIN(payment_date) as first_payment_date
+      FROM payments
+      WHERE student_id = $1 AND tenant_id = $2
+    `, [studentId, tenantId]).catch(() => ({ rows: [{}] }));
+
+    return {
+      success: true,
+      data: {
+        payments: result.rows,
+        analytics: analyticsResult.rows[0] || {},
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total,
+          totalPages: Math.ceil(total / limit),
+          hasNext: page * limit < total,
+          hasPrev: page > 1,
+        },
+      },
+      timestamp: new Date().toISOString(),
+    };
+  } catch (error: any) {
+    logger.error('Get payment history error:', error);
+    return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
+      success: false,
+      error: {
+        code: ERROR_CODES.SERVER_ERROR,
+        message: 'Failed to fetch payment history',
+      },
     });
   }
 });

@@ -22,6 +22,9 @@ const DEFAULT_SERVICE_URLS = {
   ATTENDANCE: 'https://studyspot-attendance-service.onrender.com', // Updated to match actual service name
   MESSAGING: 'https://studyspot-messaging.onrender.com',
   ANALYTICS: 'https://studyspot-analytics.onrender.com',
+  ADMIN: 'https://studyspot-admin.onrender.com',
+  NOTIFICATION: 'https://studyspot-notifications.onrender.com',
+  DOCUMENT: 'https://studyspot-documents.onrender.com',
 };
 
 // Fallback: If service is not deployed, use auth service as fallback
@@ -46,6 +49,9 @@ const SERVICES = {
   ATTENDANCE: getServiceUrl('ATTENDANCE', DEFAULT_SERVICE_URLS.ATTENDANCE),
   MESSAGING: getServiceUrl('MESSAGING', DEFAULT_SERVICE_URLS.MESSAGING),
   ANALYTICS: getServiceUrl('ANALYTICS', DEFAULT_SERVICE_URLS.ANALYTICS),
+  ADMIN: getServiceUrl('ADMIN', DEFAULT_SERVICE_URLS.ADMIN),
+  NOTIFICATION: getServiceUrl('NOTIFICATION', DEFAULT_SERVICE_URLS.NOTIFICATION),
+  DOCUMENT: getServiceUrl('DOCUMENT', DEFAULT_SERVICE_URLS.DOCUMENT),
 };
 
 /**
@@ -491,6 +497,67 @@ export function registerRoutes(fastify: FastifyInstance) {
     const result = await proxyToService(
       'Analytics',
       SERVICES.ANALYTICS,
+      path,
+      request.method,
+      request.headers,
+      request.body
+    );
+    return reply.code(result.statusCode).send(result.data);
+  });
+
+  // ============================================
+  // ADMIN SERVICE ROUTES
+  // ============================================
+  fastify.all('/api/v1/admin/tenants*', async (request, reply) => {
+    const path = request.url.replace('/api/v1', '');
+    const result = await proxyToService(
+      'Admin',
+      SERVICES.ADMIN,
+      path,
+      request.method,
+      request.headers,
+      request.body
+    );
+    return reply.code(result.statusCode).send(result.data);
+  });
+
+  fastify.all('/api/v1/admin/analytics*', async (request, reply) => {
+    const path = request.url.replace('/api/v1', '');
+    const result = await proxyToService(
+      'Admin',
+      SERVICES.ADMIN,
+      path,
+      request.method,
+      request.headers,
+      request.body
+    );
+    return reply.code(result.statusCode).send(result.data);
+  });
+
+  // ============================================
+  // NOTIFICATION SERVICE ROUTES
+  // ============================================
+  fastify.all('/api/v1/notifications*', async (request, reply) => {
+    const path = request.url.replace('/api/v1', '');
+    const result = await proxyToService(
+      'Notification',
+      SERVICES.NOTIFICATION,
+      path,
+      request.method,
+      request.headers,
+      request.body
+    );
+    return reply.code(result.statusCode).send(result.data);
+  });
+
+  // ============================================
+  // DOCUMENT SERVICE ROUTES
+  // ============================================
+  fastify.all('/api/v1/documents*', async (request, reply) => {
+    const path = request.url.replace('/api/v1', '');
+    const result = await proxyToService(
+      'Document',
+      SERVICES.DOCUMENT,
       path,
       request.method,
       request.headers,

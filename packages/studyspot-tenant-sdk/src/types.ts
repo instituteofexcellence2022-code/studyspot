@@ -59,4 +59,28 @@ export interface RequestContext {
   accessToken: string | null;
 }
 
+/**
+ * Login credentials interface
+ * Used for authentication requests
+ */
+export interface Credentials {
+  email: string;
+  password: string;
+  /**
+   * Tenant ID - Required for tenant-scoped users (students, library_staff)
+   * Optional for core DB users (library_owners, platform_admins, platform_staff)
+   */
+  tenantId?: string;
+  /**
+   * User Type - Optional but recommended for better routing
+   * Values: 'student', 'library_owner', 'library_staff', 'platform_admin', 'platform_staff'
+   */
+  userType?: string;
+  /**
+   * Portal Type - Optional but recommended for better routing
+   * Values: 'student', 'owner', 'admin'
+   */
+  portalType?: string;
+}
+
 

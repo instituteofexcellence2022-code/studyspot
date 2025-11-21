@@ -1,5 +1,5 @@
 import { jwtDecode } from 'jwt-decode';
-import type { AuthProviderConfig, LoginResponse, TenantClaims, TokenSet } from './types';
+import type { AuthProviderConfig, LoginResponse, TenantClaims, TokenSet, Credentials } from './types';
 import { TokenStorage, TokenStorageSchema } from './storage';
 
 const DEFAULT_ENDPOINTS = {
@@ -7,11 +7,6 @@ const DEFAULT_ENDPOINTS = {
   refresh: '/auth/refresh',
   logout: '/auth/logout',
 };
-
-export interface Credentials {
-  email: string;
-  password: string;
-}
 
 export interface AuthClientOptions {
   provider: AuthProviderConfig;
@@ -33,6 +28,9 @@ export class AuthClient {
         baseUrl: provider.baseUrl,
         loginPath: provider.loginPath ?? DEFAULT_ENDPOINTS.login,
         email: credentials.email,
+        hasTenantId: !!credentials.tenantId,
+        userType: credentials.userType,
+        portalType: credentials.portalType,
       });
 
       const rawResponse = await this.request<any>(

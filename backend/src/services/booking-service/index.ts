@@ -10,23 +10,30 @@
 
 import Fastify, { FastifyInstance } from 'fastify';
 import cors from '@fastify/cors';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import helmet from '@fastify/helmet';
+import dotenv from 'dotenv';
+import { tenantDbManager } from '../../config/database';
 import { logger } from '../../utils/logger';
+import { HTTP_STATUS, ERROR_CODES } from '../../config/constants';
+import { authenticate, AuthenticatedRequest } from '../../middleware/auth';
+import { validateBody, validateQuery, validateParams } from '../../middleware/validator';
+import { registerRateLimit, SERVICE_RATE_LIMITS } from '../../middleware/rateLimiter';
+import { requestLogger } from '../../middleware/requestLogger';
+import { errorHandler, notFoundHandler } from '../../middleware/errorHandler';
+import {
+  createBookingSchema,
+  updateBookingSchema,
+  getBookingsQuerySchema,
+  bookingParamsSchema,
+  userBookingsParamsSchema,
+  libraryBookingsParamsSchema,
+} from '../../validators/booking.validator';
 import { emitBookingCreated, emitBookingUpdated, emitBookingCancelled } from '../../utils/socketHelpers';
+import { config } from '../../config/env';
 
-const PORT = process.env.BOOKING_SERVICE_PORT || 3007;
-const SUPABASE_URL = process.env.SUPABASE_URL || '';
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+dotenv.config();
 
-let supabase: SupabaseClient;
-
-// Initialize Supabase client
-if (SUPABASE_URL && SUPABASE_SERVICE_KEY) {
-  supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-  logger.info('✅ Booking Service: Supabase connected');
-} else {
-  logger.warn('⚠️ Booking Service: Supabase credentials missing - using mock data');
-}
+const PORT = config.ports.booking;
 
 interface Booking {
   id?: string;
@@ -42,79 +49,70 @@ interface Booking {
   updated_at?: string;
 }
 
-// Mock bookings for development
-const mockBookings: any[] = [
-  {
-    id: '1',
-    user_id: 'user1',
-    library_id: 'lib1',
-    seat_id: 'seat1',
-    start_time: new Date().toISOString(),
-    end_time: new Date(Date.now() + 3600000).toISOString(),
-    status: 'confirmed',
-    total_amount: 500,
-    payment_status: 'paid',
-    studentName: 'Rajesh Kumar',
-    libraryName: 'Central Study Hub',
-    created_at: new Date().toISOString(),
-  },
-];
 
 /**
  * Create a new booking
  */
-async function createBooking(data: Booking) {
+async function createBooking(data: Booking, tenantId: string) {
   try {
-    if (supabase) {
-      const { data: booking, error } = await supabase
-        .from('bookings')
-        .insert([
-          {
-            user_id: data.user_id,
-            library_id: data.library_id,
-            seat_id: data.seat_id,
-            start_time: data.start_time,
-            end_time: data.end_time,
-            status: data.status || 'pending',
-            total_amount: data.total_amount,
-            payment_status: data.payment_status || 'pending',
-          },
-        ])
-        .select(`
-          *,
-          users:user_id (id, first_name, last_name, email),
-          libraries:library_id (id, name, address)
-        `)
-        .single();
-
-      if (error) throw error;
-
-      // 🔴 Emit real-time event
-      const enrichedBooking = {
-        ...booking,
-        studentName: booking.users ? `${booking.users.first_name} ${booking.users.last_name}` : 'Unknown',
-        libraryName: booking.libraries?.name || 'Unknown',
-      };
-      emitBookingCreated(enrichedBooking);
-
-      return { success: true, data: enrichedBooking };
-    } else {
-      // Mock mode
-      const newBooking = {
-        id: `mock-${Date.now()}`,
-        ...data,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        studentName: 'Mock Student',
-        libraryName: 'Mock Library',
-      };
-      mockBookings.push(newBooking);
-      
-      // Emit mock event
-      emitBookingCreated(newBooking);
-      
-      return { success: true, data: newBooking };
+    if (!tenantId) {
+      throw new Error('Tenant ID is required');
     }
+
+    // Validate required fields
+    if (!data.user_id || !data.library_id || !data.start_time || !data.end_time) {
+      throw new Error('Missing required fields: user_id, library_id, start_time, end_time');
+    }
+
+    const tenantDb = await tenantDbManager.getTenantConnection(tenantId);
+
+    // Insert booking
+    const result = await tenantDb.query(
+      `INSERT INTO bookings (
+        tenant_id, user_id, library_id, seat_id, start_time, end_time,
+        status, total_amount, payment_status, created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
+      RETURNING *`,
+      [
+        tenantId,
+        data.user_id,
+        data.library_id,
+        data.seat_id || null,
+        data.start_time,
+        data.end_time,
+        data.status || 'pending',
+        data.total_amount,
+        data.payment_status || 'pending',
+      ]
+    );
+
+    const booking = result.rows[0];
+
+    // Enrich with user and library data
+    const [userResult, libraryResult] = await Promise.all([
+      tenantDb.query(
+        'SELECT id, first_name, last_name, email FROM users WHERE id = $1 AND tenant_id = $2',
+        [data.user_id, tenantId]
+      ).catch(() => ({ rows: [] })),
+      tenantDb.query(
+        'SELECT id, name, address FROM libraries WHERE id = $1 AND tenant_id = $2',
+        [data.library_id, tenantId]
+      ).catch(() => ({ rows: [] })),
+    ]);
+
+    const enrichedBooking = {
+      ...booking,
+      studentName: userResult.rows[0]
+        ? `${userResult.rows[0].first_name || ''} ${userResult.rows[0].last_name || ''}`.trim() || 'Unknown'
+        : 'Unknown',
+      libraryName: libraryResult.rows[0]?.name || 'Unknown',
+    };
+
+    // Emit real-time event
+    emitBookingCreated(enrichedBooking);
+
+    logger.info(`✅ Booking created: ${booking.id}`);
+    return { success: true, data: enrichedBooking };
   } catch (error: any) {
     logger.error('Error creating booking:', error);
     throw error;
@@ -124,82 +122,106 @@ async function createBooking(data: Booking) {
 /**
  * Get all bookings (with filters)
  */
-async function getBookings(filters: {
-  userId?: string;
-  libraryId?: string;
-  status?: string;
-  startDate?: string;
-  endDate?: string;
-  page?: number;
-  limit?: number;
-}) {
+async function getBookings(
+  filters: {
+    userId?: string;
+    libraryId?: string;
+    status?: string;
+    startDate?: string;
+    endDate?: string;
+    page?: number;
+    limit?: number;
+  },
+  tenantId: string
+) {
   try {
+    if (!tenantId) {
+      throw new Error('Tenant ID is required');
+    }
+
+    const tenantDb = await tenantDbManager.getTenantConnection(tenantId);
     const { userId, libraryId, status, startDate, endDate, page = 1, limit = 50 } = filters;
 
-    if (supabase) {
-      let query = supabase
-        .from('bookings')
-        .select(`
-          *,
-          users:user_id (id, first_name, last_name, email, phone),
-          libraries:library_id (id, name, address, city),
-          seats:seat_id (id, seat_number, seat_type)
-        `, { count: 'exact' });
+    // Build query
+    let query = 'SELECT * FROM bookings WHERE tenant_id = $1';
+    const params: any[] = [tenantId];
+    let paramIndex = 2;
 
-      // Apply filters
-      if (userId) query = query.eq('user_id', userId);
-      if (libraryId) query = query.eq('library_id', libraryId);
-      if (status) query = query.eq('status', status);
-      if (startDate) query = query.gte('start_time', startDate);
-      if (endDate) query = query.lte('end_time', endDate);
-
-      // Pagination
-      const from = (page - 1) * limit;
-      const to = from + limit - 1;
-      query = query.range(from, to).order('created_at', { ascending: false });
-
-      const { data: bookings, error, count } = await query;
-
-      if (error) throw error;
-
-      // Enrich bookings with friendly names
-      const enrichedBookings = bookings?.map(booking => ({
-        ...booking,
-        studentName: booking.users ? `${booking.users.first_name} ${booking.users.last_name}` : 'Unknown',
-        libraryName: booking.libraries?.name || 'Unknown',
-        date: booking.start_time?.split('T')[0],
-        time: new Date(booking.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      })) || [];
-
-      return {
-        success: true,
-        data: enrichedBookings,
-        pagination: {
-          page,
-          limit,
-          total: count || 0,
-          totalPages: Math.ceil((count || 0) / limit),
-        },
-      };
-    } else {
-      // Mock mode - return mock bookings
-      let filteredBookings = [...mockBookings];
-
-      if (userId) filteredBookings = filteredBookings.filter(b => b.user_id === userId);
-      if (libraryId) filteredBookings = filteredBookings.filter(b => b.library_id === libraryId);
-      if (status) filteredBookings = filteredBookings.filter(b => b.status === status);
-
-      return {
-        success: true,
-        data: filteredBookings,
-        pagination: {
-          page: 1,
-          limit: filteredBookings.length,
-          total: filteredBookings.length,
-          totalPages: 1,
-        },
-      };
+    if (userId) {
+      query += ` AND user_id = $${paramIndex++}`;
+      params.push(userId);
     }
+
+    if (libraryId) {
+      query += ` AND library_id = $${paramIndex++}`;
+      params.push(libraryId);
+    }
+
+    if (status) {
+      query += ` AND status = $${paramIndex++}`;
+      params.push(status);
+    }
+
+    if (startDate) {
+      query += ` AND start_time >= $${paramIndex++}`;
+      params.push(startDate);
+    }
+
+    if (endDate) {
+      query += ` AND end_time <= $${paramIndex++}`;
+      params.push(endDate);
+    }
+
+    // Get total count
+    const countQuery = query.replace('SELECT *', 'SELECT COUNT(*) as total');
+    const countResult = await tenantDb.query(countQuery, params);
+    const total = parseInt(countResult.rows[0].total);
+
+    // Pagination
+    const offset = (page - 1) * limit;
+    query += ` ORDER BY created_at DESC LIMIT $${paramIndex++} OFFSET $${paramIndex}`;
+    params.push(limit, offset);
+
+    const result = await tenantDb.query(query, params);
+
+    // Enrich bookings with user and library data
+    const enrichedBookings = await Promise.all(
+      result.rows.map(async (booking) => {
+        const [userResult, libraryResult] = await Promise.all([
+          tenantDb.query(
+            'SELECT id, first_name, last_name, email, phone FROM users WHERE id = $1 AND tenant_id = $2',
+            [booking.user_id, tenantId]
+          ).catch(() => ({ rows: [] })),
+          tenantDb.query(
+            'SELECT id, name, address, city FROM libraries WHERE id = $1 AND tenant_id = $2',
+            [booking.library_id, tenantId]
+          ).catch(() => ({ rows: [] })),
+        ]);
+
+        return {
+          ...booking,
+          studentName: userResult.rows[0]
+            ? `${userResult.rows[0].first_name || ''} ${userResult.rows[0].last_name || ''}`.trim() || 'Unknown'
+            : 'Unknown',
+          libraryName: libraryResult.rows[0]?.name || 'Unknown',
+          date: booking.start_time?.split('T')[0],
+          time: new Date(booking.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        };
+      })
+    );
+
+    return {
+      success: true,
+      data: enrichedBookings,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+        hasNext: page * limit < total,
+        hasPrev: page > 1,
+      },
+    };
   } catch (error: any) {
     logger.error('Error fetching bookings:', error);
     throw error;
@@ -209,34 +231,47 @@ async function getBookings(filters: {
 /**
  * Get booking by ID
  */
-async function getBookingById(id: string) {
+async function getBookingById(id: string, tenantId: string) {
   try {
-    if (supabase) {
-      const { data: booking, error } = await supabase
-        .from('bookings')
-        .select(`
-          *,
-          users:user_id (id, first_name, last_name, email, phone),
-          libraries:library_id (id, name, address, city),
-          seats:seat_id (id, seat_number, seat_type)
-        `)
-        .eq('id', id)
-        .single();
-
-      if (error) throw error;
-
-      return {
-        success: true,
-        data: {
-          ...booking,
-          studentName: booking.users ? `${booking.users.first_name} ${booking.users.last_name}` : 'Unknown',
-          libraryName: booking.libraries?.name || 'Unknown',
-        },
-      };
-    } else {
-      const booking = mockBookings.find(b => b.id === id);
-      return { success: true, data: booking || null };
+    if (!tenantId) {
+      throw new Error('Tenant ID is required');
     }
+
+    const tenantDb = await tenantDbManager.getTenantConnection(tenantId);
+
+    const result = await tenantDb.query(
+      'SELECT * FROM bookings WHERE id = $1 AND tenant_id = $2',
+      [id, tenantId]
+    );
+
+    if (!result.rows.length) {
+      throw new Error('Booking not found');
+    }
+
+    const booking = result.rows[0];
+
+    // Enrich with user and library data
+    const [userResult, libraryResult] = await Promise.all([
+      tenantDb.query(
+        'SELECT id, first_name, last_name, email, phone FROM users WHERE id = $1 AND tenant_id = $2',
+        [booking.user_id, tenantId]
+      ).catch(() => ({ rows: [] })),
+      tenantDb.query(
+        'SELECT id, name, address, city FROM libraries WHERE id = $1 AND tenant_id = $2',
+        [booking.library_id, tenantId]
+      ).catch(() => ({ rows: [] })),
+    ]);
+
+    return {
+      success: true,
+      data: {
+        ...booking,
+        studentName: userResult.rows[0]
+          ? `${userResult.rows[0].first_name || ''} ${userResult.rows[0].last_name || ''}`.trim() || 'Unknown'
+          : 'Unknown',
+        libraryName: libraryResult.rows[0]?.name || 'Unknown',
+      },
+    };
   } catch (error: any) {
     logger.error('Error fetching booking:', error);
     throw error;
@@ -246,43 +281,60 @@ async function getBookingById(id: string) {
 /**
  * Update booking
  */
-async function updateBooking(id: string, updates: Partial<Booking>) {
+async function updateBooking(id: string, updates: Partial<Booking>, tenantId: string) {
   try {
-    if (supabase) {
-      const { data: booking, error } = await supabase
-        .from('bookings')
-        .update({
-          ...updates,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', id)
-        .select(`
-          *,
-          users:user_id (id, first_name, last_name, email),
-          libraries:library_id (id, name, address)
-        `)
-        .single();
+    if (!tenantId) {
+      throw new Error('Tenant ID is required');
+    }
 
-      if (error) throw error;
+    const tenantDb = await tenantDbManager.getTenantConnection(tenantId);
 
-      // 🔴 Emit real-time event
-      const enrichedBooking = {
-        ...booking,
-        studentName: booking.users ? `${booking.users.first_name} ${booking.users.last_name}` : 'Unknown',
-        libraryName: booking.libraries?.name || 'Unknown',
-      };
-      emitBookingUpdated(enrichedBooking);
+    // Build update query
+    const fields = Object.keys(updates).filter(key => updates[key] !== undefined && key !== 'id' && key !== 'tenant_id');
+    if (fields.length === 0) {
+      throw new Error('No fields to update');
+    }
 
-      return { success: true, data: enrichedBooking };
-    } else {
-      const index = mockBookings.findIndex(b => b.id === id);
-      if (index !== -1) {
-        mockBookings[index] = { ...mockBookings[index], ...updates, updated_at: new Date().toISOString() };
-        emitBookingUpdated(mockBookings[index]);
-        return { success: true, data: mockBookings[index] };
-      }
+    const setClause = fields.map((field, idx) => `${field} = $${idx + 3}`).join(', ');
+    const values = [id, tenantId, ...fields.map(f => updates[f as keyof Booking])];
+
+    const result = await tenantDb.query(
+      `UPDATE bookings SET ${setClause}, updated_at = NOW()
+       WHERE id = $1 AND tenant_id = $2
+       RETURNING *`,
+      values
+    );
+
+    if (!result.rows.length) {
       throw new Error('Booking not found');
     }
+
+    const booking = result.rows[0];
+
+    // Enrich with user and library data
+    const [userResult, libraryResult] = await Promise.all([
+      tenantDb.query(
+        'SELECT id, first_name, last_name FROM users WHERE id = $1 AND tenant_id = $2',
+        [booking.user_id, tenantId]
+      ).catch(() => ({ rows: [] })),
+      tenantDb.query(
+        'SELECT id, name FROM libraries WHERE id = $1 AND tenant_id = $2',
+        [booking.library_id, tenantId]
+      ).catch(() => ({ rows: [] })),
+    ]);
+
+    const enrichedBooking = {
+      ...booking,
+      studentName: userResult.rows[0]
+        ? `${userResult.rows[0].first_name || ''} ${userResult.rows[0].last_name || ''}`.trim() || 'Unknown'
+        : 'Unknown',
+      libraryName: libraryResult.rows[0]?.name || 'Unknown',
+    };
+
+    // Emit real-time event
+    emitBookingUpdated(enrichedBooking);
+
+    return { success: true, data: enrichedBooking };
   } catch (error: any) {
     logger.error('Error updating booking:', error);
     throw error;
@@ -292,11 +344,11 @@ async function updateBooking(id: string, updates: Partial<Booking>) {
 /**
  * Cancel booking
  */
-async function cancelBooking(id: string) {
+async function cancelBooking(id: string, tenantId: string) {
   try {
-    const result = await updateBooking(id, { status: 'cancelled' });
+    const result = await updateBooking(id, { status: 'cancelled' }, tenantId);
     
-    // 🔴 Emit cancellation event
+    // Emit cancellation event
     if (result.data) {
       emitBookingCancelled(result.data);
     }
@@ -318,17 +370,57 @@ export async function startBookingService() {
 
   // CORS
   await fastify.register(cors, {
-    origin: true,
+    origin: config.cors.origins.length > 0 ? config.cors.origins : ['http://localhost:3002'],
     credentials: true,
   });
+
+  // Security headers
+  await fastify.register(helmet);
+
+  // ============================================
+  // RATE LIMITING
+  // ============================================
+
+  // Register rate limiting in async function
+  (async () => {
+    await registerRateLimit(fastify, SERVICE_RATE_LIMITS.booking);
+  })();
+
+  // ============================================
+  // REQUEST LOGGING
+  // ============================================
+
+  fastify.addHook('onRequest', requestLogger);
+
+  // ============================================
+  // AUTHENTICATION MIDDLEWARE
+  // ============================================
+
+  fastify.addHook('onRequest', async (request: AuthenticatedRequest, reply) => {
+    // Skip auth for health check
+    if (request.url === '/health') {
+      return;
+    }
+    return authenticate(request, reply);
+  });
+
+  // ============================================
+  // ERROR HANDLING
+  // ============================================
+
+  fastify.setErrorHandler(errorHandler);
+  fastify.setNotFoundHandler(notFoundHandler);
 
   // Health check
   fastify.get('/health', async () => {
     return {
-      service: 'booking-service',
-      status: 'healthy',
-      timestamp: new Date().toISOString(),
-      database: supabase ? 'connected' : 'mock',
+      success: true,
+      data: {
+        status: 'healthy',
+        service: 'booking-service',
+        timestamp: new Date().toISOString(),
+        database: 'tenant-managed',
+      },
     };
   });
 
@@ -337,132 +429,291 @@ export async function startBookingService() {
   // ============================================
 
   // Get all bookings
-  fastify.get('/api/v1/bookings', async (request, reply) => {
+  fastify.get('/api/v1/bookings', {
+    preHandler: [validateQuery(getBookingsQuerySchema)],
+  }, async (request: AuthenticatedRequest, reply) => {
     try {
+      const tenantId = (request as any).tenantId || (request.user as any)?.tenantId || request.headers['x-tenant-id'] as string;
+      
+      if (!tenantId) {
+        return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+          success: false,
+          error: {
+            code: ERROR_CODES.VALIDATION_ERROR,
+            message: 'Tenant ID is required',
+          },
+        });
+      }
+
       const { userId, libraryId, status, startDate, endDate, page, limit } = request.query as any;
-      const result = await getBookings({ userId, libraryId, status, startDate, endDate, page, limit });
+      const result = await getBookings({ userId, libraryId, status, startDate, endDate, page, limit }, tenantId);
       return reply.send(result);
     } catch (error: any) {
       logger.error('GET /api/v1/bookings error:', error);
-      return reply.code(500).send({
+      return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
         success: false,
-        error: { message: error.message },
+        error: {
+          code: ERROR_CODES.SERVER_ERROR,
+          message: error.message || 'Failed to fetch bookings',
+        },
       });
     }
   });
 
   // Get booking by ID
-  fastify.get('/api/v1/bookings/:id', async (request, reply) => {
+  fastify.get('/api/v1/bookings/:id', {
+    preHandler: [validateParams(bookingParamsSchema)],
+  }, async (request: AuthenticatedRequest, reply) => {
     try {
-      const { id } = request.params as any;
-      const result = await getBookingById(id);
+      const { id } = request.params as { id: string };
+      const tenantId = (request as any).tenantId || (request.user as any)?.tenantId || request.headers['x-tenant-id'] as string;
+      
+      if (!tenantId) {
+        return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+          success: false,
+          error: {
+            code: ERROR_CODES.VALIDATION_ERROR,
+            message: 'Tenant ID is required',
+          },
+        });
+      }
+
+      const result = await getBookingById(id, tenantId);
       return reply.send(result);
     } catch (error: any) {
       logger.error('GET /api/v1/bookings/:id error:', error);
-      return reply.code(500).send({
+      if (error.message === 'Booking not found') {
+        return reply.status(HTTP_STATUS.NOT_FOUND).send({
+          success: false,
+          error: {
+            code: ERROR_CODES.RESOURCE_NOT_FOUND,
+            message: error.message,
+          },
+        });
+      }
+      return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
         success: false,
-        error: { message: error.message },
+        error: {
+          code: ERROR_CODES.SERVER_ERROR,
+          message: error.message || 'Failed to fetch booking',
+        },
       });
     }
   });
 
   // Create booking
-  fastify.post('/api/v1/bookings', async (request, reply) => {
+  fastify.post('/api/v1/bookings', {
+    preHandler: [validateBody(createBookingSchema)],
+  }, async (request: AuthenticatedRequest, reply) => {
     try {
+      const tenantId = (request as any).tenantId || (request.user as any)?.tenantId || request.headers['x-tenant-id'] as string;
+      
+      if (!tenantId) {
+        return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+          success: false,
+          error: {
+            code: ERROR_CODES.VALIDATION_ERROR,
+            message: 'Tenant ID is required',
+          },
+        });
+      }
+
       const bookingData = request.body as Booking;
-      const result = await createBooking(bookingData);
-      return reply.code(201).send(result);
+      const result = await createBooking(bookingData, tenantId);
+      return reply.status(HTTP_STATUS.CREATED).send(result);
     } catch (error: any) {
       logger.error('POST /api/v1/bookings error:', error);
-      return reply.code(500).send({
+      return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
         success: false,
-        error: { message: error.message },
+        error: {
+          code: ERROR_CODES.SERVER_ERROR,
+          message: error.message || 'Failed to create booking',
+        },
       });
     }
   });
 
   // Update booking
-  fastify.put('/api/v1/bookings/:id', async (request, reply) => {
+  fastify.put('/api/v1/bookings/:id', {
+    preHandler: [
+      validateParams(bookingParamsSchema),
+      validateBody(updateBookingSchema),
+    ],
+  }, async (request: AuthenticatedRequest, reply) => {
     try {
-      const { id } = request.params as any;
+      const { id } = request.params as { id: string };
+      const tenantId = (request as any).tenantId || (request.user as any)?.tenantId || request.headers['x-tenant-id'] as string;
+      
+      if (!tenantId) {
+        return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+          success: false,
+          error: {
+            code: ERROR_CODES.VALIDATION_ERROR,
+            message: 'Tenant ID is required',
+          },
+        });
+      }
+
       const updates = request.body as Partial<Booking>;
-      const result = await updateBooking(id, updates);
+      const result = await updateBooking(id, updates, tenantId);
       return reply.send(result);
     } catch (error: any) {
       logger.error('PUT /api/v1/bookings/:id error:', error);
-      return reply.code(500).send({
+      if (error.message === 'Booking not found') {
+        return reply.status(HTTP_STATUS.NOT_FOUND).send({
+          success: false,
+          error: {
+            code: ERROR_CODES.RESOURCE_NOT_FOUND,
+            message: error.message,
+          },
+        });
+      }
+      return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
         success: false,
-        error: { message: error.message },
+        error: {
+          code: ERROR_CODES.SERVER_ERROR,
+          message: error.message || 'Failed to update booking',
+        },
       });
     }
   });
 
   // Cancel booking
-  fastify.patch('/api/v1/bookings/:id/cancel', async (request, reply) => {
+  fastify.patch('/api/v1/bookings/:id/cancel', async (request: AuthenticatedRequest, reply) => {
     try {
-      const { id } = request.params as any;
-      const result = await cancelBooking(id);
+      const { id } = request.params as { id: string };
+      const tenantId = (request as any).tenantId || (request.user as any)?.tenantId || request.headers['x-tenant-id'] as string;
+      
+      if (!tenantId) {
+        return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+          success: false,
+          error: {
+            code: ERROR_CODES.VALIDATION_ERROR,
+            message: 'Tenant ID is required',
+          },
+        });
+      }
+
+      const result = await cancelBooking(id, tenantId);
       return reply.send(result);
     } catch (error: any) {
       logger.error('PATCH /api/v1/bookings/:id/cancel error:', error);
-      return reply.code(500).send({
+      return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
         success: false,
-        error: { message: error.message },
+        error: {
+          code: ERROR_CODES.SERVER_ERROR,
+          message: error.message || 'Failed to cancel booking',
+        },
       });
     }
   });
 
   // Delete booking
-  fastify.delete('/api/v1/bookings/:id', async (request, reply) => {
+  fastify.delete('/api/v1/bookings/:id', async (request: AuthenticatedRequest, reply) => {
     try {
-      const { id } = request.params as any;
+      const { id } = request.params as { id: string };
+      const tenantId = (request as any).tenantId || (request.user as any)?.tenantId || request.headers['x-tenant-id'] as string;
       
-      if (supabase) {
-        const { error } = await supabase.from('bookings').delete().eq('id', id);
-        if (error) throw error;
-      } else {
-        const index = mockBookings.findIndex(b => b.id === id);
-        if (index !== -1) {
-          mockBookings.splice(index, 1);
-        }
+      if (!tenantId) {
+        return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+          success: false,
+          error: {
+            code: ERROR_CODES.VALIDATION_ERROR,
+            message: 'Tenant ID is required',
+          },
+        });
       }
 
-      return reply.send({ success: true, message: 'Booking deleted' });
+      const tenantDb = await tenantDbManager.getTenantConnection(tenantId);
+      
+      const result = await tenantDb.query(
+        'DELETE FROM bookings WHERE id = $1 AND tenant_id = $2 RETURNING id',
+        [id, tenantId]
+      );
+
+      if (!result.rows.length) {
+        return reply.status(HTTP_STATUS.NOT_FOUND).send({
+          success: false,
+          error: {
+            code: ERROR_CODES.RESOURCE_NOT_FOUND,
+            message: 'Booking not found',
+          },
+        });
+      }
+
+      return reply.send({ success: true, message: 'Booking deleted successfully' });
     } catch (error: any) {
       logger.error('DELETE /api/v1/bookings/:id error:', error);
-      return reply.code(500).send({
+      return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
         success: false,
-        error: { message: error.message },
+        error: {
+          code: ERROR_CODES.SERVER_ERROR,
+          message: error.message || 'Failed to delete booking',
+        },
       });
     }
   });
 
   // Get bookings by user
-  fastify.get('/api/v1/bookings/user/:userId', async (request, reply) => {
+  fastify.get('/api/v1/bookings/user/:userId', {
+    preHandler: [validateParams(userBookingsParamsSchema)],
+  }, async (request: AuthenticatedRequest, reply) => {
     try {
-      const { userId } = request.params as any;
-      const result = await getBookings({ userId });
+      const { userId } = request.params as { userId: string };
+      const tenantId = (request as any).tenantId || (request.user as any)?.tenantId || request.headers['x-tenant-id'] as string;
+      
+      if (!tenantId) {
+        return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+          success: false,
+          error: {
+            code: ERROR_CODES.VALIDATION_ERROR,
+            message: 'Tenant ID is required',
+          },
+        });
+      }
+
+      const result = await getBookings({ userId }, tenantId);
       return reply.send(result);
     } catch (error: any) {
       logger.error('GET /api/v1/bookings/user/:userId error:', error);
-      return reply.code(500).send({
+      return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
         success: false,
-        error: { message: error.message },
+        error: {
+          code: ERROR_CODES.SERVER_ERROR,
+          message: error.message || 'Failed to fetch bookings',
+        },
       });
     }
   });
 
   // Get bookings by library
-  fastify.get('/api/v1/bookings/library/:libraryId', async (request, reply) => {
+  fastify.get('/api/v1/bookings/library/:libraryId', {
+    preHandler: [validateParams(libraryBookingsParamsSchema)],
+  }, async (request: AuthenticatedRequest, reply) => {
     try {
-      const { libraryId } = request.params as any;
-      const result = await getBookings({ libraryId });
+      const { libraryId } = request.params as { libraryId: string };
+      const tenantId = (request as any).tenantId || (request.user as any)?.tenantId || request.headers['x-tenant-id'] as string;
+      
+      if (!tenantId) {
+        return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+          success: false,
+          error: {
+            code: ERROR_CODES.VALIDATION_ERROR,
+            message: 'Tenant ID is required',
+          },
+        });
+      }
+
+      const result = await getBookings({ libraryId }, tenantId);
       return reply.send(result);
     } catch (error: any) {
       logger.error('GET /api/v1/bookings/library/:libraryId error:', error);
-      return reply.code(500).send({
+      return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
         success: false,
-        error: { message: error.message },
+        error: {
+          code: ERROR_CODES.SERVER_ERROR,
+          message: error.message || 'Failed to fetch bookings',
+        },
       });
     }
   });

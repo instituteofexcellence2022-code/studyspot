@@ -161,6 +161,16 @@ export interface PaginatedResponse<T> {
 export interface LoginRequest {
   email: string;
   password: string;
+  /**
+   * Tenant ID - Required for library staff, optional for library owners
+   * Library owners have tenantId in their record, library staff need it to query tenant DB
+   */
+  tenantId?: string;
+  /**
+   * User Type - Optional but recommended for better routing
+   * Values: 'library_owner' | 'library_staff'
+   */
+  userType?: 'library_owner' | 'library_staff';
 }
 
 export interface LoginResponse {

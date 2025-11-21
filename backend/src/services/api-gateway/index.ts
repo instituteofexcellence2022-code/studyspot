@@ -11,6 +11,7 @@ import rateLimit from '@fastify/rate-limit';
 import compress from '@fastify/compress';
 import dotenv from 'dotenv';
 import { logger } from '../../utils/logger';
+import { config } from '../../config/env';
 
 dotenv.config();
 
@@ -19,7 +20,7 @@ const fastify = Fastify({
   trustProxy: true,
 });
 
-const PORT = parseInt(process.env.API_GATEWAY_PORT || '3000');
+const PORT = config.ports.apiGateway;
 
 // ============================================
 // MIDDLEWARE
@@ -27,7 +28,7 @@ const PORT = parseInt(process.env.API_GATEWAY_PORT || '3000');
 
 // CORS - Parse from environment or use comprehensive defaults
 // Note: Regex patterns must be tested, so we include explicit localhost ports
-const corsOrigins = process.env.CORS_ORIGIN?.split(',').map(o => o.trim()) || [
+const corsOrigins = config.cors.origins.length > 0 ? config.cors.origins : [
   'http://localhost:3000',  // Student Portal
   'http://localhost:3001',  // Web Owner Portal (React)
   'http://localhost:3002',  // Web Admin Portal
@@ -92,8 +93,8 @@ fastify.register(compress);
 
 // Rate limiting
 fastify.register(rateLimit, {
-  max: parseInt(process.env.RATE_LIMIT_MAX || '100'),
-  timeWindow: process.env.RATE_LIMIT_WINDOW || '1 minute',
+  max: config.rateLimit.max,
+  timeWindow: config.rateLimit.window,
 });
 
 // ============================================
@@ -196,7 +197,7 @@ const start = async () => {
     await fastify.listen({ port: PORT, host: '0.0.0.0' });
     logger.info(`🚀 API Gateway running on port ${PORT}`);
     logger.info(`📍 http://localhost:${PORT}`);
-    logger.info(`🔥 Environment: ${process.env.NODE_ENV}`);
+    logger.info(`🔥 Environment: ${config.nodeEnv}`);
   } catch (err) {
     logger.error('Failed to start API Gateway', err);
     process.exit(1);

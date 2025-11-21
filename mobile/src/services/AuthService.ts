@@ -44,8 +44,20 @@ class AuthService {
     }
   }
 
+  /**
+   * Login user (student) - tenantId is REQUIRED for students
+   * @param credentials - Login credentials including email, password, and tenantId
+   */
   async login(credentials: LoginCredentials): Promise<ApiResponse<{user: User; tokens: AuthTokens}>> {
-    return this.makeRequest('POST', API_CONFIG.ENDPOINTS.AUTH.LOGIN, credentials);
+    // Ensure tenantId is included for student login (required for tenant DB query)
+    const loginPayload = {
+      email: credentials.email,
+      password: credentials.password,
+      tenantId: credentials.tenantId,      // REQUIRED for students
+      userType: 'student',                 // Always 'student' for mobile app
+      portalType: 'student',               // Always 'student' for mobile app
+    };
+    return this.makeRequest('POST', API_CONFIG.ENDPOINTS.AUTH.LOGIN, loginPayload);
   }
 
   async register(userData: RegisterData): Promise<ApiResponse<{user: User; tokens: AuthTokens}>> {

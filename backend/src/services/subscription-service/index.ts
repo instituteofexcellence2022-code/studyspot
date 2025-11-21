@@ -11,22 +11,107 @@ import dotenv from 'dotenv';
 import { coreDb } from '../../config/database';
 import { logger } from '../../utils/logger';
 import { HTTP_STATUS, ERROR_CODES } from '../../config/constants';
+import { authenticate, AuthenticatedRequest, requireRole } from '../../middleware/auth';
+import { validateBody, validateQuery, validateParams } from '../../middleware/validator';
+import { registerRateLimit, SERVICE_RATE_LIMITS } from '../../middleware/rateLimiter';
+import { requestLogger } from '../../middleware/requestLogger';
+import { errorHandler, notFoundHandler } from '../../middleware/errorHandler';
+import { z } from 'zod';
+import { config } from '../../config/env';
 
 dotenv.config();
 
 const fastify = Fastify({ logger: false });
-const PORT = parseInt(process.env.SUBSCRIPTION_SERVICE_PORT || '3009');
+const PORT = config.ports.subscription;
 
 // ============================================
 // MIDDLEWARE
 // ============================================
 
 fastify.register(cors, {
-  origin: process.env.CORS_ORIGIN?.split(',') || ['http://localhost:3002'],
+  origin: config.cors.origins.length > 0 ? config.cors.origins : ['http://localhost:3002'],
   credentials: true,
 });
 
 fastify.register(helmet);
+
+// ============================================
+// RATE LIMITING
+// ============================================
+
+(async () => {
+  await registerRateLimit(fastify, SERVICE_RATE_LIMITS.default);
+})();
+
+// ============================================
+// REQUEST LOGGING
+// ============================================
+
+fastify.addHook('onRequest', requestLogger);
+
+// ============================================
+// AUTHENTICATION MIDDLEWARE
+// ============================================
+
+fastify.addHook('onRequest', async (request: AuthenticatedRequest, reply) => {
+  if (request.url === '/health') {
+    return;
+  }
+  return authenticate(request, reply);
+});
+
+// ============================================
+// ERROR HANDLING
+// ============================================
+
+fastify.setErrorHandler(errorHandler);
+fastify.setNotFoundHandler(notFoundHandler);
+
+// ============================================
+// VALIDATION SCHEMAS
+// ============================================
+
+const createSubscriptionPlanSchema = z.object({
+  name: z.string().min(1).max(200),
+  slug: z.string().min(1).max(100),
+  description: z.string().max(1000).optional(),
+  type: z.enum(['free', 'basic', 'premium', 'enterprise']),
+  price_monthly: z.coerce.number().nonnegative(),
+  price_quarterly: z.coerce.number().nonnegative().optional(),
+  price_half_yearly: z.coerce.number().nonnegative().optional(),
+  price_annual: z.coerce.number().nonnegative().optional(),
+  max_libraries: z.coerce.number().int().positive().optional(),
+  max_students: z.coerce.number().int().positive().optional(),
+  max_staff: z.coerce.number().int().positive().optional(),
+  features: z.array(z.string()).optional(),
+  permissions: z.record(z.any()).optional(),
+  is_popular: z.boolean().optional().default(false),
+});
+
+const updateSubscriptionPlanSchema = z.object({
+  name: z.string().min(1).max(200).optional(),
+  description: z.string().max(1000).optional(),
+  price_monthly: z.coerce.number().nonnegative().optional(),
+  price_quarterly: z.coerce.number().nonnegative().optional(),
+  price_half_yearly: z.coerce.number().nonnegative().optional(),
+  price_annual: z.coerce.number().nonnegative().optional(),
+  max_libraries: z.coerce.number().int().positive().optional(),
+  max_students: z.coerce.number().int().positive().optional(),
+  max_staff: z.coerce.number().int().positive().optional(),
+  features: z.array(z.string()).optional(),
+  permissions: z.record(z.any()).optional(),
+  is_popular: z.boolean().optional(),
+  is_active: z.boolean().optional(),
+});
+
+const subscriptionQuerySchema = z.object({
+  is_active: z.string().optional(),
+  type: z.string().optional(),
+});
+
+const subscriptionParamsSchema = z.object({
+  id: z.string().uuid(),
+});
 
 // ============================================
 // ROUTES
@@ -34,18 +119,38 @@ fastify.register(helmet);
 
 // Health check
 fastify.get('/health', async () => {
-  return {
-    success: true,
-    data: {
-      status: 'healthy',
-      service: 'subscription-service',
-      timestamp: new Date().toISOString(),
-    },
-  };
+  try {
+    await coreDb.query('SELECT 1');
+    return {
+      success: true,
+      data: {
+        status: 'healthy',
+        service: 'subscription-service',
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime(),
+      },
+    };
+  } catch (error: any) {
+    logger.error('Health check failed:', error);
+    return {
+      success: false,
+      data: {
+        status: 'unhealthy',
+        service: 'subscription-service',
+        timestamp: new Date().toISOString(),
+        error: error.message,
+      },
+    };
+  }
 });
 
 // Get all subscription plans (Admin)
-fastify.get('/api/v1/admin/subscriptions/plans', async (request, reply) => {
+fastify.get('/api/v1/admin/subscriptions/plans', {
+  preHandler: [
+    requireRole('admin', 'super_admin'),
+    validateQuery(subscriptionQuerySchema),
+  ],
+}, async (request: AuthenticatedRequest, reply) => {
   try {
     const { is_active, type } = request.query as any;
 
@@ -85,7 +190,12 @@ fastify.get('/api/v1/admin/subscriptions/plans', async (request, reply) => {
 });
 
 // Create subscription plan (Admin)
-fastify.post('/api/v1/admin/subscriptions/plans', async (request, reply) => {
+fastify.post('/api/v1/admin/subscriptions/plans', {
+  preHandler: [
+    requireRole('admin', 'super_admin'),
+    validateBody(createSubscriptionPlanSchema),
+  ],
+}, async (request: AuthenticatedRequest, reply) => {
   try {
     const {
       name,
@@ -103,17 +213,6 @@ fastify.post('/api/v1/admin/subscriptions/plans', async (request, reply) => {
       permissions = {},
       is_popular = false,
     } = request.body as any;
-
-    // Validate
-    if (!name || !slug || !type) {
-      return reply.status(HTTP_STATUS.BAD_REQUEST).send({
-        success: false,
-        error: {
-          code: ERROR_CODES.REQUIRED_FIELD_MISSING,
-          message: 'Name, slug, and type are required',
-        },
-      });
-    }
 
     // Check for duplicate slug
     const existing = await coreDb.query(
@@ -167,9 +266,17 @@ fastify.post('/api/v1/admin/subscriptions/plans', async (request, reply) => {
 });
 
 // Subscribe to plan (Tenant)
-fastify.post('/api/v1/subscriptions/subscribe', async (request, reply) => {
+const subscribeSchema = z.object({
+  plan_id: z.string().uuid(),
+  billing_cycle: z.enum(['monthly', 'quarterly', 'half_yearly', 'annual']),
+  payment_method: z.string().optional(),
+});
+
+fastify.post('/api/v1/subscriptions/subscribe', {
+  preHandler: [validateBody(subscribeSchema)],
+}, async (request: AuthenticatedRequest, reply) => {
   try {
-    const tenantId = request.headers['x-tenant-id'] as string;
+    const tenantId = (request as any).tenantId || (request.user as any)?.tenantId || request.headers['x-tenant-id'] as string;
     const { plan_id, billing_cycle } = request.body as any;
 
     // Get plan details
@@ -267,7 +374,16 @@ fastify.post('/api/v1/subscriptions/subscribe', async (request, reply) => {
 });
 
 // Cancel subscription
-fastify.post('/api/v1/subscriptions/:id/cancel', async (request, reply) => {
+const cancelSubscriptionSchema = z.object({
+  reason: z.string().max(500).optional(),
+});
+
+fastify.post('/api/v1/subscriptions/:id/cancel', {
+  preHandler: [
+    validateParams(subscriptionParamsSchema),
+    validateBody(cancelSubscriptionSchema),
+  ],
+}, async (request: AuthenticatedRequest, reply) => {
   try {
     const { id } = request.params as { id: string };
     const tenantId = request.headers['x-tenant-id'] as string;
@@ -323,7 +439,9 @@ fastify.post('/api/v1/subscriptions/:id/cancel', async (request, reply) => {
 });
 
 // Get subscription analytics (Admin)
-fastify.get('/api/v1/admin/subscriptions/analytics', async (request, reply) => {
+fastify.get('/api/v1/admin/subscriptions/analytics', {
+  preHandler: [requireRole('admin', 'super_admin')],
+}, async (request: AuthenticatedRequest, reply) => {
   try {
     const result = await coreDb.query(`
       SELECT 
@@ -359,17 +477,26 @@ fastify.get('/api/v1/admin/subscriptions/analytics', async (request, reply) => {
 // START SERVER
 // ============================================
 
-const start = async () => {
+// ============================================
+// START SERVER
+// ============================================
+
+export async function startSubscriptionService() {
   try {
     await fastify.listen({ port: PORT, host: '0.0.0.0' });
-    logger.info(`📋 Subscription Service running on port ${PORT}`);
+    logger.info(`✅ Subscription Service started on port ${PORT}`);
   } catch (err) {
-    logger.error('Failed to start Subscription Service', err);
+    logger.error('Failed to start Subscription Service:', err);
     process.exit(1);
   }
-};
+}
 
-start();
+// Start if run directly
+if (require.main === module) {
+  startSubscriptionService();
+}
+
+export default fastify;
 
 // Graceful shutdown
 process.on('SIGTERM', async () => {

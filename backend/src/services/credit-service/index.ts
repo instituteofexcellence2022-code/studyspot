@@ -11,22 +11,94 @@ import dotenv from 'dotenv';
 import { coreDb } from '../../config/database';
 import { logger } from '../../utils/logger';
 import { HTTP_STATUS, ERROR_CODES } from '../../config/constants';
+import { authenticate, AuthenticatedRequest, requireRole } from '../../middleware/auth';
+import { validateBody, validateQuery, validateParams } from '../../middleware/validator';
+import { registerRateLimit, SERVICE_RATE_LIMITS } from '../../middleware/rateLimiter';
+import { requestLogger } from '../../middleware/requestLogger';
+import { errorHandler, notFoundHandler } from '../../middleware/errorHandler';
+import { z } from 'zod';
+import { config } from '../../config/env';
 
 dotenv.config();
 
 const fastify = Fastify({ logger: false });
-const PORT = parseInt(process.env.CREDIT_SERVICE_PORT || '3008');
+const PORT = config.ports.credit;
 
 // ============================================
 // MIDDLEWARE
 // ============================================
 
 fastify.register(cors, {
-  origin: process.env.CORS_ORIGIN?.split(',') || ['http://localhost:3002'],
+  origin: config.cors.origins.length > 0 ? config.cors.origins : ['http://localhost:3002'],
   credentials: true,
 });
 
 fastify.register(helmet);
+
+// ============================================
+// RATE LIMITING
+// ============================================
+
+(async () => {
+  await registerRateLimit(fastify, SERVICE_RATE_LIMITS.default);
+})();
+
+// ============================================
+// REQUEST LOGGING
+// ============================================
+
+fastify.addHook('onRequest', requestLogger);
+
+// ============================================
+// AUTHENTICATION MIDDLEWARE
+// ============================================
+
+fastify.addHook('onRequest', async (request: AuthenticatedRequest, reply) => {
+  if (request.url === '/health') {
+    return;
+  }
+  return authenticate(request, reply);
+});
+
+// ============================================
+// ERROR HANDLING
+// ============================================
+
+fastify.setErrorHandler(errorHandler);
+fastify.setNotFoundHandler(notFoundHandler);
+
+// ============================================
+// VALIDATION SCHEMAS
+// ============================================
+
+const purchaseCreditsSchema = z.object({
+  vendor_id: z.string().uuid().optional(),
+  sms_credits: z.coerce.number().int().nonnegative().default(0),
+  whatsapp_credits: z.coerce.number().int().nonnegative().default(0),
+  email_credits: z.coerce.number().int().nonnegative().default(0),
+  total_cost: z.coerce.number().nonnegative(),
+  payment_method: z.string().max(50).optional(),
+  invoice_number: z.string().max(100).optional(),
+  notes: z.string().max(500).optional(),
+});
+
+const allocateCreditsSchema = z.object({
+  tenant_id: z.string().uuid(),
+  sms_credits: z.coerce.number().int().nonnegative().default(0),
+  whatsapp_credits: z.coerce.number().int().nonnegative().default(0),
+  email_credits: z.coerce.number().int().nonnegative().default(0),
+  notes: z.string().max(500).optional(),
+});
+
+const creditQuerySchema = z.object({
+  status: z.string().optional(),
+  page: z.coerce.number().int().positive().default(1).optional(),
+  limit: z.coerce.number().int().positive().max(100).default(20).optional(),
+});
+
+const tenantParamsSchema = z.object({
+  tenantId: z.string().uuid(),
+});
 
 // ============================================
 // ROUTES - MASTER WALLET (Admin)
@@ -34,18 +106,35 @@ fastify.register(helmet);
 
 // Health check
 fastify.get('/health', async () => {
-  return {
-    success: true,
-    data: {
-      status: 'healthy',
-      service: 'credit-service',
-      timestamp: new Date().toISOString(),
-    },
-  };
+  try {
+    await coreDb.query('SELECT 1');
+    return {
+      success: true,
+      data: {
+        status: 'healthy',
+        service: 'credit-service',
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime(),
+      },
+    };
+  } catch (error: any) {
+    logger.error('Health check failed:', error);
+    return {
+      success: false,
+      data: {
+        status: 'unhealthy',
+        service: 'credit-service',
+        timestamp: new Date().toISOString(),
+        error: error.message,
+      },
+    };
+  }
 });
 
 // Get master wallet balance
-fastify.get('/api/v1/admin/credits/wallet', async (request, reply) => {
+fastify.get('/api/v1/admin/credits/wallet', {
+  preHandler: [requireRole('admin', 'super_admin')],
+}, async (request: AuthenticatedRequest, reply) => {
   try {
     const result = await coreDb.query('SELECT * FROM credit_master_wallet LIMIT 1');
 
@@ -74,7 +163,12 @@ fastify.get('/api/v1/admin/credits/wallet', async (request, reply) => {
 });
 
 // Purchase credits from vendor
-fastify.post('/api/v1/admin/credits/purchase', async (request, reply) => {
+fastify.post('/api/v1/admin/credits/purchase', {
+  preHandler: [
+    requireRole('admin', 'super_admin'),
+    validateBody(purchaseCreditsSchema),
+  ],
+}, async (request: AuthenticatedRequest, reply) => {
   try {
     const {
       vendor_id,
@@ -87,7 +181,7 @@ fastify.post('/api/v1/admin/credits/purchase', async (request, reply) => {
       notes,
     } = request.body as any;
 
-    const userId = (request as any).user?.userId;
+    const userId = (request.user as any)?.userId || (request.user as any)?.id;
 
     // Record purchase
     const purchaseResult = await coreDb.query(
@@ -144,7 +238,12 @@ fastify.post('/api/v1/admin/credits/purchase', async (request, reply) => {
 });
 
 // Get all tenant wallets
-fastify.get('/api/v1/admin/credits/tenant-wallets', async (request, reply) => {
+fastify.get('/api/v1/admin/credits/tenant-wallets', {
+  preHandler: [
+    requireRole('admin', 'super_admin'),
+    validateQuery(creditQuerySchema),
+  ],
+}, async (request: AuthenticatedRequest, reply) => {
   try {
     const { status, page = 1, limit = 20 } = request.query as any;
 
@@ -311,9 +410,18 @@ fastify.get('/api/v1/credits/wallet', async (request, reply) => {
 });
 
 // Deduct credits (internal use)
-fastify.post('/api/v1/credits/deduct', async (request, reply) => {
+const deductCreditsSchema = z.object({
+  tenant_id: z.string().uuid().optional(),
+  channel: z.enum(['sms', 'whatsapp', 'email']),
+  amount: z.coerce.number().int().positive().default(1),
+});
+
+fastify.post('/api/v1/credits/deduct', {
+  preHandler: [validateBody(deductCreditsSchema)],
+}, async (request: AuthenticatedRequest, reply) => {
   try {
     const { tenant_id, channel, amount = 1 } = request.body as any;
+    const tenantId = tenant_id || (request as any).tenantId || (request.user as any)?.tenantId;
 
     const field = `${channel}_credits`;
 
@@ -374,17 +482,22 @@ fastify.post('/api/v1/credits/deduct', async (request, reply) => {
 // START SERVER
 // ============================================
 
-const start = async () => {
+export async function startCreditService() {
   try {
     await fastify.listen({ port: PORT, host: '0.0.0.0' });
-    logger.info(`💳 Credit Service running on port ${PORT}`);
+    logger.info(`✅ Credit Service started on port ${PORT}`);
   } catch (err) {
-    logger.error('Failed to start Credit Service', err);
+    logger.error('Failed to start Credit Service:', err);
     process.exit(1);
   }
-};
+}
 
-start();
+// Start if run directly
+if (require.main === module) {
+  startCreditService();
+}
+
+export default fastify;
 
 // Graceful shutdown
 process.on('SIGTERM', async () => {

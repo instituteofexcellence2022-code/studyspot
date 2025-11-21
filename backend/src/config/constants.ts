@@ -35,6 +35,7 @@ export const ERROR_CODES = {
   INSUFFICIENT_PERMISSIONS: 'INSUFFICIENT_PERMISSIONS',
   INVALID_CREDENTIALS: 'INVALID_CREDENTIALS',
   ACCOUNT_INACTIVE: 'ACCOUNT_INACTIVE',
+  AUTHENTICATION_ERROR: 'AUTHENTICATION_ERROR',
   
   // Validation (2xxx)
   VALIDATION_ERROR: 'VALIDATION_ERROR',
@@ -129,6 +130,17 @@ export const CACHE_TTL = {
   MEDIUM: 1800, // 30 minutes
   LONG: 3600, // 1 hour
   DAY: 86400, // 24 hours
+} as const;
+
+// Security constants
+export const SECURITY = {
+  BCRYPT_ROUNDS: 12, // Standardized bcrypt rounds for password hashing
+  JWT_SECRET_MIN_LENGTH: 32, // Minimum JWT secret length
+  PASSWORD_MIN_LENGTH: 8, // Minimum password length
+  TOKEN_EXPIRY: {
+    ACCESS: '15m', // Access token expiry
+    REFRESH: '7d', // Refresh token expiry
+  },
 } as const;
 
 export const PAGINATION = {

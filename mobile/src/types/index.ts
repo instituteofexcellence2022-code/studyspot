@@ -179,6 +179,22 @@ export interface LoginForm {
   rememberMe: boolean;
 }
 
+// Authentication Types
+export interface LoginCredentials {
+  email: string;
+  password: string;
+  loginType?: 'email' | 'social';
+  /**
+   * Tenant ID - REQUIRED for students (they are in tenant database)
+   * Should be obtained from:
+   * - URL slug/domain (e.g., library-slug.studyspot.com)
+   * - Configuration/environment variable
+   * - Local storage (if previously stored)
+   * - User input (if multiple tenants)
+   */
+  tenantId?: string;
+}
+
 export interface RegisterForm {
   name: string;
   email: string;

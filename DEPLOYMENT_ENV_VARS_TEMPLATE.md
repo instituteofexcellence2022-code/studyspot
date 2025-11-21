@@ -98,3 +98,4 @@ PAYMENT_SERVICE_URL=https://studyspot-payments.onrender.com
 
 **Keep credentials secure!** 🔒
 
+

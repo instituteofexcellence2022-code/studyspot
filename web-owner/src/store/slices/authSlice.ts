@@ -26,7 +26,12 @@ export const login = createAsyncThunk(
   'auth/login',
   async (credentials: LoginRequest, { rejectWithValue }) => {
     try {
-      const response = await authService.login(credentials.email, credentials.password);
+      const response = await authService.login(
+        credentials.email, 
+        credentials.password,
+        credentials.tenantId,    // Pass tenantId for library staff
+        credentials.userType      // Pass userType ('library_owner' or 'library_staff')
+      );
       if (response.success && response.data) {
         // AuthService already handles localStorage, just return the data
         return {

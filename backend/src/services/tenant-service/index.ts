@@ -11,25 +11,107 @@ import dotenv from 'dotenv';
 import { coreDb } from '../../config/database';
 import { logger } from '../../utils/logger';
 import { HTTP_STATUS, ERROR_CODES } from '../../config/constants';
+import { authenticate, AuthenticatedRequest, requireRole } from '../../middleware/auth';
+import { validateBody, validateQuery, validateParams } from '../../middleware/validator';
+import { registerRateLimit, SERVICE_RATE_LIMITS } from '../../middleware/rateLimiter';
+import { requestLogger } from '../../middleware/requestLogger';
+import { errorHandler, notFoundHandler } from '../../middleware/errorHandler';
+import { z } from 'zod';
 import type { Tenant } from '../../types';
+import { config } from '../../config/env';
 import fs from 'fs';
 import path from 'path';
 
 dotenv.config();
 
 const fastify = Fastify({ logger: false });
-const PORT = parseInt(process.env.TENANT_SERVICE_PORT || '3003');
+const PORT = config.ports.tenant;
 
 // ============================================
 // MIDDLEWARE
 // ============================================
 
 fastify.register(cors, {
-  origin: process.env.CORS_ORIGIN?.split(',') || ['http://localhost:3002'],
+  origin: config.cors.origins.length > 0 ? config.cors.origins : ['http://localhost:3002'],
   credentials: true,
 });
 
 fastify.register(helmet);
+
+// ============================================
+// RATE LIMITING
+// ============================================
+
+(async () => {
+  await registerRateLimit(fastify, SERVICE_RATE_LIMITS.default);
+})();
+
+// ============================================
+// REQUEST LOGGING
+// ============================================
+
+fastify.addHook('onRequest', requestLogger);
+
+// ============================================
+// AUTHENTICATION MIDDLEWARE
+// ============================================
+
+fastify.addHook('onRequest', async (request: AuthenticatedRequest, reply) => {
+  if (request.url === '/health') {
+    return;
+  }
+  return authenticate(request, reply);
+});
+
+// ============================================
+// ERROR HANDLING
+// ============================================
+
+fastify.setErrorHandler(errorHandler);
+fastify.setNotFoundHandler(notFoundHandler);
+
+// ============================================
+// VALIDATION SCHEMAS
+// ============================================
+
+const createTenantSchema = z.object({
+  name: z.string().min(1).max(200),
+  email: z.string().email(),
+  phone: z.string().regex(/^[0-9]{10}$/),
+  subscription_plan: z.string().optional(),
+  address: z.string().max(500).optional(),
+  city: z.string().max(100).optional(),
+  state: z.string().max(100).optional(),
+  pincode: z.string().regex(/^[0-9]{6}$/).optional(),
+});
+
+const updateTenantSchema = z.object({
+  name: z.string().min(1).max(200).optional(),
+  email: z.string().email().optional(),
+  phone: z.string().regex(/^[0-9]{10}$/).optional(),
+  status: z.enum(['active', 'suspended', 'trial', 'inactive']).optional(),
+  subscription_plan: z.string().optional(),
+  address: z.string().max(500).optional(),
+  city: z.string().max(100).optional(),
+  state: z.string().max(100).optional(),
+  pincode: z.string().regex(/^[0-9]{6}$/).optional(),
+});
+
+const getTenantsQuerySchema = z.object({
+  status: z.enum(['active', 'suspended', 'trial', 'inactive']).optional(),
+  plan: z.string().optional(),
+  search: z.string().max(100).optional(),
+  page: z.coerce.number().int().positive().default(1).optional(),
+  limit: z.coerce.number().int().positive().max(100).default(20).optional(),
+});
+
+const tenantParamsSchema = z.object({
+  id: z.string().uuid(),
+});
+
+const suspendTenantSchema = z.object({
+  reason: z.string().max(500).optional(),
+});
 
 // ============================================
 // HELPER FUNCTIONS
@@ -94,18 +176,38 @@ const provisionTenantDatabase = async (databaseName: string): Promise<void> => {
 
 // Health check
 fastify.get('/health', async () => {
-  return {
-    success: true,
-    data: {
-      status: 'healthy',
-      service: 'tenant-service',
-      timestamp: new Date().toISOString(),
-    },
-  };
+  try {
+    await coreDb.query('SELECT 1');
+    return {
+      success: true,
+      data: {
+        status: 'healthy',
+        service: 'tenant-service',
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime(),
+      },
+    };
+  } catch (error: any) {
+    logger.error('Health check failed:', error);
+    return {
+      success: false,
+      data: {
+        status: 'unhealthy',
+        service: 'tenant-service',
+        timestamp: new Date().toISOString(),
+        error: error.message,
+      },
+    };
+  }
 });
 
 // Get all tenants (Admin only)
-fastify.get('/api/v1/tenants', async (request, reply) => {
+fastify.get('/api/v1/tenants', {
+  preHandler: [
+    requireRole('admin', 'super_admin'),
+    validateQuery(getTenantsQuerySchema),
+  ],
+}, async (request: AuthenticatedRequest, reply) => {
   try {
     const { status, plan, search, page = 1, limit = 20 } = request.query as any;
 
@@ -167,7 +269,12 @@ fastify.get('/api/v1/tenants', async (request, reply) => {
 });
 
 // Get tenant by ID
-fastify.get('/api/v1/tenants/:id', async (request, reply) => {
+fastify.get('/api/v1/tenants/:id', {
+  preHandler: [
+    requireRole('admin', 'super_admin'),
+    validateParams(tenantParamsSchema),
+  ],
+}, async (request: AuthenticatedRequest, reply) => {
   try {
     const { id } = request.params as { id: string };
 
@@ -204,7 +311,12 @@ fastify.get('/api/v1/tenants/:id', async (request, reply) => {
 });
 
 // Create tenant (Admin only)
-fastify.post('/api/v1/tenants', async (request, reply) => {
+fastify.post('/api/v1/tenants', {
+  preHandler: [
+    requireRole('admin', 'super_admin'),
+    validateBody(createTenantSchema),
+  ],
+}, async (request: AuthenticatedRequest, reply) => {
   try {
     const {
       name,
@@ -302,7 +414,13 @@ fastify.post('/api/v1/tenants', async (request, reply) => {
 });
 
 // Update tenant
-fastify.put('/api/v1/tenants/:id', async (request, reply) => {
+fastify.put('/api/v1/tenants/:id', {
+  preHandler: [
+    requireRole('admin', 'super_admin'),
+    validateParams(tenantParamsSchema),
+    validateBody(updateTenantSchema),
+  ],
+}, async (request: AuthenticatedRequest, reply) => {
   try {
     const { id } = request.params as { id: string };
     const updates = request.body as any;
@@ -357,7 +475,12 @@ fastify.put('/api/v1/tenants/:id', async (request, reply) => {
 });
 
 // Delete tenant (soft delete)
-fastify.delete('/api/v1/tenants/:id', async (request, reply) => {
+fastify.delete('/api/v1/tenants/:id', {
+  preHandler: [
+    requireRole('super_admin'),
+    validateParams(tenantParamsSchema),
+  ],
+}, async (request: AuthenticatedRequest, reply) => {
   try {
     const { id } = request.params as { id: string };
 
@@ -394,7 +517,13 @@ fastify.delete('/api/v1/tenants/:id', async (request, reply) => {
 });
 
 // Suspend tenant
-fastify.post('/api/v1/tenants/:id/suspend', async (request, reply) => {
+fastify.post('/api/v1/tenants/:id/suspend', {
+  preHandler: [
+    requireRole('admin', 'super_admin'),
+    validateParams(tenantParamsSchema),
+    validateBody(suspendTenantSchema),
+  ],
+}, async (request: AuthenticatedRequest, reply) => {
   try {
     const { id } = request.params as { id: string };
     const { reason } = request.body as { reason: string };
@@ -436,7 +565,12 @@ fastify.post('/api/v1/tenants/:id/suspend', async (request, reply) => {
 });
 
 // Reactivate tenant
-fastify.post('/api/v1/tenants/:id/reactivate', async (request, reply) => {
+fastify.post('/api/v1/tenants/:id/reactivate', {
+  preHandler: [
+    requireRole('admin', 'super_admin'),
+    validateParams(tenantParamsSchema),
+  ],
+}, async (request: AuthenticatedRequest, reply) => {
   try {
     const { id } = request.params as { id: string };
 
@@ -477,7 +611,12 @@ fastify.post('/api/v1/tenants/:id/reactivate', async (request, reply) => {
 });
 
 // Get tenant statistics
-fastify.get('/api/v1/tenants/:id/stats', async (request, reply) => {
+fastify.get('/api/v1/tenants/:id/stats', {
+  preHandler: [
+    requireRole('admin', 'super_admin'),
+    validateParams(tenantParamsSchema),
+  ],
+}, async (request: AuthenticatedRequest, reply) => {
   try {
     const { id } = request.params as { id: string };
 
@@ -532,17 +671,26 @@ fastify.get('/api/v1/tenants/:id/stats', async (request, reply) => {
 // START SERVER
 // ============================================
 
-const start = async () => {
+// ============================================
+// START SERVER
+// ============================================
+
+export async function startTenantService() {
   try {
     await fastify.listen({ port: PORT, host: '0.0.0.0' });
-    logger.info(`🏢 Tenant Service running on port ${PORT}`);
+    logger.info(`✅ Tenant Service started on port ${PORT}`);
   } catch (err) {
-    logger.error('Failed to start Tenant Service', err);
+    logger.error('Failed to start Tenant Service:', err);
     process.exit(1);
   }
-};
+}
 
-start();
+// Start if run directly
+if (require.main === module) {
+  startTenantService();
+}
+
+export default fastify;
 
 // Graceful shutdown
 process.on('SIGTERM', async () => {

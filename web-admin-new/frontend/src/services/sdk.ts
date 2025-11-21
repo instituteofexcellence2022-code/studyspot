@@ -13,7 +13,7 @@ const baseAuthUrl =
 
 const authConfig: AuthProviderConfig = {
   baseUrl: baseAuthUrl,
-  loginPath: '/api/auth/login',
+  loginPath: '/api/v1/auth/admin/login', // Use dedicated admin login endpoint
   refreshPath: '/api/auth/refresh',
   logoutPath: '/api/auth/logout',
   enableRefresh: true,

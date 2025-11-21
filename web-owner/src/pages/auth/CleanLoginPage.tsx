@@ -15,6 +15,10 @@ import {
   Checkbox,
   InputAdornment,
   IconButton,
+  ToggleButton,
+  ToggleButtonGroup,
+  FormHelperText,
+  Fade,
 } from '@mui/material';
 import {
   BusinessCenter,
@@ -22,6 +26,9 @@ import {
   GitHub as GitHubIcon,
   Visibility,
   VisibilityOff,
+  Person,
+  Groups,
+  Domain,
 } from '@mui/icons-material';
 import { useAppDispatch } from '../../hooks/redux';
 import { login } from '../../store/slices/authSlice';
@@ -49,19 +56,60 @@ const CleanLoginPage: React.FC = () => {
     // Check if remember me was previously enabled
     return localStorage.getItem(REMEMBER_ME_KEY) === 'true';
   });
+  
+  // User type and tenant ID for library staff
+  const [userType, setUserType] = useState<'library_owner' | 'library_staff'>('library_owner');
+  const [tenantId, setTenantId] = useState('');
+  const [tenantIdError, setTenantIdError] = useState('');
+
+  const handleUserTypeChange = (
+    event: React.MouseEvent<HTMLElement>,
+    newUserType: 'library_owner' | 'library_staff' | null,
+  ) => {
+    if (newUserType !== null) {
+      setUserType(newUserType);
+      setTenantId('');
+      setTenantIdError('');
+      setError('');
+    }
+  };
 
   const handleLogin = async (loginEmail: string, loginPassword: string) => {
     try {
       setError('');
       setSuccess('');
+      setTenantIdError('');
       setLoading(true);
 
-      console.log('🔵 Attempting login via Redux...');
+      // Validate tenantId for library staff
+      if (userType === 'library_staff' && !tenantId.trim()) {
+        setTenantIdError('Tenant ID is required for library staff');
+        setLoading(false);
+        return;
+      }
+
+      // Validate tenantId format (should be UUID)
+      if (userType === 'library_staff' && tenantId.trim()) {
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (!uuidRegex.test(tenantId.trim())) {
+          setTenantIdError('Please enter a valid Tenant ID (UUID format)');
+          setLoading(false);
+          return;
+        }
+      }
+
+      console.log('🔵 Attempting login via Redux...', {
+        email: loginEmail,
+        userType,
+        hasTenantId: !!tenantId,
+      });
       
-      // Use Redux login action
+      // Use Redux login action with userType and tenantId
       const result = await dispatch(login({
         email: loginEmail,
         password: loginPassword,
+        tenantId: userType === 'library_staff' ? tenantId.trim() : undefined,
+        userType,
       })).unwrap();
 
       console.log('✅ Login successful:', result);
@@ -70,12 +118,17 @@ const CleanLoginPage: React.FC = () => {
       if (rememberMe) {
         localStorage.setItem(REMEMBER_ME_KEY, 'true');
         localStorage.setItem(REMEMBERED_EMAIL_KEY, loginEmail);
+        // Store user type preference
+        if (userType === 'library_staff') {
+          localStorage.setItem('preferred_user_type', userType);
+        }
       } else {
         localStorage.removeItem(REMEMBER_ME_KEY);
         localStorage.removeItem(REMEMBERED_EMAIL_KEY);
+        localStorage.removeItem('preferred_user_type');
       }
 
-      setSuccess('✅ Login successful! Redirecting...');
+      setSuccess(`✅ Login successful as ${userType === 'library_owner' ? 'Library Owner' : 'Library Staff'}! Redirecting...`);
       
       setTimeout(() => {
         navigate(ROUTES.DASHBOARD);
@@ -93,8 +146,20 @@ const CleanLoginPage: React.FC = () => {
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Clear previous errors
+    setError('');
+    setTenantIdError('');
+    
+    // Validate required fields
     if (!email || !password) {
       setError('❌ Please enter both email and password');
+      return;
+    }
+
+    // Validate tenantId for library staff
+    if (userType === 'library_staff' && !tenantId.trim()) {
+      setTenantIdError('Tenant ID is required for library staff');
+      setError('Please provide a Tenant ID to continue');
       return;
     }
 
@@ -126,7 +191,7 @@ const CleanLoginPage: React.FC = () => {
           <Box sx={{ textAlign: 'center', mb: 4 }}>
             <BusinessCenter sx={{ fontSize: 48, color: 'primary.main', mb: 2 }} />
             <Typography variant="h4" component="h1" gutterBottom fontWeight="bold">
-              Library Owner Portal
+              Library Management Portal
             </Typography>
             <Typography variant="body2" color="text.secondary">
               Manage your library business with powerful tools
@@ -134,6 +199,57 @@ const CleanLoginPage: React.FC = () => {
             <Typography variant="caption" color="primary.main" sx={{ display: 'block', mt: 1 }}>
               Owner & Staff Access
             </Typography>
+          </Box>
+
+          {/* User Type Selector */}
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5, fontWeight: 500 }}>
+              I am a:
+            </Typography>
+            <ToggleButtonGroup
+              value={userType}
+              exclusive
+              onChange={handleUserTypeChange}
+              fullWidth
+              disabled={loading}
+              sx={{
+                '& .MuiToggleButton-root': {
+                  py: 1.5,
+                  px: 2,
+                  borderRadius: 1,
+                  textTransform: 'none',
+                  fontSize: '0.95rem',
+                  border: '2px solid',
+                  borderColor: 'divider',
+                  '&.Mui-selected': {
+                    backgroundColor: 'primary.main',
+                    color: 'white',
+                    borderColor: 'primary.main',
+                    '&:hover': {
+                      backgroundColor: 'primary.dark',
+                      borderColor: 'primary.dark',
+                    },
+                  },
+                  '&:hover': {
+                    backgroundColor: 'action.hover',
+                  },
+                },
+              }}
+            >
+              <ToggleButton value="library_owner" aria-label="library owner">
+                <Person sx={{ mr: 1, fontSize: 20 }} />
+                Library Owner
+              </ToggleButton>
+              <ToggleButton value="library_staff" aria-label="library staff">
+                <Groups sx={{ mr: 1, fontSize: 20 }} />
+                Library Staff
+              </ToggleButton>
+            </ToggleButtonGroup>
+            <FormHelperText sx={{ mt: 1, textAlign: 'center' }}>
+              {userType === 'library_owner' 
+                ? 'Own and manage your library business' 
+                : 'Access your library workspace as staff member'}
+            </FormHelperText>
           </Box>
 
           {/* Error Alert */}
@@ -154,18 +270,54 @@ const CleanLoginPage: React.FC = () => {
           {/* Login Form */}
           <form onSubmit={handleFormSubmit}>
             <Stack spacing={2}>
+              {/* Tenant ID Input - Only for Library Staff */}
+              <Fade in={userType === 'library_staff'} timeout={300}>
+                <Box>
+                  <TextField
+                    fullWidth
+                    label="Tenant ID"
+                    type="text"
+                    value={tenantId}
+                    onChange={(e) => {
+                      setTenantId(e.target.value);
+                      if (tenantIdError) setTenantIdError('');
+                      if (error) setError('');
+                    }}
+                    disabled={loading || userType !== 'library_staff'}
+                    required={userType === 'library_staff'}
+                    error={!!tenantIdError}
+                    helperText={tenantIdError || 'Enter your library\'s Tenant ID (required for staff login)'}
+                    placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <Domain sx={{ color: 'text.secondary', fontSize: 20 }} />
+                        </InputAdornment>
+                      ),
+                    }}
+                    sx={{
+                      display: userType === 'library_staff' ? 'block' : 'none',
+                    }}
+                  />
+                </Box>
+              </Fade>
+
               <TextField
                 fullWidth
                 label="Email Address"
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (error) setError('');
+                }}
                 disabled={loading}
                 autoComplete="email"
+                required
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
-                      <BusinessCenter sx={{ color: 'text.secondary', fontSize: 20 }} />
+                      <Person sx={{ color: 'text.secondary', fontSize: 20 }} />
                     </InputAdornment>
                   ),
                 }}
@@ -176,9 +328,13 @@ const CleanLoginPage: React.FC = () => {
                 label="Password"
                 type={showPassword ? 'text' : 'password'}
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  if (error) setError('');
+                }}
                 disabled={loading}
                 autoComplete="current-password"
+                required
                 InputProps={{
                   endAdornment: (
                     <InputAdornment position="end">
@@ -231,10 +387,26 @@ const CleanLoginPage: React.FC = () => {
                 variant="contained"
                 type="submit"
                 size="large"
-                disabled={loading}
-                sx={{ py: 1.5, mt: 1 }}
+                disabled={loading || (userType === 'library_staff' && !tenantId.trim())}
+                sx={{ 
+                  py: 1.5, 
+                  mt: 1,
+                  background: userType === 'library_staff' 
+                    ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' 
+                    : undefined,
+                  '&:hover': {
+                    background: userType === 'library_staff' 
+                      ? 'linear-gradient(135deg, #5568d3 0%, #6a4190 100%)' 
+                      : undefined,
+                  },
+                }}
+                startIcon={loading ? <CircularProgress size={20} color="inherit" /> : userType === 'library_owner' ? <BusinessCenter /> : <Groups />}
               >
-                {loading ? <CircularProgress size={24} /> : 'Sign In'}
+                {loading 
+                  ? 'Signing in...' 
+                  : userType === 'library_owner' 
+                    ? 'Sign In as Owner' 
+                    : 'Sign In as Staff'}
               </Button>
             </Stack>
           </form>

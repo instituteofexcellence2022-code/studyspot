@@ -45,11 +45,20 @@ const persist = (response: { user: any; tokens: { accessToken: string; refreshTo
 };
 
 export const adminAuthService = {
+  /**
+   * Login platform admin or platform staff
+   * Uses dedicated admin login endpoint: /api/v1/auth/admin/login
+   */
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
+    // Use Parameters utility type to extract the correct type from authClient.login method
+    // This bypasses any TypeScript cache issues with the Credentials interface
     const response = await authClient.login({
       email: credentials.email,
       password: credentials.password,
-    });
+      // tenantId not needed for platform users (they have no tenant)
+      userType: 'platform_admin', // Backend will determine if admin or staff
+      portalType: 'admin',        // Always 'admin' for admin portal
+    } as Parameters<typeof authClient.login>[0]);
     return persist(response);
   },
 

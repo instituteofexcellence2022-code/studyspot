@@ -6,6 +6,7 @@
 import { User as AppUser, UserRole, UserStatus } from '../types';
 import { mockAuthService } from './mockAuthService';
 import { authClient, tokenStorage, apiClient } from './sdk';
+import type { Credentials } from 'studyspot-tenant-sdk';
 import { STORAGE_KEYS } from '../constants';
 
 const AUTH_SERVICE_BASE = process.env.REACT_APP_AUTH_URL || 'https://studyspot-auth.onrender.com';
@@ -27,14 +28,33 @@ export interface AuthResponse {
 class AuthService {
   private readonly USER_KEY = STORAGE_KEYS.USER_DATA;
 
-  async login(email: string, password: string): Promise<AuthResponse> {
+  /**
+   * Login user (library owner or library staff)
+   * @param email - User email
+   * @param password - User password
+   * @param tenantId - Required for library staff, optional for library owners
+   * @param userType - User type: 'library_owner' or 'library_staff'
+   */
+  async login(
+    email: string, 
+    password: string,
+    tenantId?: string,
+    userType?: 'library_owner' | 'library_staff'
+  ): Promise<AuthResponse> {
     if (USE_MOCK) {
       return await mockAuthService.login(email, password);
     }
 
     try {
-      // Use SDK's authClient.login() - same as student portal
-      const response = await authClient.login({ email, password });
+      // Use SDK's authClient.login() with all parameters
+      // Type assertion needed because TypeScript may cache old Credentials type
+      const response = await authClient.login({ 
+        email, 
+        password,
+        ...(tenantId && { tenantId }),     // Include tenantId only if provided
+        ...(userType && { userType }),     // Include userType only if provided
+        portalType: 'owner',                // Always 'owner' for owner portal
+      } as Parameters<typeof authClient.login>[0]);
       
       console.log('[AuthService] Login response:', {
         hasResponse: !!response,
@@ -81,7 +101,13 @@ class AuthService {
           const fallbackResponse = await fetch(`${AUTH_SERVICE_BASE}/api/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password }),
+            body: JSON.stringify({ 
+              email, 
+              password,
+              tenantId,      // Include tenantId in fallback
+              userType,      // Include userType in fallback
+              portalType: 'owner', // Include portalType in fallback
+            }),
           });
 
           if (!fallbackResponse.ok) {

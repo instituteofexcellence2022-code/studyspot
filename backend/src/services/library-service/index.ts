@@ -11,22 +11,71 @@ import dotenv from 'dotenv';
 import { tenantDbManager } from '../../config/database';
 import { logger } from '../../utils/logger';
 import { HTTP_STATUS, ERROR_CODES } from '../../config/constants';
+import { authenticate, AuthenticatedRequest } from '../../middleware/auth';
+import { validateBody, validateQuery, validateParams } from '../../middleware/validator';
+import { registerRateLimit, SERVICE_RATE_LIMITS } from '../../middleware/rateLimiter';
+import { requestLogger } from '../../middleware/requestLogger';
+import { errorHandler, notFoundHandler } from '../../middleware/errorHandler';
+import {
+  createLibrarySchema,
+  updateLibrarySchema,
+  getLibrariesQuerySchema,
+  getLibraryParamsSchema,
+  createFeePlanSchema,
+  updateFeePlanSchema,
+  feePlanParamsSchema,
+} from '../../validators/library.validator';
+import { config } from '../../config/env';
 
 dotenv.config();
 
 const fastify = Fastify({ logger: false });
-const PORT = parseInt(process.env.LIBRARY_SERVICE_PORT || '3005');
+const PORT = config.ports.library;
 
 // ============================================
 // MIDDLEWARE
 // ============================================
 
 fastify.register(cors, {
-  origin: process.env.CORS_ORIGIN?.split(',') || ['http://localhost:3002'],
+  origin: config.cors.origins.length > 0 ? config.cors.origins : ['http://localhost:3002'],
   credentials: true,
 });
 
 fastify.register(helmet);
+
+// ============================================
+// RATE LIMITING
+// ============================================
+
+// Register rate limiting in async function
+(async () => {
+  await registerRateLimit(fastify, SERVICE_RATE_LIMITS.library);
+})();
+
+// ============================================
+// REQUEST LOGGING
+// ============================================
+
+fastify.addHook('onRequest', requestLogger);
+
+// ============================================
+// AUTHENTICATION MIDDLEWARE
+// ============================================
+
+fastify.addHook('onRequest', async (request: AuthenticatedRequest, reply) => {
+  // Skip auth for health check
+  if (request.url === '/health') {
+    return;
+  }
+  return authenticate(request, reply);
+});
+
+// ============================================
+// ERROR HANDLING
+// ============================================
+
+fastify.setErrorHandler(errorHandler);
+fastify.setNotFoundHandler(notFoundHandler);
 
 // ============================================
 // ROUTES
@@ -45,9 +94,11 @@ fastify.get('/health', async () => {
 });
 
 // Get all libraries
-fastify.get('/api/v1/libraries', async (request, reply) => {
+fastify.get('/api/v1/libraries', {
+  preHandler: [validateQuery(getLibrariesQuerySchema)],
+}, async (request: AuthenticatedRequest, reply) => {
   try {
-    const tenantId = request.headers['x-tenant-id'] as string;
+    const tenantId = (request as any).tenantId || (request.user as any)?.tenantId || request.headers['x-tenant-id'] as string;
     const { status, city, page = 1, limit = 20 } = request.query as any;
 
     const tenantDb = await tenantDbManager.getTenantConnection(tenantId);
@@ -103,10 +154,12 @@ fastify.get('/api/v1/libraries', async (request, reply) => {
 });
 
 // Get library by ID
-fastify.get('/api/v1/libraries/:id', async (request, reply) => {
+fastify.get('/api/v1/libraries/:id', {
+  preHandler: [validateParams(getLibraryParamsSchema)],
+}, async (request: AuthenticatedRequest, reply) => {
   try {
     const { id } = request.params as { id: string };
-    const tenantId = request.headers['x-tenant-id'] as string;
+    const tenantId = (request as any).tenantId || (request.user as any)?.tenantId || request.headers['x-tenant-id'] as string;
 
     const tenantDb = await tenantDbManager.getTenantConnection(tenantId);
 
@@ -143,9 +196,11 @@ fastify.get('/api/v1/libraries/:id', async (request, reply) => {
 });
 
 // Create library
-fastify.post('/api/v1/libraries', async (request, reply) => {
+fastify.post('/api/v1/libraries', {
+  preHandler: [validateBody(createLibrarySchema)],
+}, async (request: AuthenticatedRequest, reply) => {
   try {
-    const tenantId = request.headers['x-tenant-id'] as string;
+    const tenantId = (request as any).tenantId || (request.user as any)?.tenantId || request.headers['x-tenant-id'] as string;
     const libraryData = request.body as any;
 
     if (!libraryData.name) {
@@ -205,9 +260,9 @@ fastify.post('/api/v1/libraries', async (request, reply) => {
 });
 
 // Get real-time occupancy
-fastify.get('/api/v1/libraries/realtime-occupancy', async (request, reply) => {
+fastify.get('/api/v1/libraries/realtime-occupancy', async (request: AuthenticatedRequest, reply) => {
   try {
-    const tenantId = request.headers['x-tenant-id'] as string;
+    const tenantId = (request as any).tenantId || (request.user as any)?.tenantId || request.headers['x-tenant-id'] as string;
     const tenantDb = await tenantDbManager.getTenantConnection(tenantId);
 
     const result = await tenantDb.query(`
@@ -247,9 +302,9 @@ fastify.get('/api/v1/libraries/realtime-occupancy', async (request, reply) => {
 // ============================================
 
 // Get all fee plans
-fastify.get('/api/fee-plans', async (request, reply) => {
+fastify.get('/api/fee-plans', async (request: AuthenticatedRequest, reply) => {
   try {
-    const tenantId = request.headers['x-tenant-id'] as string;
+    const tenantId = (request as any).tenantId || (request.user as any)?.tenantId || request.headers['x-tenant-id'] as string;
     if (!tenantId) {
       return reply.status(HTTP_STATUS.BAD_REQUEST).send({
         success: false,
@@ -303,9 +358,11 @@ fastify.get('/api/fee-plans', async (request, reply) => {
 });
 
 // Create fee plan
-fastify.post('/api/fee-plans', async (request, reply) => {
+fastify.post('/api/fee-plans', {
+  preHandler: [validateBody(createFeePlanSchema)],
+}, async (request: AuthenticatedRequest, reply) => {
   try {
-    const tenantId = request.headers['x-tenant-id'] as string;
+    const tenantId = (request as any).tenantId || (request.user as any)?.tenantId || request.headers['x-tenant-id'] as string;
     if (!tenantId) {
       return reply.status(HTTP_STATUS.BAD_REQUEST).send({
         success: false,
@@ -397,10 +454,15 @@ fastify.post('/api/fee-plans', async (request, reply) => {
 });
 
 // Update fee plan
-fastify.put('/api/fee-plans/:id', async (request, reply) => {
+fastify.put('/api/fee-plans/:id', {
+  preHandler: [
+    validateParams(feePlanParamsSchema),
+    validateBody(updateFeePlanSchema),
+  ],
+}, async (request: AuthenticatedRequest, reply) => {
   try {
     const { id } = request.params as { id: string };
-    const tenantId = request.headers['x-tenant-id'] as string;
+    const tenantId = (request as any).tenantId || (request.user as any)?.tenantId || request.headers['x-tenant-id'] as string;
     const planData = request.body as any;
 
     if (!tenantId) {
@@ -504,10 +566,12 @@ fastify.put('/api/fee-plans/:id', async (request, reply) => {
 });
 
 // Delete fee plan
-fastify.delete('/api/fee-plans/:id', async (request, reply) => {
+fastify.delete('/api/fee-plans/:id', {
+  preHandler: [validateParams(feePlanParamsSchema)],
+}, async (request: AuthenticatedRequest, reply) => {
   try {
     const { id } = request.params as { id: string };
-    const tenantId = request.headers['x-tenant-id'] as string;
+    const tenantId = (request as any).tenantId || (request.user as any)?.tenantId || request.headers['x-tenant-id'] as string;
 
     if (!tenantId) {
       return reply.status(HTTP_STATUS.BAD_REQUEST).send({

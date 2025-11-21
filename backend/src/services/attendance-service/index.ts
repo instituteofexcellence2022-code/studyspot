@@ -10,21 +10,35 @@
 
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
-import { createClient } from '@supabase/supabase-js';
+import helmet from '@fastify/helmet';
+import dotenv from 'dotenv';
+import { tenantDbManager, coreDb } from '../../config/database';
 import { getSocketIO } from '../../utils/socketHelpers';
 import { logger } from '../../utils/logger';
+import { HTTP_STATUS, ERROR_CODES } from '../../config/constants';
+import { authenticate, AuthenticatedRequest } from '../../middleware/auth';
+import { validateBody, validateQuery, validateParams } from '../../middleware/validator';
+import { registerRateLimit, SERVICE_RATE_LIMITS } from '../../middleware/rateLimiter';
+import { requestLogger } from '../../middleware/requestLogger';
+import { errorHandler, notFoundHandler } from '../../middleware/errorHandler';
+import { z } from 'zod';
+import { config } from '../../config/env';
 
-const PORT = parseInt(process.env.ATTENDANCE_SERVICE_PORT || '3012', 10);
-const fastify = Fastify({ logger: true });
+dotenv.config();
 
-// Supabase client
-const supabaseUrl = process.env.SUPABASE_URL || '';
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseKey);
+const PORT = config.ports.attendance;
+const fastify = Fastify({ 
+  logger: false,
+  requestIdLogLabel: 'reqId',
+  requestIdHeader: 'x-request-id',
+});
 
-// CORS configuration
+// ============================================
+// MIDDLEWARE
+// ============================================
+
 fastify.register(cors, {
-  origin: [
+  origin: config.cors.origins.length > 0 ? config.cors.origins : [
     'http://localhost:3000',
     'http://localhost:3001',
     'http://localhost:3002',
@@ -35,15 +49,113 @@ fastify.register(cors, {
     /\.onrender\.com$/,
   ],
   credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-tenant-id', 'X-Requested-With'],
 });
+
+fastify.register(helmet);
+
+// ============================================
+// RATE LIMITING
+// ============================================
+
+(async () => {
+  await registerRateLimit(fastify, SERVICE_RATE_LIMITS.default);
+})();
+
+// ============================================
+// REQUEST LOGGING
+// ============================================
+
+fastify.addHook('onRequest', requestLogger);
+
+// ============================================
+// AUTHENTICATION MIDDLEWARE
+// ============================================
+
+fastify.addHook('onRequest', async (request: AuthenticatedRequest, reply) => {
+  if (request.url === '/health') {
+    return;
+  }
+  return authenticate(request, reply);
+});
+
+// ============================================
+// ERROR HANDLING
+// ============================================
+
+fastify.setErrorHandler(errorHandler);
+fastify.setNotFoundHandler(notFoundHandler);
+
+// ============================================
+// VALIDATION SCHEMAS
+// ============================================
+
+const validateQrSchema = z.object({
+  qrData: z.union([z.string(), z.object({
+    libraryId: z.string().uuid(),
+    action: z.enum(['check_in', 'check_out']),
+  })]),
+});
+
+const checkInSchema = z.object({
+  userId: z.string().uuid(),
+  userName: z.string().min(1).max(200).optional(),
+  libraryId: z.string().uuid(),
+  libraryName: z.string().max(200).optional(),
+  qrData: z.any().optional(),
+  location: z.string().max(200).optional(),
+});
+
+const checkOutSchema = z.object({
+  userId: z.string().uuid(),
+  libraryId: z.string().uuid(),
+  location: z.string().max(200).optional(),
+});
+
+const attendanceParamsSchema = z.object({
+  userId: z.string().uuid(),
+});
+
+const libraryAttendanceParamsSchema = z.object({
+  libraryId: z.string().uuid(),
+});
+
+const attendanceQuerySchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  limit: z.coerce.number().int().positive().max(100).default(10).optional(),
+  page: z.coerce.number().int().positive().default(1).optional(),
+});
+
+// ============================================
+// ROUTES
+// ============================================
 
 // Health check
 fastify.get('/health', async () => {
-  return {
-    status: 'ok',
-    service: 'attendance-service',
-    timestamp: new Date().toISOString(),
-  };
+  try {
+    await coreDb.query('SELECT 1');
+    return {
+      success: true,
+      data: {
+        status: 'healthy',
+        service: 'attendance-service',
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime(),
+      },
+    };
+  } catch (error: any) {
+    logger.error('Health check failed:', error);
+    return {
+      success: false,
+      data: {
+        status: 'unhealthy',
+        service: 'attendance-service',
+        timestamp: new Date().toISOString(),
+        error: error.message,
+      },
+    };
+  }
 });
 
 // ============================================
@@ -54,12 +166,21 @@ fastify.get('/health', async () => {
  * Validate QR code data
  * POST /api/attendance/validate-qr
  */
-fastify.post('/api/attendance/validate-qr', async (request, reply) => {
+fastify.post('/api/attendance/validate-qr', {
+  preHandler: [validateBody(validateQrSchema)],
+}, async (request: AuthenticatedRequest, reply) => {
   try {
     const { qrData } = request.body as any;
+    const tenantId = (request as any).tenantId || (request.user as any)?.tenantId;
 
-    if (!qrData) {
-      return reply.code(400).send({ error: 'QR data required' });
+    if (!tenantId) {
+      return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.VALIDATION_ERROR,
+          message: 'Tenant ID is required',
+        },
+      });
     }
 
     // Parse QR code JSON
@@ -67,17 +188,35 @@ fastify.post('/api/attendance/validate-qr', async (request, reply) => {
     try {
       parsed = typeof qrData === 'string' ? JSON.parse(qrData) : qrData;
     } catch (error) {
-      return reply.code(400).send({ error: 'Invalid QR code format' });
+      return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.VALIDATION_ERROR,
+          message: 'Invalid QR code format',
+        },
+      });
     }
 
     // Validate QR code structure
     if (!parsed.libraryId || !parsed.action) {
-      return reply.code(400).send({ error: 'Invalid QR code data' });
+      return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.VALIDATION_ERROR,
+          message: 'Invalid QR code data',
+        },
+      });
     }
 
     // Check if action is valid
     if (!['check_in', 'check_out'].includes(parsed.action)) {
-      return reply.code(400).send({ error: 'Invalid action type' });
+      return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.VALIDATION_ERROR,
+          message: 'Invalid action type',
+        },
+      });
     }
 
     logger.info(`✅ QR code validated: ${parsed.action} for library ${parsed.libraryId}`);
@@ -86,10 +225,17 @@ fastify.post('/api/attendance/validate-qr', async (request, reply) => {
       success: true,
       data: parsed,
       message: 'QR code is valid',
+      timestamp: new Date().toISOString(),
     });
-  } catch (error) {
+  } catch (error: any) {
     logger.error('Error validating QR code:', error);
-    return reply.code(500).send({ error: 'Failed to validate QR code' });
+    return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
+      success: false,
+      error: {
+        code: ERROR_CODES.SERVER_ERROR,
+        message: 'Failed to validate QR code',
+      },
+    });
   }
 });
 
@@ -101,80 +247,126 @@ fastify.post('/api/attendance/validate-qr', async (request, reply) => {
  * Mark check-in
  * POST /api/attendance/check-in
  */
-fastify.post('/api/attendance/check-in', async (request, reply) => {
+fastify.post('/api/attendance/check-in', {
+  preHandler: [validateBody(checkInSchema)],
+}, async (request: AuthenticatedRequest, reply) => {
   try {
     const { userId, userName, libraryId, libraryName, qrData, location } = request.body as any;
+    const tenantId = (request as any).tenantId || (request.user as any)?.tenantId;
 
-    if (!userId || !libraryId) {
-      return reply.code(400).send({ error: 'User ID and Library ID required' });
-    }
-
-    // Check if student already has an active check-in
-    const { data: activeSession } = await supabase
-      .from('attendance')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('library_id', libraryId)
-      .is('check_out_time', null)
-      .single();
-
-    if (activeSession) {
-      return reply.code(400).send({
-        error: 'Already checked in',
-        message: 'You already have an active session. Please check-out first.',
-        data: activeSession,
+    if (!tenantId) {
+      return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.VALIDATION_ERROR,
+          message: 'Tenant ID is required',
+        },
       });
     }
 
-    // Create new check-in record
-    const { data: attendance, error } = await supabase
-      .from('attendance')
-      .insert({
-        user_id: userId,
-        user_name: userName,
-        library_id: libraryId,
-        library_name: libraryName,
-        check_in_time: new Date().toISOString(),
-        check_in_method: 'qr-code',
-        check_in_location: location || 'QR Scanner',
-        qr_data: qrData,
-        status: 'checked-in',
-        date: new Date().toISOString().split('T')[0],
-      })
-      .select()
-      .single();
+    const tenantDb = await tenantDbManager.getTenantConnection(tenantId);
 
-    if (error) {
-      logger.error('Error creating check-in:', error);
-      return reply.code(500).send({ error: 'Failed to check-in' });
+    // Check if student already has an active check-in
+    const activeSessionResult = await tenantDb.query(
+      `SELECT * FROM attendance 
+       WHERE user_id = $1 AND library_id = $2 AND tenant_id = $3 AND check_out_time IS NULL
+       ORDER BY check_in_time DESC LIMIT 1`,
+      [userId, libraryId, tenantId]
+    );
+
+    if (activeSessionResult.rows.length > 0) {
+      return reply.status(HTTP_STATUS.CONFLICT).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.CONFLICT,
+          message: 'Already checked in',
+        },
+        data: {
+          message: 'You already have an active session. Please check-out first.',
+          activeSession: activeSessionResult.rows[0],
+        },
+      });
     }
+
+    // Get user name if not provided
+    let finalUserName = userName;
+    if (!finalUserName) {
+      const userResult = await tenantDb.query(
+        'SELECT first_name, last_name FROM students WHERE id = $1 AND tenant_id = $2',
+        [userId, tenantId]
+      );
+      if (userResult.rows.length > 0) {
+        finalUserName = `${userResult.rows[0].first_name || ''} ${userResult.rows[0].last_name || ''}`.trim();
+      }
+    }
+
+    // Get library name if not provided
+    let finalLibraryName = libraryName;
+    if (!finalLibraryName) {
+      const libraryResult = await tenantDb.query(
+        'SELECT name FROM libraries WHERE id = $1 AND tenant_id = $2',
+        [libraryId, tenantId]
+      );
+      if (libraryResult.rows.length > 0) {
+        finalLibraryName = libraryResult.rows[0].name;
+      }
+    }
+
+    // Create new check-in record
+    const attendanceResult = await tenantDb.query(
+      `INSERT INTO attendance (
+        tenant_id, user_id, user_name, library_id, library_name,
+        check_in_time, check_in_method, check_in_location, qr_data, status, date
+      ) VALUES ($1, $2, $3, $4, $5, NOW(), $6, $7, $8, $9, CURRENT_DATE)
+      RETURNING *`,
+      [
+        tenantId,
+        userId,
+        finalUserName || 'Unknown',
+        libraryId,
+        finalLibraryName || 'Unknown',
+        'qr-code',
+        location || 'QR Scanner',
+        qrData ? JSON.stringify(qrData) : null,
+        'checked-in',
+      ]
+    );
+
+    const attendance = attendanceResult.rows[0];
 
     // Emit real-time event
     const io = getSocketIO();
     if (io) {
       io.to(`library:${libraryId}`).emit('attendance:check-in', {
         userId,
-        userName,
+        userName: finalUserName,
         libraryId,
         timestamp: new Date().toISOString(),
       });
       io.to(`user:${userId}`).emit('attendance:confirmed', {
         type: 'check-in',
-        libraryName,
+        libraryName: finalLibraryName,
         timestamp: new Date().toISOString(),
       });
     }
 
-    logger.info(`✅ Check-in successful: ${userName} at ${libraryName}`);
+    logger.info(`✅ Check-in successful: ${finalUserName} at ${finalLibraryName}`);
 
-    return reply.code(201).send({
+    return reply.status(HTTP_STATUS.CREATED).send({
       success: true,
-      message: `Checked in successfully at ${libraryName}!`,
+      message: `Checked in successfully at ${finalLibraryName}!`,
       data: attendance,
+      timestamp: new Date().toISOString(),
     });
-  } catch (error) {
+  } catch (error: any) {
     logger.error('Error during check-in:', error);
-    return reply.code(500).send({ error: 'Internal server error' });
+    return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
+      success: false,
+      error: {
+        code: ERROR_CODES.SERVER_ERROR,
+        message: 'Failed to check-in',
+      },
+    });
   }
 });
 
@@ -182,31 +374,47 @@ fastify.post('/api/attendance/check-in', async (request, reply) => {
  * Mark check-out
  * POST /api/attendance/check-out
  */
-fastify.post('/api/attendance/check-out', async (request, reply) => {
+fastify.post('/api/attendance/check-out', {
+  preHandler: [validateBody(checkOutSchema)],
+}, async (request: AuthenticatedRequest, reply) => {
   try {
     const { userId, libraryId, location } = request.body as any;
+    const tenantId = (request as any).tenantId || (request.user as any)?.tenantId;
 
-    if (!userId || !libraryId) {
-      return reply.code(400).send({ error: 'User ID and Library ID required' });
-    }
-
-    // Find active check-in session
-    const { data: activeSession, error: fetchError } = await supabase
-      .from('attendance')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('library_id', libraryId)
-      .is('check_out_time', null)
-      .order('check_in_time', { ascending: false })
-      .limit(1)
-      .single();
-
-    if (fetchError || !activeSession) {
-      return reply.code(400).send({
-        error: 'No active session',
-        message: 'You need to check-in first before checking out.',
+    if (!tenantId) {
+      return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.VALIDATION_ERROR,
+          message: 'Tenant ID is required',
+        },
       });
     }
+
+    const tenantDb = await tenantDbManager.getTenantConnection(tenantId);
+
+    // Find active check-in session
+    const activeSessionResult = await tenantDb.query(
+      `SELECT * FROM attendance 
+       WHERE user_id = $1 AND library_id = $2 AND tenant_id = $3 AND check_out_time IS NULL
+       ORDER BY check_in_time DESC LIMIT 1`,
+      [userId, libraryId, tenantId]
+    );
+
+    if (activeSessionResult.rows.length === 0) {
+      return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.VALIDATION_ERROR,
+          message: 'No active session',
+        },
+        data: {
+          message: 'You need to check-in first before checking out.',
+        },
+      });
+    }
+
+    const activeSession = activeSessionResult.rows[0];
 
     // Calculate duration
     const checkInTime = new Date(activeSession.check_in_time);
@@ -215,26 +423,32 @@ fastify.post('/api/attendance/check-out', async (request, reply) => {
     const hours = Math.floor(durationMs / (1000 * 60 * 60));
     const minutes = Math.floor((durationMs % (1000 * 60 * 60)) / (1000 * 60));
     const duration = `${hours}h ${minutes}m`;
+    const durationMinutes = Math.floor(durationMs / (1000 * 60));
 
     // Update check-out
-    const { data: updated, error: updateError } = await supabase
-      .from('attendance')
-      .update({
-        check_out_time: checkOutTime.toISOString(),
-        check_out_method: 'qr-code',
-        check_out_location: location || 'QR Scanner',
-        duration_minutes: Math.floor(durationMs / (1000 * 60)),
-        duration: duration,
-        status: 'checked-out',
-      })
-      .eq('id', activeSession.id)
-      .select()
-      .single();
+    const updatedResult = await tenantDb.query(
+      `UPDATE attendance 
+       SET check_out_time = NOW(),
+           check_out_method = $1,
+           check_out_location = $2,
+           duration_minutes = $3,
+           duration = $4,
+           status = $5,
+           updated_at = NOW()
+       WHERE id = $6 AND tenant_id = $7
+       RETURNING *`,
+      [
+        'qr-code',
+        location || 'QR Scanner',
+        durationMinutes,
+        duration,
+        'checked-out',
+        activeSession.id,
+        tenantId,
+      ]
+    );
 
-    if (updateError) {
-      logger.error('Error updating check-out:', updateError);
-      return reply.code(500).send({ error: 'Failed to check-out' });
-    }
+    const updated = updatedResult.rows[0];
 
     // Emit real-time event
     const io = getSocketIO();
@@ -261,10 +475,17 @@ fastify.post('/api/attendance/check-out', async (request, reply) => {
       message: `Checked out successfully! Study duration: ${duration}`,
       data: updated,
       duration,
+      timestamp: new Date().toISOString(),
     });
-  } catch (error) {
+  } catch (error: any) {
     logger.error('Error during check-out:', error);
-    return reply.code(500).send({ error: 'Internal server error' });
+    return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
+      success: false,
+      error: {
+        code: ERROR_CODES.SERVER_ERROR,
+        message: 'Failed to check-out',
+      },
+    });
   }
 });
 
@@ -272,21 +493,35 @@ fastify.post('/api/attendance/check-out', async (request, reply) => {
  * Get current attendance status for user
  * GET /api/attendance/status/:userId
  */
-fastify.get('/api/attendance/status/:userId', async (request, reply) => {
+fastify.get('/api/attendance/status/:userId', {
+  preHandler: [validateParams(attendanceParamsSchema)],
+}, async (request: AuthenticatedRequest, reply) => {
   try {
     const { userId } = request.params as any;
+    const tenantId = (request as any).tenantId || (request.user as any)?.tenantId;
+
+    if (!tenantId) {
+      return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.VALIDATION_ERROR,
+          message: 'Tenant ID is required',
+        },
+      });
+    }
+
+    const tenantDb = await tenantDbManager.getTenantConnection(tenantId);
 
     // Get active session
-    const { data: activeSession } = await supabase
-      .from('attendance')
-      .select('*')
-      .eq('user_id', userId)
-      .is('check_out_time', null)
-      .order('check_in_time', { ascending: false })
-      .limit(1)
-      .single();
+    const activeSessionResult = await tenantDb.query(
+      `SELECT * FROM attendance 
+       WHERE user_id = $1 AND tenant_id = $2 AND check_out_time IS NULL
+       ORDER BY check_in_time DESC LIMIT 1`,
+      [userId, tenantId]
+    );
 
-    if (activeSession) {
+    if (activeSessionResult.rows.length > 0) {
+      const activeSession = activeSessionResult.rows[0];
       // Calculate current duration
       const checkInTime = new Date(activeSession.check_in_time);
       const now = new Date();
@@ -301,6 +536,7 @@ fastify.get('/api/attendance/status/:userId', async (request, reply) => {
           ...activeSession,
           currentDuration: `${hours}h ${minutes}m`,
         },
+        timestamp: new Date().toISOString(),
       });
     }
 
@@ -308,41 +544,86 @@ fastify.get('/api/attendance/status/:userId', async (request, reply) => {
       success: true,
       isCheckedIn: false,
       data: null,
+      timestamp: new Date().toISOString(),
     });
-  } catch (error) {
+  } catch (error: any) {
     logger.error('Error fetching attendance status:', error);
-    return reply.code(500).send({ error: 'Internal server error' });
+    return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
+      success: false,
+      error: {
+        code: ERROR_CODES.SERVER_ERROR,
+        message: 'Failed to fetch attendance status',
+      },
+    });
   }
 });
 
 /**
  * Get attendance history for user
- * GET /api/attendance/history/:userId?limit=10
+ * GET /api/attendance/history/:userId?limit=10&page=1
  */
-fastify.get('/api/attendance/history/:userId', async (request, reply) => {
+fastify.get('/api/attendance/history/:userId', {
+  preHandler: [
+    validateParams(attendanceParamsSchema),
+    validateQuery(attendanceQuerySchema),
+  ],
+}, async (request: AuthenticatedRequest, reply) => {
   try {
     const { userId } = request.params as any;
-    const { limit = 10 } = request.query as any;
+    const { limit = 10, page = 1 } = request.query as any;
+    const tenantId = (request as any).tenantId || (request.user as any)?.tenantId;
 
-    const { data: history, error } = await supabase
-      .from('attendance')
-      .select('*')
-      .eq('user_id', userId)
-      .order('check_in_time', { ascending: false })
-      .limit(limit);
-
-    if (error) {
-      logger.error('Error fetching attendance history:', error);
-      return reply.code(500).send({ error: 'Failed to fetch history' });
+    if (!tenantId) {
+      return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.VALIDATION_ERROR,
+          message: 'Tenant ID is required',
+        },
+      });
     }
+
+    const tenantDb = await tenantDbManager.getTenantConnection(tenantId);
+
+    // Get total count
+    const countResult = await tenantDb.query(
+      'SELECT COUNT(*) FROM attendance WHERE user_id = $1 AND tenant_id = $2',
+      [userId, tenantId]
+    );
+    const total = parseInt(countResult.rows[0].count);
+
+    // Get paginated history
+    const offset = (page - 1) * limit;
+    const historyResult = await tenantDb.query(
+      `SELECT * FROM attendance 
+       WHERE user_id = $1 AND tenant_id = $2
+       ORDER BY check_in_time DESC 
+       LIMIT $3 OFFSET $4`,
+      [userId, tenantId, limit, offset]
+    );
 
     return reply.send({
       success: true,
-      data: history || [],
+      data: historyResult.rows,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        totalPages: Math.ceil(total / limit),
+        hasNext: page * limit < total,
+        hasPrev: page > 1,
+      },
+      timestamp: new Date().toISOString(),
     });
-  } catch (error) {
+  } catch (error: any) {
     logger.error('Error fetching attendance history:', error);
-    return reply.code(500).send({ error: 'Internal server error' });
+    return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
+      success: false,
+      error: {
+        code: ERROR_CODES.SERVER_ERROR,
+        message: 'Failed to fetch attendance history',
+      },
+    });
   }
 });
 
@@ -350,58 +631,84 @@ fastify.get('/api/attendance/history/:userId', async (request, reply) => {
  * Get attendance for library (owner view)
  * GET /api/attendance/library/:libraryId?date=2025-11-04
  */
-fastify.get('/api/attendance/library/:libraryId', async (request, reply) => {
+fastify.get('/api/attendance/library/:libraryId', {
+  preHandler: [
+    validateParams(libraryAttendanceParamsSchema),
+    validateQuery(attendanceQuerySchema),
+  ],
+}, async (request: AuthenticatedRequest, reply) => {
   try {
     const { libraryId } = request.params as any;
     const { date } = request.query as any;
+    const tenantId = (request as any).tenantId || (request.user as any)?.tenantId;
 
-    let query = supabase
-      .from('attendance')
-      .select('*')
-      .eq('library_id', libraryId);
-
-    if (date) {
-      query = query.eq('date', date);
-    } else {
-      // Default to today
-      query = query.eq('date', new Date().toISOString().split('T')[0]);
+    if (!tenantId) {
+      return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+        success: false,
+        error: {
+          code: ERROR_CODES.VALIDATION_ERROR,
+          message: 'Tenant ID is required',
+        },
+      });
     }
 
-    const { data: attendance, error } = await query.order('check_in_time', { ascending: false });
+    const tenantDb = await tenantDbManager.getTenantConnection(tenantId);
+    const targetDate = date || new Date().toISOString().split('T')[0];
 
-    if (error) {
-      logger.error('Error fetching library attendance:', error);
-      return reply.code(500).send({ error: 'Failed to fetch attendance' });
-    }
+    // Get attendance for the date
+    const attendanceResult = await tenantDb.query(
+      `SELECT * FROM attendance 
+       WHERE library_id = $1 AND tenant_id = $2 AND date = $3
+       ORDER BY check_in_time DESC`,
+      [libraryId, tenantId, targetDate]
+    );
+
+    const attendance = attendanceResult.rows;
 
     // Calculate stats
     const stats = {
-      total: attendance?.length || 0,
-      checkedIn: attendance?.filter(a => a.status === 'checked-in').length || 0,
-      checkedOut: attendance?.filter(a => a.status === 'checked-out').length || 0,
+      total: attendance.length,
+      checkedIn: attendance.filter(a => a.status === 'checked-in').length,
+      checkedOut: attendance.filter(a => a.status === 'checked-out').length,
     };
 
     return reply.send({
       success: true,
-      data: attendance || [],
+      data: attendance,
       stats,
+      date: targetDate,
+      timestamp: new Date().toISOString(),
     });
-  } catch (error) {
+  } catch (error: any) {
     logger.error('Error fetching library attendance:', error);
-    return reply.code(500).send({ error: 'Internal server error' });
+    return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
+      success: false,
+      error: {
+        code: ERROR_CODES.SERVER_ERROR,
+        message: 'Failed to fetch library attendance',
+      },
+    });
   }
 });
 
-// Start the server
-const start = async () => {
+// ============================================
+// START SERVER
+// ============================================
+
+export async function startAttendanceService() {
   try {
     await fastify.listen({ port: PORT, host: '0.0.0.0' });
-    logger.info(`📍 Attendance Service is running on port ${PORT}`);
+    logger.info(`✅ Attendance Service started on port ${PORT}`);
   } catch (err) {
-    logger.error('Error starting attendance service:', err);
+    logger.error('Failed to start Attendance Service:', err);
     process.exit(1);
   }
-};
+}
 
-start();
+// Start if run directly
+if (require.main === module) {
+  startAttendanceService();
+}
+
+export default fastify;
 

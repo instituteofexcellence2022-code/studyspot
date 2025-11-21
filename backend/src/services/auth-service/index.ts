@@ -12,11 +12,13 @@ import rateLimit from '@fastify/rate-limit';
 import multipart from '@fastify/multipart';
 import bcrypt from 'bcrypt';
 import dotenv from 'dotenv';
-import { coreDb } from '../../config/database';
+import { coreDb, tenantDbManager } from '../../config/database';
 import { logger } from '../../utils/logger';
-import { HTTP_STATUS, ERROR_CODES } from '../../config/constants';
+import { HTTP_STATUS, ERROR_CODES, SECURITY } from '../../config/constants';
 import type { AdminUser } from '../../types';
 import { Server as SocketIOServer } from 'socket.io';
+import { Pool } from 'pg';
+import { config } from '../../config/env';
 
 dotenv.config();
 
@@ -24,7 +26,7 @@ dotenv.config();
 // No need to redeclare them
 
 const fastify = Fastify({ logger: false });
-const PORT = parseInt(process.env.AUTH_SERVICE_PORT || '3001');
+const PORT = config.ports.auth;
 
 // ============================================
 // MIDDLEWARE
@@ -32,7 +34,7 @@ const PORT = parseInt(process.env.AUTH_SERVICE_PORT || '3001');
 
 // Parse CORS origins from environment or use defaults
 // Note: Regex patterns must be tested, so we include explicit localhost ports
-const corsOrigins = process.env.CORS_ORIGIN?.split(',').map(o => o.trim()) || [
+const corsOrigins = config.cors.origins.length > 0 ? config.cors.origins : [
   'http://localhost:3000',  // Student Portal
   'http://localhost:3001',  // Web Owner Portal (React)
   'http://localhost:3002',  // Web Admin Portal
@@ -96,7 +98,7 @@ fastify.register(multipart, {
 });
 
 fastify.register(jwt, {
-  secret: process.env.JWT_SECRET || 'your-secret-key-change-in-production',
+  secret: config.jwt.secret,
 });
 
 // Rate limiting for auth endpoints
@@ -179,6 +181,43 @@ const getUserTableFromToken = (decoded: any): string => {
 };
 
 /**
+ * Helper function to get user from tenant database
+ * Used for students and library_staff which are stored in tenant databases
+ */
+async function getUserFromTenantDb(
+  userTable: 'students' | 'library_staff',
+  identifier: { email?: string; id?: string },
+  tenantId: string
+): Promise<{ user: any | null; tenantDb: Pool }> {
+  if (!tenantId) {
+    throw new Error(`Tenant ID required for ${userTable}`);
+  }
+
+  // Get tenant database connection
+  const tenantDb = await tenantDbManager.getTenantConnection(tenantId);
+
+  let user: any = null;
+
+  if (identifier.email) {
+    const query = userTable === 'students'
+      ? 'SELECT * FROM students WHERE email = $1 AND tenant_id = $2 AND deleted_at IS NULL'
+      : 'SELECT * FROM library_staff WHERE email = $1 AND tenant_id = $2';
+    
+    const result = await tenantDb.query(query, [identifier.email.toLowerCase(), tenantId]);
+    user = result.rows[0] || null;
+  } else if (identifier.id) {
+    const query = userTable === 'students'
+      ? 'SELECT * FROM students WHERE id = $1 AND tenant_id = $2 AND deleted_at IS NULL'
+      : 'SELECT * FROM library_staff WHERE id = $1 AND tenant_id = $2';
+    
+    const result = await tenantDb.query(query, [identifier.id, tenantId]);
+    user = result.rows[0] || null;
+  }
+
+  return { user, tenantDb };
+}
+
+/**
  * Generate access token with userTable included
  */
 const generateAccessToken = (user: any, userTable: string) => {
@@ -223,7 +262,7 @@ const generateAccessToken = (user: any, userTable: string) => {
   }
 
   return fastify.jwt.sign(payload, {
-    expiresIn: process.env.JWT_ACCESS_TOKEN_EXPIRY || '15m',
+    expiresIn: config.jwt.accessTokenExpiry,
   });
 };
 
@@ -237,7 +276,7 @@ const generateRefreshToken = (user: any, userTable: string) => {
       userTable, // NEW: Include which table the user is in
       type: 'refresh',
     },
-    { expiresIn: process.env.JWT_REFRESH_TOKEN_EXPIRY || '7d' }
+    { expiresIn: config.jwt.refreshTokenExpiry }
   );
 };
 
@@ -289,7 +328,10 @@ const formatUserResponse = (user: any, userTable?: string) => {
     user_type: userType,
     userTable: userTable || null, // Include table name
     tenantId: resolveTenantId(user),
-    status: user.is_active === false ? 'inactive' : 'active',
+    // Students use 'status' field, others use 'is_active'
+    status: userTable === 'students' 
+      ? (user.status || 'active')
+      : (user.is_active === false ? 'inactive' : 'active'),
     createdAt: user.created_at ?? null,
     updatedAt: user.updated_at ?? null,
     phone: user.phone ?? user.phone_number ?? null,
@@ -313,7 +355,7 @@ const buildAuthPayload = (user: any, tokens: { accessToken: string; refreshToken
   
   // Fallback: if expiry extraction fails, calculate from current time + 15 minutes
   if (!expiresAt) {
-    const expiryMinutes = parseInt(process.env.JWT_ACCESS_TOKEN_EXPIRY?.replace('m', '') || '15');
+    const expiryMinutes = parseInt(config.jwt.accessTokenExpiry.replace('m', '') || '15');
     expiresAt = Date.now() + (expiryMinutes * 60 * 1000);
     console.warn('[buildAuthPayload] Using fallback expiry calculation');
   }
@@ -589,7 +631,7 @@ fastify.post('/api/v1/auth/student/register', async (request, reply) => {
     }
 
     // Hash password
-    const passwordHash = await bcrypt.hash(password, 10);
+    const passwordHash = await bcrypt.hash(password, SECURITY.BCRYPT_ROUNDS);
 
     // Create user
     const result = await coreDb.query(
@@ -638,10 +680,19 @@ fastify.post('/api/v1/auth/student/register', async (request, reply) => {
   }
 });
 
-// Universal login endpoint (works for all user types)
+// Universal login endpoint (works for all user types across all portals)
+// Student Portal: login students (tenant DB)
+// Owner Portal: login library_owners (core DB) + library_staff (tenant DB)
+// Admin Portal: login platform_admins + platform_staff (core DB)
 fastify.post('/api/auth/login', async (request, reply) => {
   try {
-    const { email, password } = request.body as { email: string; password: string };
+    const { email, password, tenantId, userType, portalType } = request.body as {
+      email: string;
+      password: string;
+      tenantId?: string;
+      userType?: string;
+      portalType?: string;
+    };
 
     // Validate input
     if (!email || !password) {
@@ -654,21 +705,29 @@ fastify.post('/api/auth/login', async (request, reply) => {
       });
     }
 
-    // Try to find user in new tables (library_owners, platform_admins, platform_staff)
     let user: any = null;
     let userTable: string = '';
+    let tenantDb: Pool | null = null;
 
-    // 1. Try library_owners first
-    const libraryOwnerResult = await coreDb.query(
-      'SELECT * FROM library_owners WHERE email = $1',
-      [email.toLowerCase()]
-    );
+    // ============================================
+    // STEP 1: Check Core Database (for core DB users)
+    // ============================================
 
-    if (libraryOwnerResult.rows.length > 0) {
-      user = libraryOwnerResult.rows[0];
-      userTable = 'library_owners';
-    } else {
-      // 2. Try platform_admins
+    // 1. Try library_owners (Owner Portal - library owners)
+    if (!userType || userType === 'library_owner' || portalType === 'owner' || !portalType) {
+      const libraryOwnerResult = await coreDb.query(
+        'SELECT * FROM library_owners WHERE email = $1',
+        [email.toLowerCase()]
+      );
+
+      if (libraryOwnerResult.rows.length > 0) {
+        user = libraryOwnerResult.rows[0];
+        userTable = 'library_owners';
+      }
+    }
+
+    // 2. Try platform_admins (Admin Portal)
+    if (!user && (!userType || userType === 'platform_admin' || portalType === 'admin')) {
       const platformAdminResult = await coreDb.query(
         'SELECT * FROM platform_admins WHERE email = $1',
         [email.toLowerCase()]
@@ -677,34 +736,96 @@ fastify.post('/api/auth/login', async (request, reply) => {
       if (platformAdminResult.rows.length > 0) {
         user = platformAdminResult.rows[0];
         userTable = 'platform_admins';
-      } else {
-        // 3. Try platform_staff
-        const platformStaffResult = await coreDb.query(
-          'SELECT * FROM platform_staff WHERE email = $1',
-          [email.toLowerCase()]
-        );
+      }
+    }
 
-        if (platformStaffResult.rows.length > 0) {
-          user = platformStaffResult.rows[0];
-          userTable = 'platform_staff';
-        } else {
-          // 4. Fallback to admin_users (for backward compatibility during migration)
-          const adminUserResult = await coreDb.query(
-            'SELECT * FROM admin_users WHERE email = $1',
-            [email.toLowerCase()]
+    // 3. Try platform_staff (Admin Portal)
+    if (!user && (!userType || userType === 'platform_staff' || portalType === 'admin')) {
+      const platformStaffResult = await coreDb.query(
+        'SELECT * FROM platform_staff WHERE email = $1',
+        [email.toLowerCase()]
+      );
+
+      if (platformStaffResult.rows.length > 0) {
+        user = platformStaffResult.rows[0];
+        userTable = 'platform_staff';
+      }
+    }
+
+    // ============================================
+    // STEP 2: Check Tenant Database (for tenant DB users)
+    // ============================================
+
+    // Only check tenant DB if:
+    // - tenantId is provided AND
+    // - user not found in core DB AND
+    // - (userType matches tenant user OR portalType matches)
+    if (!user && tenantId) {
+      try {
+        // 4. Try library_staff (Owner Portal - library staff)
+        if (
+          !user &&
+          (!userType || userType === 'library_staff' || portalType === 'owner' || !portalType)
+        ) {
+          const { user: libraryStaffUser, tenantDb: staffTenantDb } = await getUserFromTenantDb(
+            'library_staff',
+            { email },
+            tenantId
           );
 
-          if (adminUserResult.rows.length > 0) {
-            user = adminUserResult.rows[0];
-            // Determine table from user data
-            if (user.tenant_id) {
-              userTable = 'library_owners';
-            } else if (user.role === 'super_admin') {
-              userTable = 'platform_admins';
-            } else {
-              userTable = 'platform_staff';
-            }
+          if (libraryStaffUser) {
+            user = libraryStaffUser;
+            userTable = 'library_staff';
+            tenantDb = staffTenantDb;
           }
+        }
+
+        // 5. Try students (Student Portal)
+        if (
+          !user &&
+          (!userType || userType === 'student' || portalType === 'student' || !portalType)
+        ) {
+          const { user: studentUser, tenantDb: studentTenantDb } = await getUserFromTenantDb(
+            'students',
+            { email },
+            tenantId
+          );
+
+          if (studentUser) {
+            user = studentUser;
+            userTable = 'students';
+            tenantDb = studentTenantDb;
+          }
+        }
+      } catch (tenantError: any) {
+        logger.warn('Tenant database query failed:', {
+          error: tenantError.message,
+          tenantId,
+          email,
+        });
+        // Continue - don't fail if tenant DB query fails (might be tenant not found)
+      }
+    }
+
+    // ============================================
+    // STEP 3: Fallback to admin_users (backward compatibility)
+    // ============================================
+
+    if (!user) {
+      const adminUserResult = await coreDb.query(
+        'SELECT * FROM admin_users WHERE email = $1',
+        [email.toLowerCase()]
+      );
+
+      if (adminUserResult.rows.length > 0) {
+        user = adminUserResult.rows[0];
+        // Determine table from user data
+        if (user.tenant_id) {
+          userTable = 'library_owners';
+        } else if (user.role === 'super_admin') {
+          userTable = 'platform_admins';
+        } else {
+          userTable = 'platform_staff';
         }
       }
     }
@@ -732,7 +853,12 @@ fastify.post('/api/auth/login', async (request, reply) => {
     }
 
     // Check if user is active
-    if (!user.is_active) {
+    // Students use 'status' field, others use 'is_active'
+    const isActive = userTable === 'students' 
+      ? user.status === 'active'
+      : user.is_active !== false; // Default to true if undefined
+    
+    if (!isActive) {
       return reply.status(HTTP_STATUS.UNAUTHORIZED).send({
         success: false,
         error: {
@@ -774,8 +900,10 @@ fastify.post('/api/auth/login', async (request, reply) => {
 
     // Update last login
     try {
+      // For tenant DB users, use tenant DB connection
+      const dbConnection = tenantDb || coreDb;
       const updateQuery = `UPDATE ${userTable} SET last_login_at = NOW(), last_login_ip = $1 WHERE id = $2`;
-      await coreDb.query(updateQuery, [request.ip, user.id]);
+      await dbConnection.query(updateQuery, [request.ip, user.id]);
     } catch (updateError: any) {
       logger.warn('Failed to update last login (non-critical):', updateError.message);
     }
@@ -936,7 +1064,7 @@ fastify.post('/api/auth/register', async (request, reply) => {
             'free',
             'active',
             databaseName,
-            process.env.CORE_DB_HOST || 'localhost',
+            config.database.host,
             1, // max_libraries
             100, // max_students
             10, // max_staff
@@ -1111,7 +1239,7 @@ fastify.post('/api/auth/register', async (request, reply) => {
         details: errorDetails,
         errorCode: error.code,
         errorName: error.name,
-        fullError: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
+        fullError: config.isDevelopment ? errorMessage : undefined,
       },
     });
   }
@@ -1139,6 +1267,8 @@ fastify.get('/api/auth/me', async (request, reply) => {
 
     // Query correct table based on userTable
     let result;
+    const tenantId = decoded.tenantId || decoded.tenant_id;
+
     switch (userTable) {
       case 'library_owners':
         result = await coreDb.query(
@@ -1157,6 +1287,62 @@ fastify.get('/api/auth/me', async (request, reply) => {
           'SELECT * FROM platform_staff WHERE id = $1',
           [decoded.userId]
         );
+        break;
+      case 'library_staff':
+        // Query tenant database for library staff
+        if (!tenantId) {
+          return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+            success: false,
+            error: {
+              code: ERROR_CODES.VALIDATION_ERROR,
+              message: 'Tenant ID required for library staff',
+            },
+          });
+        }
+        try {
+          const tenantDb = await tenantDbManager.getTenantConnection(tenantId);
+          result = await tenantDb.query(
+            'SELECT * FROM library_staff WHERE id = $1 AND tenant_id = $2',
+            [decoded.userId, tenantId]
+          );
+        } catch (tenantError: any) {
+          logger.error('Tenant database query failed for library staff:', tenantError);
+          return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
+            success: false,
+            error: {
+              code: ERROR_CODES.DATABASE_ERROR,
+              message: 'Failed to query tenant database',
+            },
+          });
+        }
+        break;
+      case 'students':
+        // Query tenant database for students
+        if (!tenantId) {
+          return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+            success: false,
+            error: {
+              code: ERROR_CODES.VALIDATION_ERROR,
+              message: 'Tenant ID required for students',
+            },
+          });
+        }
+        try {
+          const tenantDb = await tenantDbManager.getTenantConnection(tenantId);
+          result = await tenantDb.query(
+            'SELECT * FROM students WHERE id = $1 AND tenant_id = $2 AND deleted_at IS NULL',
+            [decoded.userId, tenantId]
+          );
+        } catch (tenantError: any) {
+          logger.error('Tenant database query failed for students:', tenantError);
+          return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
+            success: false,
+            error: {
+              code: ERROR_CODES.DATABASE_ERROR,
+              message: 'Failed to query tenant database',
+            },
+          });
+        }
         break;
       default:
         // Fallback to admin_users for backward compatibility
@@ -1179,7 +1365,12 @@ fastify.get('/api/auth/me', async (request, reply) => {
     const user = result.rows[0];
 
     // Check if user is active
-    if (!user.is_active) {
+    // Students use 'status' field, others use 'is_active'
+    const isActive = userTable === 'students' 
+      ? user.status === 'active'
+      : user.is_active !== false; // Default to true if undefined
+    
+    if (!isActive) {
       return reply.status(HTTP_STATUS.UNAUTHORIZED).send({
         success: false,
         error: {
@@ -1229,6 +1420,8 @@ fastify.get('/api/auth/profile', async (request, reply) => {
 
     // Query correct table
     let result;
+    const tenantId = decoded.tenantId || decoded.tenant_id;
+
     switch (userTable) {
       case 'library_owners':
         result = await coreDb.query('SELECT * FROM library_owners WHERE id = $1', [decoded.userId]);
@@ -1238,6 +1431,62 @@ fastify.get('/api/auth/profile', async (request, reply) => {
         break;
       case 'platform_staff':
         result = await coreDb.query('SELECT * FROM platform_staff WHERE id = $1', [decoded.userId]);
+        break;
+      case 'library_staff':
+        // Query tenant database for library staff
+        if (!tenantId) {
+          return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+            success: false,
+            error: {
+              code: ERROR_CODES.VALIDATION_ERROR,
+              message: 'Tenant ID required for library staff',
+            },
+          });
+        }
+        try {
+          const tenantDb = await tenantDbManager.getTenantConnection(tenantId);
+          result = await tenantDb.query(
+            'SELECT * FROM library_staff WHERE id = $1 AND tenant_id = $2',
+            [decoded.userId, tenantId]
+          );
+        } catch (tenantError: any) {
+          logger.error('Tenant database query failed for library staff:', tenantError);
+          return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
+            success: false,
+            error: {
+              code: ERROR_CODES.DATABASE_ERROR,
+              message: 'Failed to query tenant database',
+            },
+          });
+        }
+        break;
+      case 'students':
+        // Query tenant database for students
+        if (!tenantId) {
+          return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+            success: false,
+            error: {
+              code: ERROR_CODES.VALIDATION_ERROR,
+              message: 'Tenant ID required for students',
+            },
+          });
+        }
+        try {
+          const tenantDb = await tenantDbManager.getTenantConnection(tenantId);
+          result = await tenantDb.query(
+            'SELECT * FROM students WHERE id = $1 AND tenant_id = $2 AND deleted_at IS NULL',
+            [decoded.userId, tenantId]
+          );
+        } catch (tenantError: any) {
+          logger.error('Tenant database query failed for students:', tenantError);
+          return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
+            success: false,
+            error: {
+              code: ERROR_CODES.DATABASE_ERROR,
+              message: 'Failed to query tenant database',
+            },
+          });
+        }
         break;
       default:
         result = await coreDb.query('SELECT * FROM admin_users WHERE id = $1', [decoded.userId]);
@@ -1294,6 +1543,8 @@ fastify.put('/api/users/profile', async (request, reply) => {
 
     // Get current user from correct table
     let currentUser;
+    const tenantId = decoded.tenantId || decoded.tenant_id;
+
     if (userTable === 'library_owners') {
       currentUser = await coreDb.query(
         'SELECT * FROM library_owners WHERE id = $1',
@@ -1309,6 +1560,60 @@ fastify.put('/api/users/profile', async (request, reply) => {
         'SELECT * FROM platform_staff WHERE id = $1',
         [decoded.userId]
       );
+    } else if (userTable === 'library_staff') {
+      // Query tenant database for library staff
+      if (!tenantId) {
+        return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+          success: false,
+          error: {
+            code: ERROR_CODES.VALIDATION_ERROR,
+            message: 'Tenant ID required for library staff',
+          },
+        });
+      }
+      try {
+        const tenantDb = await tenantDbManager.getTenantConnection(tenantId);
+        currentUser = await tenantDb.query(
+          'SELECT * FROM library_staff WHERE id = $1 AND tenant_id = $2',
+          [decoded.userId, tenantId]
+        );
+      } catch (tenantError: any) {
+        logger.error('Tenant database query failed for library staff:', tenantError);
+        return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
+          success: false,
+          error: {
+            code: ERROR_CODES.DATABASE_ERROR,
+            message: 'Failed to query tenant database',
+          },
+        });
+      }
+    } else if (userTable === 'students') {
+      // Query tenant database for students
+      if (!tenantId) {
+        return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+          success: false,
+          error: {
+            code: ERROR_CODES.VALIDATION_ERROR,
+            message: 'Tenant ID required for students',
+          },
+        });
+      }
+      try {
+        const tenantDb = await tenantDbManager.getTenantConnection(tenantId);
+        currentUser = await tenantDb.query(
+          'SELECT * FROM students WHERE id = $1 AND tenant_id = $2 AND deleted_at IS NULL',
+          [decoded.userId, tenantId]
+        );
+      } catch (tenantError: any) {
+        logger.error('Tenant database query failed for students:', tenantError);
+        return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
+          success: false,
+          error: {
+            code: ERROR_CODES.DATABASE_ERROR,
+            message: 'Failed to query tenant database',
+          },
+        });
+      }
     } else {
       // Fallback to admin_users for legacy support
       currentUser = await coreDb.query(
@@ -1389,6 +1694,8 @@ fastify.put('/api/users/profile', async (request, reply) => {
 
     // Build update query for correct table
     let updateQuery: string;
+    let dbConnection: Pool = coreDb;
+
     if (userTable === 'library_owners') {
       updateQuery = `
         UPDATE library_owners 
@@ -1396,6 +1703,7 @@ fastify.put('/api/users/profile', async (request, reply) => {
         WHERE id = $${paramIndex}
         RETURNING *
       `;
+      dbConnection = coreDb;
     } else if (userTable === 'platform_admins') {
       updateQuery = `
         UPDATE platform_admins 
@@ -1403,11 +1711,53 @@ fastify.put('/api/users/profile', async (request, reply) => {
         WHERE id = $${paramIndex}
         RETURNING *
       `;
+      dbConnection = coreDb;
     } else if (userTable === 'platform_staff') {
       updateQuery = `
         UPDATE platform_staff 
         SET ${updateFields.join(', ')}
         WHERE id = $${paramIndex}
+        RETURNING *
+      `;
+      dbConnection = coreDb;
+    } else if (userTable === 'library_staff') {
+      // Update in tenant database
+      if (!tenantId) {
+        return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+          success: false,
+          error: {
+            code: ERROR_CODES.VALIDATION_ERROR,
+            message: 'Tenant ID required for library staff',
+          },
+        });
+      }
+      dbConnection = await tenantDbManager.getTenantConnection(tenantId);
+      values.push(tenantId); // Add tenant_id to WHERE clause
+      paramIndex++;
+      updateQuery = `
+        UPDATE library_staff 
+        SET ${updateFields.join(', ')}
+        WHERE id = $${paramIndex - 1} AND tenant_id = $${paramIndex}
+        RETURNING *
+      `;
+    } else if (userTable === 'students') {
+      // Update in tenant database
+      if (!tenantId) {
+        return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+          success: false,
+          error: {
+            code: ERROR_CODES.VALIDATION_ERROR,
+            message: 'Tenant ID required for students',
+          },
+        });
+      }
+      dbConnection = await tenantDbManager.getTenantConnection(tenantId);
+      values.push(tenantId); // Add tenant_id to WHERE clause
+      paramIndex++;
+      updateQuery = `
+        UPDATE students 
+        SET ${updateFields.join(', ')}
+        WHERE id = $${paramIndex - 1} AND tenant_id = $${paramIndex} AND deleted_at IS NULL
         RETURNING *
       `;
     } else {
@@ -1418,9 +1768,10 @@ fastify.put('/api/users/profile', async (request, reply) => {
         WHERE id = $${paramIndex}
         RETURNING *
       `;
+      dbConnection = coreDb;
     }
 
-    const result = await coreDb.query(updateQuery, values);
+    const result = await dbConnection.query(updateQuery, values);
 
     logger.info(`✅ Profile updated for user: ${decoded.userId}`);
 
@@ -2756,7 +3107,13 @@ const refreshHandler = async (request: any, reply: any) => {
       });
     }
 
-    const decoded = fastify.jwt.verify(refreshToken) as { userId?: string; userTable?: string; type?: string };
+    const decoded = fastify.jwt.verify(refreshToken) as {
+      userId?: string;
+      userTable?: string;
+      type?: string;
+      tenantId?: string;
+      tenant_id?: string;
+    };
     if (decoded?.type !== 'refresh' || !decoded?.userId) {
       return reply.status(HTTP_STATUS.UNAUTHORIZED).send({
         success: false,
@@ -2769,6 +3126,7 @@ const refreshHandler = async (request: any, reply: any) => {
 
     // Get userTable from token or fallback
     const userTable = decoded.userTable || 'library_owners';
+    const tenantId = decoded.tenantId || decoded.tenant_id;
 
     const tokenRow = await coreDb.query(
       'SELECT * FROM refresh_tokens WHERE token = $1 AND user_table = $2 AND revoked_at IS NULL AND expires_at > NOW()',
@@ -2787,6 +3145,7 @@ const refreshHandler = async (request: any, reply: any) => {
 
     // Query user from correct table
     let userResult;
+
     switch (userTable) {
       case 'library_owners':
         userResult = await coreDb.query('SELECT * FROM library_owners WHERE id = $1 AND is_active = true', [decoded.userId]);
@@ -2796,6 +3155,62 @@ const refreshHandler = async (request: any, reply: any) => {
         break;
       case 'platform_staff':
         userResult = await coreDb.query('SELECT * FROM platform_staff WHERE id = $1 AND is_active = true', [decoded.userId]);
+        break;
+      case 'library_staff':
+        // Query tenant database for library staff
+        if (!tenantId) {
+          return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+            success: false,
+            error: {
+              code: ERROR_CODES.VALIDATION_ERROR,
+              message: 'Tenant ID required for library staff',
+            },
+          });
+        }
+        try {
+          const tenantDb = await tenantDbManager.getTenantConnection(tenantId);
+          userResult = await tenantDb.query(
+            'SELECT * FROM library_staff WHERE id = $1 AND tenant_id = $2 AND is_active = true',
+            [decoded.userId, tenantId]
+          );
+        } catch (tenantError: any) {
+          logger.error('Tenant database query failed for library staff:', tenantError);
+          return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
+            success: false,
+            error: {
+              code: ERROR_CODES.DATABASE_ERROR,
+              message: 'Failed to query tenant database',
+            },
+          });
+        }
+        break;
+      case 'students':
+        // Query tenant database for students
+        if (!tenantId) {
+          return reply.status(HTTP_STATUS.BAD_REQUEST).send({
+            success: false,
+            error: {
+              code: ERROR_CODES.VALIDATION_ERROR,
+              message: 'Tenant ID required for students',
+            },
+          });
+        }
+        try {
+          const tenantDb = await tenantDbManager.getTenantConnection(tenantId);
+          userResult = await tenantDb.query(
+            'SELECT * FROM students WHERE id = $1 AND tenant_id = $2 AND status = $3 AND deleted_at IS NULL',
+            [decoded.userId, tenantId, 'active']
+          );
+        } catch (tenantError: any) {
+          logger.error('Tenant database query failed for students:', tenantError);
+          return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
+            success: false,
+            error: {
+              code: ERROR_CODES.DATABASE_ERROR,
+              message: 'Failed to query tenant database',
+            },
+          });
+        }
         break;
       default:
         userResult = await coreDb.query('SELECT * FROM admin_users WHERE id = $1 AND is_active = true', [decoded.userId]);

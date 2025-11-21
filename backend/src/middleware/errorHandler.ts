@@ -6,38 +6,78 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { logger } from '../utils/logger';
 import { formatErrorResponse, AppError } from '../utils/errors';
-import { HTTP_STATUS } from '../config/constants';
+import { HTTP_STATUS, ERROR_CODES } from '../config/constants';
 
 /**
- * Global error handler
+ * Global error handler with enhanced logging
  */
 export async function errorHandler(
   error: any,
   request: FastifyRequest,
   reply: FastifyReply
 ) {
-  // Log error
-  logger.error('Request error:', {
-    method: request.method,
-    url: request.url,
-    error: {
-      message: error.message,
-      stack: error.stack,
-      code: error.code,
-      statusCode: error.statusCode,
-    },
-    user: (request as any).user?.id || 'anonymous',
-    tenantId: (request as any).tenantId || 'none',
-    ip: request.ip,
-  });
-
-  // Format error response
-  const errorResponse = formatErrorResponse(error);
-
-  // Set status code
-  const statusCode = error instanceof AppError 
+  const user = (request as any).user;
+  const tenantId = (request as any).tenantId;
+  
+  // Determine error details
+  const isAppError = error instanceof AppError;
+  const statusCode = isAppError 
     ? error.statusCode 
     : error.statusCode || HTTP_STATUS.INTERNAL_SERVER_ERROR;
+  
+  const errorCode = isAppError
+    ? error.errorCode
+    : error.code || ERROR_CODES.SERVER_ERROR;
+
+  // Enhanced error logging
+  const errorLog = {
+    method: request.method,
+    url: request.url,
+    statusCode,
+    errorCode,
+    error: {
+      message: error.message,
+      name: error.name,
+      code: error.code,
+      ...(error.stack && { stack: error.stack }),
+    },
+    request: {
+      headers: {
+        'user-agent': request.headers['user-agent'],
+        'content-type': request.headers['content-type'],
+        'authorization': request.headers['authorization'] ? '[REDACTED]' : undefined,
+      },
+      query: request.query,
+      params: request.params,
+      body: request.body ? '[REDACTED]' : undefined, // Don't log sensitive data
+    },
+    user: {
+      id: user?.id || user?.userId || 'anonymous',
+      email: user?.email || 'none',
+      role: user?.role || 'none',
+      userType: user?.userType || user?.user_type || 'none',
+    },
+    tenantId: tenantId || 'none',
+    ip: request.ip || request.headers['x-forwarded-for'] || request.headers['x-real-ip'] || 'unknown',
+    timestamp: new Date().toISOString(),
+  };
+
+  // Log based on severity
+  if (statusCode >= 500) {
+    logger.error('Server error:', errorLog);
+  } else if (statusCode >= 400) {
+    logger.warn('Client error:', errorLog);
+  } else {
+    logger.info('Request error:', errorLog);
+  }
+
+  // Format error response
+  const errorResponse: any = formatErrorResponse(error);
+
+  // Add request ID if available
+  if ((request as any).requestId) {
+    errorResponse.requestId = (request as any).requestId;
+  }
 
   // Send error response
   return reply.status(statusCode).send(errorResponse);
